@@ -1,0 +1,42 @@
+name: Update Fortnite Shop
+
+on:
+  schedule:
+    # GitHub Actions uses UTC. 00:05 UTC is 08:05 in Beijing.
+    - cron: "5 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-shop:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Update shop.json
+        run: python update_shop.py
+
+      - name: Commit updated shop data
+        run: |
+          if git diff --quiet shop.json; then
+            echo "shop.json is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add shop.json
+          git commit -m "Update Fortnite shop data"
+          git push
