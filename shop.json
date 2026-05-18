@@ -1,8 +1,1441 @@
 {
   "source": "https://fortnite-api.com/v2/shop",
-  "date": null,
-  "hash": null,
-  "updatedAt": null,
-  "vbuckIcon": "",
-  "items": []
+  "date": "2026-05-18T00:00:00Z",
+  "hash": "37e25da680942e15",
+  "updatedAt": "2026-05-18T08:40:48+00:00",
+  "vbuckIcon": "https://fortnite-api.com/images/vbuck.png",
+  "items": [
+    {
+      "id": "v2:/7a8940cb8391052b18766da9fd80a491390e751a154c83fe5739d6a04a6e7fe2",
+      "name": "Empire Kitchen",
+      "rarity": "Star Wars Series",
+      "price": 250,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_empirekitchen/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/60ece53527cad7d525c9ca570562d47669b031ca5addf1e684c44aaa16b66f5d",
+      "name": "Travel Tokki Model",
+      "rarity": "Gaming Legends Series",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_skiffgrind/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/52afc5cf896d16cd34fede7f31159a97ce91b8304aeeaccd5a12b80fa9488858",
+      "name": "Mariana + 1",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_822_athena_commando_f_angler/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/1c1c2b20325bee1c74224f571797af48476c4d225faddbf463ac5df6a9bbbda2",
+      "name": "EsDeeKid Bundle",
+      "rarity": "Epic",
+      "price": 3400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_stuffrasp/featured.png",
+      "section": "EsDeeKid"
+    },
+    {
+      "id": "v2:/32859cb7cf4dbe274e14268919d1822a86af7dc182e3c96e6e7d97c63e211fa6",
+      "name": "Mercy's Valkyrie Wings + 1",
+      "rarity": "Gaming Legends Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_trackwaver/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/1f26f9ca1691e86ff926bc8d0d86cd81f2025694c7dcd0d1f2baf88a6b1ae98a",
+      "name": "Graveheart + 1",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_virtuous/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/bdd40bf39244fc139be1cbb0fa72386e8be55f2b11eb995e0245765d1c6295da",
+      "name": "Maximum Glove",
+      "rarity": "Rare",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_vouchtrig/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/30c5019b9bf4eed44a73ba0556c82bbcc983c6340bd7fe9051e5bd0e265df4d1",
+      "name": "Lotus Star",
+      "rarity": "Rare",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/wrap_144_sakura/featured.png",
+      "section": "Grxnt's Locker"
+    },
+    {
+      "id": "v2:/da572255d2381339a9a48581659fc9234e22d235d0f3ec5be79c75c3e6631288",
+      "name": "Day Shift Monitor",
+      "rarity": "Rare",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_shintoll/icon.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/63e8915b99ee86cda3f556b28718e4501042aea0738c71e6f935d23ae06c17f9",
+      "name": "Ryū Ichimonji + 1",
+      "rarity": "Gaming Legends Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_facetblom/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/95c43b4bff39e91bbc7a79d40d9e1ac312b87c42c64a0f0e89f3a9cac8b9a913",
+      "name": "Hunter + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_855_athena_commando_m_elastic/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/d2174dd18f28ec2393ea52989e76a45ac8fd8d5cc6b71091dd565f123a9bf732",
+      "name": "Mogul Master + 1",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_061_athena_commando_f_skigirl/featured.png",
+      "section": "No Sweat"
+    },
+    {
+      "id": "v2:/95626defe226424ae96496e5252a3024809ea0a8a7c1dc207518fd17c0c016ea",
+      "name": "Mos Eisley Bundle",
+      "rarity": "Star Wars Series",
+      "price": 1400,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbsid_ot_tower_01/small.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/4629db3fa77c4e59d9679f7f613aa643d8e3e45f6dd7f2e2b26f0f10f3040517",
+      "name": "Blinkin' Amazing",
+      "rarity": "Gaming Legends Series",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_loosecreep/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/03a937606f2cc02eb332fb08d5233f5644b4b1ae43bf9b19b7cc2af6ea1f6165",
+      "name": "Johnny's Duffel Bag",
+      "rarity": "Gaming Legends Series",
+      "price": 200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_mustardtoast/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/90945c194246a21b02d86829749f13d00d89d1b6b407eb09812a42980f7a3724",
+      "name": "Aniyah + 1",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_dyedduelist/featured.png",
+      "section": "No Sweat"
+    },
+    {
+      "id": "v2:/e7641c1ca3a336581b2017536f1d6603d315c05a768ee3d1957f54d718d512e7",
+      "name": "Gurney Gear",
+      "rarity": "Epic",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_110_medicfemale/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/93c34a78eb6a2bc48c5a3d07e7d25c0a888f15f20b67dac7cce757d3a6700fe2",
+      "name": "Y-Wing",
+      "rarity": "Star Wars Series",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/glider_id_189_galileozeppelinfemale_353ic/featured.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/1004e6969682fc56a6572f062cb9d43a2e69bf1536c7f6439b28db04c1fcc978",
+      "name": "Kylo's Cape",
+      "rarity": "Star Wars Series",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_426_galileokayak_ns67t/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/1dbc6c7b579b19b37a02bd58b1e451a232706bb58ae6684734e2fde8fc61287a",
+      "name": "Tigress + 1",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_coyotear/featured.png",
+      "section": "No Sweat"
+    },
+    {
+      "id": "v2:/5e81962727222e257f76ce08001a83bd579244db3164fd0845c86cc8a28edd15",
+      "name": "bb belt",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_bling/featured.png",
+      "section": "Hype Time"
+    },
+    {
+      "id": "v2:/6cf72a6910ec2242bf570cb79f1026480f9ba5f2600cfea8a2db5884bd25a129",
+      "name": "Ancient Guidestone",
+      "rarity": "Rare",
+      "price": 200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_innovatorsand/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/83c31f3415537cb148f4557116f54f099bcf1f0ac948c11a91249cf479f48784",
+      "name": "The Squabble",
+      "rarity": "Icon Series",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_trajectory/featured.png",
+      "section": "Hype Time"
+    },
+    {
+      "id": "v2:/1ec51cd89318689278951a3f47a0fc2e2d943d536fcbae4d0e2d689ae45becbd",
+      "name": "Kaeru",
+      "rarity": "Epic",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_toadleaf/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/a25902925070bdf4e78ba7919638468f886f0480c26b63597ef1f788cf50ecf0",
+      "name": "First Order Tie Fighter",
+      "rarity": "Star Wars Series",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/glider_id_186_galileoferry_48l4v/featured.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/d879879c6513b8e9a8707e6c2f04f06fab31f2a556d785e48ec5308cf8096c64",
+      "name": "Empire Decor Bundle",
+      "rarity": "Star Wars Series",
+      "price": 1000,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_empirebedroom/small.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/85702bd12cb81833fc0ed62c1e8a4b44ade32074521a9acab792806de2f5e681",
+      "name": "Mantis Blades",
+      "rarity": "Gaming Legends Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_freightcalf/featured.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/e61150edd32f6acfe9b353ad5fca830d303e554ef8c90ffbf350bf1ba6d9d490",
+      "name": "Kaigara Core",
+      "rarity": "Rare",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_fauxvenom/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/c154ec20ec5a8cbbd9b29eed0536720c99f5e6926765019eac2f9ee6729f0236",
+      "name": "Gaze",
+      "rarity": "Epic",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_275_geisha/icon.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/4ccf4c93c854f117a1e993800898b1ccbacb5f5324d38fee0fe21caf126bf1dc",
+      "name": "Johnny Silverhand + 1",
+      "rarity": "Gaming Legends Series",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_mustardtoast/featured.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/47a6467fd08296a84657e1cdffffa37b692256aaea626f7e9d72db6641412c69",
+      "name": "Night City Lights",
+      "rarity": "Gaming Legends Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/wrap_mustardtoast/featured.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/1d7e369521cb163d651a8d18ef0e14a30703c40789288cd984e70666c340bbc9",
+      "name": "Scrappy",
+      "rarity": "Rare",
+      "price": 200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_206_scrapyardfemale/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/cb2721ba5324f9cf101c9b5f0b0a7c792f7a7bbb1c73de21280352e5e748263c",
+      "name": "Porta-Panopticon",
+      "rarity": "Rare",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_strontiumspark/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/38dc34b58ac5883ea002241ecbbe783361bca87d256fc37836d155403ccce429",
+      "name": "Joltara + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_864_athena_commando_f_elastic_e/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/bcdedd092eaa8c58e748523a292f011c599d4f265b607ea18fa026dd97b0a85c",
+      "name": "Mace Der + 2",
+      "rarity": "Icon Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_stuffrasp_mic/featured.png",
+      "section": "EsDeeKid"
+    },
+    {
+      "id": "v2:/0b281d02079b266428cdce6720abb72876705f8f7144adc0ce51d79c7f03165c",
+      "name": "Empire Outdoor Gadgets",
+      "rarity": "Star Wars Series",
+      "price": 700,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_empireoutdoor/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/cfba278fc4c9d937658495a5c9c4816d70b83f9206858c5738d038bdb7d05358",
+      "name": "Airlift",
+      "rarity": "Epic",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/glider_id_073_medic/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/8ce2310741624833c58fdeeebc47e277091aac653df0387721cfeabec50adcc9",
+      "name": "Fists of Justice",
+      "rarity": "Rare",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_robusttorn/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/e2ae4b6c24e881e126b35ed2cea5638da78d63c58c59324f999d692fcbf43596",
+      "name": "Adam Smasher + 1",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_gatemouse/featured.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/279886f69b295e5d580079cdc34f5696cce35942236502e3910631aa72821abb",
+      "name": "The Resistance",
+      "rarity": "Star Wars Series",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_428_galileoferry_28uz3/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/fd639fb132432f825f0bedf7b431811a72057e7c85553bda9657f8c1179768b2",
+      "name": "Backlash + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_861_athena_commando_f_elastic_b/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/e268419825ec3d39703fecb6fcfafae6e438f32c0a5bb9943fceaa38f2d9ab3a",
+      "name": "Mark of Mercy",
+      "rarity": "Gaming Legends Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/wrap_trackwaver/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/7d7eb96db68612c4f2d3f2dc7533ccb41e9a8e0fba79b1b55d55f2d5cc004c0a",
+      "name": "Flathead",
+      "rarity": "Gaming Legends Series",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_freightcalf/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/e4cc5d92a8953ee38a3d8e264004c8d1c7be2690e369d8c5a484b43482b6d831",
+      "name": "Riot",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_268_athena_commando_m_rockerpunk/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/89f154725d837028e428ca64368e794d2ed70dbaf84a58bfac0b9da5417d3b5d",
+      "name": "Air Jordan 10 Retro OG 'Double Nickel'",
+      "rarity": "Uncommon",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/shoes_icingcaddyrelax/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/f084a2e46c009fff7250ecf413878f699001e414a286cfa1436ca032da339902",
+      "name": "Mordecai",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_vouchtrig/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/22ff3e974eeb6a4bf63bff0761aae2486ce6b785be5b6a47b6f797fef8fad05d",
+      "name": "Caduceus Pickaxe",
+      "rarity": "Gaming Legends Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_trackwaver/icon.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/f432003256904a18904075c58694cf3200ba18ec4540fd94569d693efc403fc2",
+      "name": "Tatooine Rug Room",
+      "rarity": "Star Wars Series",
+      "price": 350,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_tatooinerug/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/238091b5cab41d09645c2b5e9cee0a339d3174c29ae34a0f8e299b3d767c5b8b",
+      "name": "Bat Ninjatō + 1",
+      "rarity": "DC SERIES",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_swisskale/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/1b887298215107f60030898046999273c63651a5e9ee3212a09954ac2fd24fec",
+      "name": "Sandshark Driver",
+      "rarity": "Uncommon",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_796_athena_commando_f_tank/featured.png",
+      "section": "No Sweat"
+    },
+    {
+      "id": "v2:/90d9280cc490ae2494dba385efc2146c5ee413fd873fd02b9a19f12528a9c487",
+      "name": "I'm Out",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_vacant/featured.png",
+      "section": "Hype Time"
+    },
+    {
+      "id": "v2:/fd368b060f01398da82e86053f5e3a7a5343cf9c25b85e13ab6f9a227449d774",
+      "name": "Sith Trooper + 1",
+      "rarity": "Star Wars Series",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_635_athena_commando_m_galileosled_fhjvm/icon.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/0e60d82d3b4cac956ed91776b3dbffd4c3e38412be30dfb268d19fae36f30711",
+      "name": "Empire Hideout",
+      "rarity": "Star Wars Series",
+      "price": 750,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_empirehideout/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/17cffde12a639af18c8f5f5162af1eb259ab1f5d60941cdf9da7b55052d968cc",
+      "name": "Mogul Ski Bag",
+      "rarity": "Epic",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_014_skigirl/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/64a8ad8ff6ae6219b41eeb96a3c0a075e5d17e14c870a3a87d3717d96b08020c",
+      "name": "Pi",
+      "rarity": "Epic",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_cephalochef/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/49814d94bfde33691284a3a8b09e3f2079fe55572378c39d41a6891e4a38a756",
+      "name": "Recon Specialist",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_024_athena_commando_f/featured.png",
+      "section": "No Sweat"
+    },
+    {
+      "id": "v2:/de4dfae6115c6c6313bf6de04a893e58c3bd370e5b55901f76dbbd6e8804b8db",
+      "name": "Mercy",
+      "rarity": "Gaming Legends Series",
+      "price": 1600,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_trackwaver/icon.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/88b8b5edbb7e2fe5214873d7d2df9cce2b1a22ec67f744b3bfd5992580472542",
+      "name": "Hypersonic + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_856_athena_commando_m_elastic_b/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/e56f130900e3cb985e4658baa1dcfcf4c181eef4b3b81eb5166ea19f88dee32c",
+      "name": "Medieval Metal",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/wrap_stuffrasp/featured.png",
+      "section": "EsDeeKid"
+    },
+    {
+      "id": "v2:/2af792cc8390b4ac933ff5bc7fdeca5e49871e131e8534bb3aa814048c3cebde",
+      "name": "Rebel Outdoor Gadgets",
+      "rarity": "Star Wars Series",
+      "price": 700,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_rebeloutdoor/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/b7d5a9be6ed0a5a91db3c8ae7282b450b848932c557c9b03e789883e24451880",
+      "name": "Vision Board",
+      "rarity": "Rare",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/glider_cyberfuglitch/featured.png",
+      "section": "Grxnt's Locker"
+    },
+    {
+      "id": "v2:/c8e6a58955dcc1e7d9aa47402757eafe7739223e97c1ecf74bf85bd9ae7a2f5e",
+      "name": "Pitstop",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_828_athena_commando_f_valet/featured.png",
+      "section": "No Sweat"
+    },
+    {
+      "id": "v2:/75936fe5a988b8f71b99c2ebc6c2ae86ee909c7e30fbda77464de225c8db55f1",
+      "name": "Super Charged",
+      "rarity": "Rare",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/wrap_elasticchampion/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/287bf5af74b7176c1f24325754fc0f46d22518dfecad8a58120d8ac16ef573ea",
+      "name": "Rebel Decor Bundle",
+      "rarity": "Star Wars Series",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_rebelbedroom/small.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/ccee7a57a32bcd7f5b33a2c00c55eb74cc00de3ae5148b9988dae968478ab580",
+      "name": "Porsche Cayenne Turbo Electric + Overwatch",
+      "rarity": "Uncommon",
+      "price": 2400,
+      "image": "https://fortnite-api.com/images/cosmetics/cars/carbody_bluetorque/small.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/8c53693fb5e392afa0b7a2fbbf835ed4bfa8e1a90a822e3f56e592a011fac749",
+      "name": "Tracer's Pulse Bomb",
+      "rarity": "Gaming Legends Series",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_loosecreep/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/e6213119f2b02e11345ec6a1b0d08ce506ec9caf564cf805d172af80b4811d58",
+      "name": "Tracer",
+      "rarity": "Gaming Legends Series",
+      "price": 1600,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_loosecreep/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/1f7f04a274f1961a24c089e8025657558dea16fe187faffd3396605d368098e1",
+      "name": "Nurse Miyako",
+      "rarity": "Epic",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_shadetoll/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/d5182e7a684cc935cf08f9f4cfde8acdc65c06b69c2b5ac392279a2fed9b0258",
+      "name": "Karuta Harley Quinn + 1",
+      "rarity": "DC SERIES",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_cordsyrup/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/5ee2aa60a827e3df41dc04354de43ec8aabc8440a5b7be522e14bede2d1e90d6",
+      "name": "ElectroCardioJammer + 2",
+      "rarity": "Rare",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_shadetoll_mic/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/c4fdb0a08399a76643798bd34a19c2f810377d0b90f85a009246d57a5172afd6",
+      "name": "Cloudbreaker",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_291_athena_commando_m_dieselpunk02/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/6773e5c456b2fafba6dc4d9ecc1ca0d98a3d7bf735ee07909516f5165e09bb4e",
+      "name": "Killian + 1",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_strontiumspark/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/f2185896ec1ea699bbf8e0c2afd9fe161cc8a34dc4f0d0ea43b735e190185a1f",
+      "name": "Polarity + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_863_athena_commando_f_elastic_d/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/96ce963fa24cf1647bb7be00689dbab53455d5d341370e7ee91107b0d41de325",
+      "name": "Ninja Knight Batman",
+      "rarity": "DC SERIES",
+      "price": 1600,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_swisskale/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/f0a4b1ecbee515125fff5b8f611558289a93a53d016f2eae7e5a519912d2398d",
+      "name": "Grimhaul Bag",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_stuffrasp/featured.png",
+      "section": "EsDeeKid"
+    },
+    {
+      "id": "v2:/f8c2de14d2a64e937df416b4d83f2315095ca2b843be1877a695a113435a590e",
+      "name": "Oooohhh!",
+      "rarity": "Uncommon",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_vouchtrig/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/2da8e4249a3a63dd50b25911c408e5be83da9160cfbe021dcf25bcd9740a1a1e",
+      "name": "Regular Show Bundle",
+      "rarity": "Uncommon",
+      "price": 3400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/companion_promdutch/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/5e2fdcd523aa752d28765591ffe1934b3113accb40f5a275b3c7cbf60a9664e4",
+      "name": "Rebel Hideout",
+      "rarity": "Star Wars Series",
+      "price": 700,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_rebelhideout/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/0cedecd5c920c8497fd6dd7022518d6da13d79e053e4dd8d03d4aea7057af158",
+      "name": "Deadeye + 1",
+      "rarity": "Legendary",
+      "price": 2000,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_600_athena_commando_m_skeletonhunter/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/2e6d7a14654f3ea2c69fd14120231c2dbeba103ebd8594bd7bab94d47186c080",
+      "name": "Field Surgeon + 1",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_216_athena_commando_f_medic/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/8359191c34913e77b64b20a844c2a599353fa86cee37d04c321b9417ca3dd90b",
+      "name": "Designer Tsuki + 1",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_fauxvenom/featured.png",
+      "section": "Grxnt's Locker"
+    },
+    {
+      "id": "v2:/006a01113052e6da5cc83fb2e8dacc6f37efe38620d026ee4bf98a983a8031f0",
+      "name": "Chew Toy",
+      "rarity": "Uncommon",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_id_215_pug/featured.png",
+      "section": "Grxnt's Locker"
+    },
+    {
+      "id": "v2:/1338627d1b83951fd8b2aa30140ed6c796f9cbfe5553b74defa499d7ad51f9d7",
+      "name": "Skips' Skip",
+      "rarity": "Uncommon",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_robusttorn/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/c50eae56bf8ad08227b620f9315fab4371804614a6086b21aaa0b87ac9fabb09",
+      "name": "Red Jade",
+      "rarity": "Uncommon",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_545_athena_commando_f_sushininja/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/5933e731e6d69f8d7a57c5e3a326958e5c2f0c2de00c26fa686fc55e0bcd5bbc",
+      "name": "Tatooine Workshop",
+      "rarity": "Star Wars Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_tatooineworkshop/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/1e81ca6c040697c060150754e46baf015892bf92d28e117f9c2bed0fc79d6f2d",
+      "name": "Tatooine Indoor",
+      "rarity": "Star Wars Series",
+      "price": 450,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_tatooineindoor/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/bc52e5b10d0ca20edfc5c92e0f40996f07be1b9f13cb83c202d3ef7a1ea20edd",
+      "name": "Big Bandage Chase",
+      "rarity": "Uncommon",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_shintoll/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/879c9203229c18af10b0968debbcba1c61cc86b6eed2ab68e9c0867d7e584c64",
+      "name": "Tatooine Outdoor",
+      "rarity": "Star Wars Series",
+      "price": 600,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_tatooineoutdoor/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/f0393ca21fb50c024beee84a68c86949caadbbea24b140c5178e1467b7bdb9ae",
+      "name": "D.Va",
+      "rarity": "Gaming Legends Series",
+      "price": 1600,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_skiffgrind/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/7b4c0df80c9f82a84b4a126962e20c02701b9b9967f48302237b062f06a47a79",
+      "name": "Water Waddlers",
+      "rarity": "Uncommon",
+      "price": 600,
+      "image": "https://fortnite-api.com/images/cosmetics/br/shoes_pondrider/featured.png",
+      "section": "Grxnt's Locker"
+    },
+    {
+      "id": "v2:/04ef72eefade2dea42dd5d60a268fc1e4a4582b9cef5010502eeb7486bfa1ce3",
+      "name": "Tracer's Pulse Knives",
+      "rarity": "Gaming Legends Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_loosecreep/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/b905138b03b41280282ff2c279ae58db99039b623a870964324dd9c1c38ca0ca",
+      "name": "Green Kunai Carryall",
+      "rarity": "Rare",
+      "price": 200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_nigirininja/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/877507c21a55f23a5762727684a958bed2112341224d75044743c8652d6a8cfa",
+      "name": "Sith Trooper Blaster",
+      "rarity": "Star Wars Series",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_427_galileosled_zdwov/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/e09bbf31a631b5a3fc927e224ad38bab2d4a295359fb14fa5c4143660c5d093c",
+      "name": "Rattle & Mace",
+      "rarity": "Rare",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_robusttorn/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/ba7d5182e90603e97d3ed1d14ba00add1edc1275492fd1ba46ea5da75ce1aad5",
+      "name": "Vanguard Squadron X-wing",
+      "rarity": "Star Wars Series",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/glider_id_240_maverick/featured.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/6a78afbc8653258a3ec59cf3046b3270eb38a5e477667804c6cde3d9574e3c15",
+      "name": "Harlequin Ōtsuchi",
+      "rarity": "DC SERIES",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_cordsyrup/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/508b7001d8748fbc740c34d8d5ee05314116a98911c7a3f95cc4328ea5668c4f",
+      "name": "Finn + 1",
+      "rarity": "Star Wars Series",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_633_athena_commando_m_galileoferry_pa3e1/icon.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/e2c8305d763e881a7349cbb71fa57463fded7c21f15d821b7fbd65437b354f30",
+      "name": "Kuno + 1",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_362_athena_commando_f_bandageninja/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/28ecbddf5bc1175aa0032d9965618fbfdbe68bb3f83075b7d8fe71dd5cf508cb",
+      "name": "Johnny Silverhand's Guitar + 2",
+      "rarity": "Gaming Legends Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_mustardtoast_guitar/featured.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/7a9af69e302a3d50855dc6a2a356552d15a53e41b641dd44a11530faf6ef851c",
+      "name": "Crystal",
+      "rarity": "Uncommon",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_493_athena_commando_f_jurassicarchaeology/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/ef9b1ae50a49edfa94244dcdc51727c5e2cc6de242cabc929d977fa676021467",
+      "name": "Rebel Dining Room",
+      "rarity": "Star Wars Series",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_rebeldining/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/21fcd63f87b4a635bcce2e7e781279fcee45bcc13bc8fb1252d95b06977c6a1a",
+      "name": "adidas Campus 00s 'Black'",
+      "rarity": "Uncommon",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/shoes_ruralpumpteeth/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/3a8bb9335c22874863b046f9fb38a6679420c74b53de88134d2f8f6453eb9a49",
+      "name": "I'm Not Okay (I Promise) Bundle",
+      "rarity": "Rare",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_268_athena_commando_m_rockerpunk/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/e3ebb6115dedf36763180b5443b627ed73daf02593d40a64509577932eb9ff80",
+      "name": "Riot Control Baton",
+      "rarity": "Star Wars Series",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_id_326_galileoferry1h_f5iua/featured.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/a8073768ca1e1938446fe64e5d1313a3a2c7733d8d6a36a624bec5f1d63295ab",
+      "name": "Poised Playmaker",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_149_athena_commando_f_soccergirlb/featured.png",
+      "section": "No Sweat"
+    },
+    {
+      "id": "v2:/ed33eee2c29ab87594055b2949066035488e525ccf5f3d63302ab857990ab816",
+      "name": "Shimada Spinners",
+      "rarity": "Uncommon",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/cars/wheel_bluetorque02/small.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/f32c8107855695d7418b3f809a065588e0307af8344dd72b5b6d1eb1fac725cb",
+      "name": "Blastoff + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_857_athena_commando_m_elastic_c/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/e5803144dd782ddc2553fb3d6a18dd013db3f8281ded3bface13f2c7f972e214",
+      "name": "Genji",
+      "rarity": "Gaming Legends Series",
+      "price": 1600,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_facetblom/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/85509e5e89c33f03d91d3d631003afa053eb48c3f5377125149c446939e9ae22",
+      "name": "The Mighty Volt + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_859_athena_commando_m_elastic_e/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/b6477391597e362318ece927d2b5a46b00b3bf2e8ea033ff47e0dc2e3b08ee4c",
+      "name": "Pacemaker + 2",
+      "rarity": "Rare",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_shintoll_keytar/icon.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/2b9757d593ea155deb471f9628d4a95841fbe498de126bf1bd4af8ef114b2097",
+      "name": "Feudal Gotham Bundle",
+      "rarity": "DC SERIES",
+      "price": 2800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_swisskale/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/d8d0365c9a1498455bfe40d866b12c5a26343be62fd4b10aae6d4ee778e17ec1",
+      "name": "Budpack",
+      "rarity": "DC SERIES",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_cordsyrup/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/a69c7d71439268d280253646ae98160d49e41556b70fe693464a80ae8b26352e",
+      "name": "Empire Bedroom",
+      "rarity": "Star Wars Series",
+      "price": 450,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_empirebedroom/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/68bb6d26ed475b496e46259167b3ad89b8866f61dd0a7823df01a7f22b256d4f",
+      "name": "Second Sight",
+      "rarity": "Legendary",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_397_skeletonhunter/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/efad1bfa9f8520e8ae7a791c237dcb38efe0ab5cbbbabd5af2ef0cb783f9ce59",
+      "name": "The Jedi Order",
+      "rarity": "Star Wars Series",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_429_galileorocket_zd0af/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/b55611b1fe9d13eabb7ca5620b472d65d646336d4cd5209a9b713520ac3cb9d8",
+      "name": "V + 1",
+      "rarity": "Gaming Legends Series",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_freightcalf/featured.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/0eb64bc1e57c819e4ca4eecbefaf503828c5571d932aa26eb1b045ffb141e730",
+      "name": "Pterodactyl",
+      "rarity": "Epic",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/glider_id_044_pterodactyl/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/193aca87fc6c7efd59a94325e5e7ba89772fe3a711f57ff50acd6a2fd0acd02f",
+      "name": "Stygian Oar",
+      "rarity": "Uncommon",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_coppertoll/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/ae9988a19365dfcd073238e9afb0a0a2deb026a26f131693ae0eb8a1cbd9a5a4",
+      "name": "Silverhand's Katana",
+      "rarity": "Gaming Legends Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_mustardtoast/featured.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/a87417cb263eb91cc3add42175a9b29f88791a6ce75d463ef482818a2b7732b8",
+      "name": "Night City Denizens Bundle",
+      "rarity": "Gaming Legends Series",
+      "price": 2800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_mustardtoast/featured.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/6fe1b33fc45440c28ce39976b20ca8292a74cd6eee18e6f865bde6f595036428",
+      "name": "Moon Jelly",
+      "rarity": "Epic",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_575_anglerfemale/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/53f5abc7befbe7685b789b2aed9303eca6683cac0ab1e6ccd8eef0a94a42d76c",
+      "name": "Porsche Cayenne Turbo Electric",
+      "rarity": "Uncommon",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/cars/wheel_bluetorque01/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/eb576ab992ff670b67a44f7c9189b0e432c3868ded9a53af88add49edea632a3",
+      "name": "Mercy's Reach",
+      "rarity": "Gaming Legends Series",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_trackwaver/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/383e67c51a85d7f698352101beb8910018f05af14ba23f33b0a63a14e92b93cd",
+      "name": "Rey + 1",
+      "rarity": "Star Wars Series",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_634_athena_commando_f_galileorocket_arveh/icon.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/bc9f568a2cb3ea17372a2764b84f20fc0a385aea628af2e4e00fc9af4b5c8d47",
+      "name": "Sparkplug + 1",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_335_athena_commando_f_scrapyard/featured.png",
+      "section": "No Sweat"
+    },
+    {
+      "id": "v2:/71f935207ac54f87c0441c3daa672379a599120e993c20f011fc4bcd3cfed1e0",
+      "name": "Scouse Stepper",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_stuffrasp/featured.png",
+      "section": "EsDeeKid"
+    },
+    {
+      "id": "v2:/39cd98aaa84ea91e446d7f462e2f22d6df9c08e2e04463def3d338a59365b0b0",
+      "name": "Cybertooth Tiger",
+      "rarity": "Rare",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_coyotear/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/c3c90a8df3819b627be2517a53a57c2a77fe9574c110ce577cb8305bc7d48662",
+      "name": "Night Shift Monitor",
+      "rarity": "Rare",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_shadetoll/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/0d789ea67f7eb61b2b5a7dbb66d23355650492132917b82e5f0eb323591f53e1",
+      "name": "Sereni-tea",
+      "rarity": "Uncommon",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_serene/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/6089e4c83f2f5f48eaed9b56589b81eff10ab26fe580b1e10c769e771be049e0",
+      "name": "Wanderlust + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_858_athena_commando_m_elastic_d/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/84a07938cd74094262f38559684b1015fbb3e274b04c0d83ab02b490af34424e",
+      "name": "Takara + 1",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_418_athena_commando_f_geisha/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/d1b2d4e4ffb3cbc1f0348596593b7a50f17673862b23b738fab0cbbaab08c0eb",
+      "name": "Firebrand + 1",
+      "rarity": "Legendary",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_862_athena_commando_f_elastic_c/featured.png",
+      "section": "Boundless"
+    },
+    {
+      "id": "v2:/e0b0085432a481a11bbd4f39a4b8847e9a7b3b376974ac7682f60268d3db3822",
+      "name": "Tatooine Living Room",
+      "rarity": "Star Wars Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_tatooinelivingroom/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/9eb82b9b32a4b308b18b15a518185fce1e18f2cdd47ef73114075e9f2ccc9a85",
+      "name": "What's Up Sketch? (Point)",
+      "rarity": "Icon Series",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_sherwood/featured.png",
+      "section": "Hype Time"
+    },
+    {
+      "id": "v2:/a3a4773c8a6d3d6b1f1c7bfe4ed250da23ee66ea1afdbd1292c647b7615f2bdc",
+      "name": "Hush's Hardcase",
+      "rarity": "Uncommon",
+      "price": 200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_noiseless/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/12dd88106c446ae9785af9e84698ba0daf50958fd185e2439d7a36c78920c604",
+      "name": "Recon Expert",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_022_athena_commando_f/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/666a4e8fc9b03bd33b62f8daec4ebaace9feef19753d9e2197e5ea703f2b5634",
+      "name": "Skips",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_robusttorn/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/fb0b574530dce38bfa063545befd0ebce4149173db0b81672a62642c86f08ce3",
+      "name": "Infinite Echo",
+      "rarity": "Uncommon",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/wrap_technoawaken/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/1eeb32d70723400ae8a92afba2906acf74a9d4d2618356567abe58614fceab03",
+      "name": "EsDeeKid",
+      "rarity": "Epic",
+      "price": 2000,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_stuffrasp/featured.png",
+      "section": "EsDeeKid"
+    },
+    {
+      "id": "v2:/d2d805167a24170aae16649689415d7e8aa7bdcfc80a76891b5b6091dc50e411",
+      "name": "Ordnance Defusion Pack",
+      "rarity": "Rare",
+      "price": 200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_furyfax/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/92f75b2bcbcb290a3b5fcde994484433b4fcb3dc4984c22db4fed90b6ccd23a4",
+      "name": "Lil' Tokki",
+      "rarity": "Gaming Legends Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_skiffgrind/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/8da75c2896bedbd26f4e3600fc6075de4f49f17c469615de2789ac1ff1d7f44b",
+      "name": "Innovator Slone + 1",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_innovatorsand/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/5531881a645b1c65595a2894b5b08e54917f28690c1bacd23f8fc7ab8ed65479",
+      "name": "Rey's Quarterstaff",
+      "rarity": "Star Wars Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_id_328_galileorocket_snc0l/featured.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/1bf1cfd244d8ffba2c3e9b46c6429a0b1464a7ed651fe5b687ba1e0cdb52c30b",
+      "name": "two",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_tampatwostep/featured.png",
+      "section": "Hype Time"
+    },
+    {
+      "id": "v2:/a08b3ff3601ce707b9d51c447fbde3b67d45dbc629550ed2d8a92ac4dcaf0f16",
+      "name": "Rebellious",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_relaystick_carmine/featured.png",
+      "section": "Hype Time"
+    },
+    {
+      "id": "v2:/f6d979c268a175c68f4f4bc9729c2b396da164c8f612f079b484c6c124ef3684",
+      "name": "Dark Side",
+      "rarity": "Star Wars Series",
+      "price": 200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_galileo1_b3ex6/featured.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/89811415a6aa600793d31ad954116e1bf92a0982303e0c20a3e09501a74fe8aa",
+      "name": "Tatooine Decor Bundle",
+      "rarity": "Star Wars Series",
+      "price": 1300,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_tatooineworkshop/small.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/1d2d02a06194bb431fcf216edcddb7e886ba815f4cc3dca0e00e6971bb59617a",
+      "name": "Tatooine Kitchen",
+      "rarity": "Star Wars Series",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_tatooinekitchen/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/8577eb2601f8564f2ec4e5b836ec1b336b9f324aef974f0b45fb8671709e3cdd",
+      "name": "Green Jade + 1",
+      "rarity": "Epic",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_nigirininja/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/8d56bf453b573b15361a623990d112f869d8729e5b92aa84cf89c13ddd220ff9",
+      "name": "Clothier's Spellkit",
+      "rarity": "Epic",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_dyedduelist/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/10ebd11f9dc288f8bc07ad9dde447a2925eb8b041b62c8b8b05072d7e0109321",
+      "name": "Kylo Ren + 1",
+      "rarity": "Star Wars Series",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_631_athena_commando_m_galileokayak_vxldb/icon.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/eb174fb1fad7b767b2c6d1808bdfeef9a263ec6c33c84c2c1e3a90f8d46e65df",
+      "name": "Elite Recon",
+      "rarity": "Rare",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/glider_id_194_agent/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/b24156d6754c93298b8907a7183621f30cd0302e5227af8f287a5ef176e267b4",
+      "name": "Dual Kama",
+      "rarity": "Epic",
+      "price": 200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_226_bandageninjafemale/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/be56c415160fa82f2c34289e4a2b191d8be3e33fdd959f59235d8cc6ffd83083",
+      "name": "Rebel Bedroom",
+      "rarity": "Star Wars Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_rebelbedroom/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/08124a350092adc2ebda81935816d02a1c70d652ed1f480c44b518c0036498ec",
+      "name": "Grxnt's Locker Bundle",
+      "rarity": "Rare",
+      "price": 2500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_fauxvenom/featured.png",
+      "section": "Grxnt's Locker"
+    },
+    {
+      "id": "v2:/6ac1f2f5eed6283eb5e0750663da8d75d10da00cbd94a05b7dda4c6968233ab1",
+      "name": "Wings of Woe",
+      "rarity": "Rare",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_virtuous/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/a0d2780b8368df677676a7480562b77f268dae77815fea3a32a77e69a00be187",
+      "name": "Cyberpunk Quadra Turbo-R",
+      "rarity": "Gaming Legends Series",
+      "price": 1800,
+      "image": "https://fortnite-api.com/images/cosmetics/cars/carskin_sebalivery1/small.png",
+      "section": "Cyberpunk"
+    },
+    {
+      "id": "v2:/577d5f6a5e37cf8b8d443bd998dd73ceb20df8a799ecbfda577a3cd4fd42722c",
+      "name": "Vibro-scythe",
+      "rarity": "Star Wars Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_id_327_galileokayak_50nfg/featured.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/57943620ae76e1661cd3268855d802374e7f46751220b31d5c43d7e69b51cf22",
+      "name": "Day and Night",
+      "rarity": "Rare",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/wrap_shintoll/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/767163f3ef7191ae4cf5717fae4cf7dd0c1393831e0abde14fc87e9853903430",
+      "name": "Phone It In",
+      "rarity": "Epic",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_saxophone/featured.png",
+      "section": "Grxnt's Locker"
+    },
+    {
+      "id": "v2:/efeb94744c5aa9003aca8fd715da69b5ac9d33a10e0921f353796e00a3eb792c",
+      "name": "Rebel Kitchen",
+      "rarity": "Star Wars Series",
+      "price": 350,
+      "image": "https://fortnite-api.com/images/cosmetics/legokits/jbpid_sw_rebelkitchen/small.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/b3fdef29d56f7482e828e1be3067470402ab42cc28ec631f41984ce17162a7b1",
+      "name": "Icy Wind",
+      "rarity": "Uncommon",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_winterwinds/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/ca3dca595123295b0c96d99904f363189698effeb95a4acc9e07942c7c020672",
+      "name": "Rise of Skywalker Bundle",
+      "rarity": "Star Wars Series",
+      "price": 3500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_634_athena_commando_f_galileorocket_arveh/icon.png",
+      "section": "Star Wars"
+    },
+    {
+      "id": "v2:/400a5de6888cb848fef7c6797a9ca721b93ef91ea7e866a0596743d17f7778cd",
+      "name": "Overwatch Bundle",
+      "rarity": "Gaming Legends Series",
+      "price": 4200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_trackwaver/icon.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/0c30ecc695c1be20913d64155b82ad82b9ebe3bddc735474f53e23d322b7331e",
+      "name": "Dynamic Hush + 1",
+      "rarity": "Rare",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_noiseless/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/b9c3b050fd2c0dd71946cc5fb2cb09e2222e263fb1aab7a4e5c9d9b5178b64a3",
+      "name": "Bring Me To Life Bundle",
+      "rarity": "Rare",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_virtuous/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/c214ccf9a7c43bfdcc48b772d248d5f2e7867a6ac08fbb106fba4b27a3b0e8c4",
+      "name": "BABY DUCKS",
+      "rarity": "Rare",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/backpack_vouchtrig/featured.png",
+      "section": "Regular Show"
+    },
+    {
+      "id": "v2:/a56d220fcd243691f2a2c0ffe0fc5fe327ee91b631a68a570da6c6b67b71dcfb",
+      "name": "B.R.U.T.E. Navigator",
+      "rarity": "Uncommon",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_494_athena_commando_m_mechpilotshark/featured.png",
+      "section": "Battle Ready"
+    },
+    {
+      "id": "v2:/e5446a02a4302d3cae5e2d504f8fa6c62b0e18f3e848b2d56884dba9e1c5cac0",
+      "name": "Care Package",
+      "rarity": "Epic",
+      "price": 300,
+      "image": "https://fortnite-api.com/images/cosmetics/br/bid_109_medicmale/featured.png",
+      "section": "Daily Shop"
+    },
+    {
+      "id": "v2:/04b87d7eefe8fbc137680fd01cbcb4861931a2a024aa343687bc9d78c13edb32",
+      "name": "Triage Trooper + 1",
+      "rarity": "Epic",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/cid_217_athena_commando_m_medic/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/b65e52639925b284eab097d5cdd11183292bbbbfafe47e9377fe9d4703bba691",
+      "name": "EsDeeKid's Cerberus",
+      "rarity": "Icon Series",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/companion_polarblind/icon.png",
+      "section": "EsDeeKid"
+    },
+    {
+      "id": "v2:/40144d3428f76f6dd0ea4680a53a4e57b5b306b188665c2f08ca70237e3534c1",
+      "name": "Hospital Emergency Bundle",
+      "rarity": "Epic",
+      "price": 2200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_shadetoll/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/baf2f47b96431d4995cc24298d5087491f692f8394992b36def52caa0fd33d5c",
+      "name": "Down",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_hoopdreams/featured.png",
+      "section": "Hype Time"
+    },
+    {
+      "id": "v2:/856fabba91d3dd9240dd27d908ac641c3656a4d1f858e9ce880935eefb034c08",
+      "name": "Werewolf",
+      "rarity": "Common",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/cars/carskin_levainblackhole/small.png",
+      "section": "Werewolf"
+    },
+    {
+      "id": "v2:/6ab18f8fe739131f9854e9dfee1c9d72fa5fbff4705a4a7aa4619a1f40d65920",
+      "name": "Desirable",
+      "rarity": "Icon Series",
+      "price": 500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_thrash/featured.png",
+      "section": "Hype Time"
+    },
+    {
+      "id": "v2:/0f99d5e65ea6c6d43f66c8daf97bb152684fb8715a6d3b295c43d70364bcd01d",
+      "name": "Ninja Bat Vanish!",
+      "rarity": "DC SERIES",
+      "price": 400,
+      "image": "https://fortnite-api.com/images/cosmetics/br/eid_swisskale/featured.png",
+      "section": "Chaos in the Shadows"
+    },
+    {
+      "id": "v2:/e0195e0d93473e3697d67828db9c3f0959899a802361276e00896385fd202b20",
+      "name": "Nurse Hikari",
+      "rarity": "Epic",
+      "price": 1200,
+      "image": "https://fortnite-api.com/images/cosmetics/br/character_shintoll/featured.png",
+      "section": "Fortnite Drops"
+    },
+    {
+      "id": "v2:/183774547271c59188ece8083dfa395865bbf3cab5cf19d67ec383ef7ad8525a",
+      "name": "Tokki's Slicer",
+      "rarity": "Gaming Legends Series",
+      "price": 800,
+      "image": "https://fortnite-api.com/images/cosmetics/br/pickaxe_skiffgrind/featured.png",
+      "section": "Overwatch"
+    },
+    {
+      "id": "v2:/4a5fcad9a476272bc702166f7b27dfaed6e770d4fdcb895d00da385693a776c8",
+      "name": "Rigby",
+      "rarity": "Uncommon",
+      "price": 1500,
+      "image": "https://fortnite-api.com/images/cosmetics/br/companion_promdutch/featured.png",
+      "section": "Regular Show"
+    }
+  ]
 }
