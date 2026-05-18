@@ -100,6 +100,42 @@ bash install_cloud_cron.sh
 
 服务器版默认每天 UTC 00:15 运行，也就是北京时间 08:15。前提是服务器上的 NapCatQQ 一直在线。
 
+## Gemini 群聊机器人
+
+支持把 NapCatQQ 的群消息接入 Gemini API。
+
+默认指令：
+
+- `/问 你的问题`：调用 Gemini 回复
+- `/商店`：发送每日商店图片
+
+服务器上配置：
+
+```bash
+cp gemini_bot_config.example.json gemini_bot_config.json
+nano gemini_bot_config.json
+```
+
+把 `gemini_api_key` 和 `allowed_group_ids` 改成自己的值。API Key 不要提交到 GitHub。
+
+在 NapCatQQ 的 HTTP Server 配置里，把上报地址设置成：
+
+```text
+http://127.0.0.1:8080/onebot
+```
+
+测试运行：
+
+```bash
+bash run_qq_gemini_bot.sh
+```
+
+后台常驻：
+
+```bash
+bash install_gemini_bot_service.sh
+```
+
 ## GitHub Actions 自动更新
 
 `.github/workflows/update-shop.yml` 已经配置：

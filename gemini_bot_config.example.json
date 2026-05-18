@@ -1,0 +1,17 @@
+{
+  "listen_host": "127.0.0.1",
+  "listen_port": 8080,
+  "onebot_http_url": "http://127.0.0.1:3000",
+  "access_token": "",
+  "allowed_group_ids": [
+    123456789
+  ],
+  "gemini_api_key": "PASTE_YOUR_GEMINI_API_KEY_HERE",
+  "model": "gemini-2.5-flash",
+  "temperature": 0.7,
+  "max_output_tokens": 700,
+  "ask_prefix": "/问",
+  "shop_command": "/商店",
+  "shop_caption": "Fortnite 每日商店",
+  "system_prompt": "你是一个友好的 QQ 群助手。用简体中文回答，语气自然，回答尽量简洁。"
+}
