@@ -154,15 +154,15 @@ function Ensure-GitRepository {
   }
 
   if (-not (Test-Path ".git")) {
-    git init
-    git branch -M main
+    git init | Out-Null
+    git branch -M main | Out-Null
   }
 
-  git add -A
+  git add -A | Out-Null
 
   git diff --cached --quiet
   if ($LASTEXITCODE -ne 0) {
-    git commit -m "Initial Fortnite shop site"
+    git commit -m "Initial Fortnite shop site" | Out-Null
   }
   else {
     Write-Ok "No local file changes to commit"
@@ -178,20 +178,25 @@ function Ensure-GitHubRepository {
 
   if (-not (Test-NativeCommand "gh" @("repo", "view", $fullName))) {
     Write-Step "Creating GitHub repository $fullName"
-    gh repo create $Name --source . --remote origin $visibilityFlag --push
+    gh repo create $Name --source . --remote origin $visibilityFlag --push | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      throw "GitHub repository creation failed."
+    }
   }
   else {
     Write-Step "Using existing GitHub repository $fullName"
     $remoteUrl = "https://github.com/$fullName.git"
-    git remote get-url origin *> $null
-    if ($LASTEXITCODE -ne 0) {
-      git remote add origin $remoteUrl
+    if (-not (Test-NativeCommand "git" @("remote", "get-url", "origin"))) {
+      git remote add origin $remoteUrl | Out-Null
     }
     else {
-      git remote set-url origin $remoteUrl
+      git remote set-url origin $remoteUrl | Out-Null
     }
 
-    git push -u origin main
+    git push -u origin main | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      throw "Git push failed."
+    }
   }
 
   return @{

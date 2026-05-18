@@ -1,12 +1,12 @@
 ﻿**********************
 Windows PowerShell 脚本开始
-开始时间: 20260518163613
+开始时间: 20260518164025
 用户名: WOLP\li235
 RunAs 用户: WOLP\li235
 配置名称: 
 计算机: WOLP (Microsoft Windows NT 10.0.26220.0)
 主机应用程序: powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\li235\Documents\Codex\2026-05-18\fortnite-1-python-https-fortnite-api\publish.ps1
-进程 ID: 28408
+进程 ID: 28192
 PSVersion: 5.1.26100.8474
 PSEdition: Desktop
 PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8474
@@ -16,3 +16,5 @@ WSManStackVersion: 3.0
 PSRemotingProtocolVersion: 2.3
 SerializationVersion: 1.1.0.1
 **********************
+
+==> Checking tools
