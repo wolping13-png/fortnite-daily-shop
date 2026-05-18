@@ -1,113 +1,120 @@
 # Fortnite Daily Shop
 
-一个可以部署到 GitHub Pages 的 Fortnite 每日商城静态网页项目。
+这是一个 Fortnite 每日商城项目。它会每天请求 Fortnite API，生成 `shop.json`，再把商城内容渲染成一张适合手机查看和转发的 `shop.png`。
 
-页面会读取并展示每天自动生成的 `shop.png`。`update_shop.py` 会请求 `https://fortnite-api.com/v2/shop` 并生成最新的 `shop.json`，`generate_shop_image.py` 会把商城内容渲染成一张适合手机查看和转发的长图。
+网页地址：
+
+```text
+https://wolping13-png.github.io/fortnite-daily-shop/
+```
+
+图片地址：
+
+```text
+https://wolping13-png.github.io/fortnite-daily-shop/shop.png
+```
 
 ## 一键发布
 
-Windows 上可以直接双击：
+Windows 上双击：
 
 ```text
 one-click-publish.bat
 ```
 
-或者在 PowerShell 里运行：
+它会创建或更新 GitHub 仓库，开启 GitHub Pages，并触发一次 GitHub Actions 更新。
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\publish.ps1
-```
-
-默认会创建公开仓库 `fortnite-daily-shop`。如果想换仓库名：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\publish.ps1 -RepoName "my-fortnite-shop"
-```
-
-脚本会自动做这些事：
-
-- 检查 Git、Python、GitHub CLI。
-- 登录 GitHub CLI，如果没登录会打开浏览器让你登录。
-- 安装 Python 依赖并检查 `update_shop.py`。
-- 尝试生成一次真实 `shop.json` 和 `shop.png`。
-- 初始化 Git 仓库并提交文件。
-- 创建 GitHub 仓库并推送代码。
-- 开启 GitHub Pages。
-- 触发一次 GitHub Actions，马上更新商城数据。
-
-如果脚本提示缺少 GitHub CLI，请先安装：
+如果只是把后续修改上传到 GitHub，双击：
 
 ```text
-https://cli.github.com/
+push-updates.bat
 ```
 
-安装后运行：
-
-```powershell
-gh auth login
-```
-
-然后再运行 `publish.ps1`。
-
-## 本地预览
-
-安装依赖：
+## 本地生成图片
 
 ```bash
 pip install -r requirements.txt
-```
-
-生成或刷新 `shop.json`：
-
-```bash
 python update_shop.py
-```
-
-生成商城图片：
-
-```bash
 python generate_shop_image.py
 ```
 
-启动本地预览：
-
-```bash
-python -m http.server 8000
-```
-
-打开：
+生成结果是：
 
 ```text
-http://localhost:8000
+shop.png
 ```
 
-## 自动更新
+## QQ 机器人发图
 
-项目已经包含 GitHub Actions 工作流：
+本项目支持 NapCatQQ + OneBot HTTP。
 
-```yaml
-schedule:
-  - cron: "5 0 * * *"
-workflow_dispatch:
+第一次测试：
+
+```text
+send-qq-shop.bat
 ```
 
-GitHub Actions 使用 UTC 时间。`00:05 UTC` 对应北京时间 `08:05`，所以商城会每天北京时间 8:05 自动更新。
+如果想先更新商城再发送：
 
-`workflow_dispatch` 已开启，可以在 GitHub 仓库的 `Actions` 页面手动点击 `Run workflow` 更新。
+```text
+send-qq-update-and-send.bat
+```
+
+第一次运行会让你填写：
+
+- NapCat OneBot HTTP 地址，例如 `http://127.0.0.1:3000`
+- QQ 群号
+- Access token，如果 NapCat 没设置就直接回车
+- 图片上方文字
+
+配置会保存到本地 `qq_bot_config.json`。这个文件已经加入 `.gitignore`，不会上传到 GitHub。
+
+## 每天自动发到 QQ 群
+
+先确保 `send-qq-shop.bat` 能成功发图，再双击：
+
+```text
+install-qq-daily-task.bat
+```
+
+它会创建 Windows 计划任务：每天 08:15 运行一次，先更新商城图片，再通过 NapCatQQ 发到群里。
+
+注意：到点时电脑需要开机，NapCatQQ 也需要正在运行并登录机器人 QQ。
+
+## 云服务器自动发图
+
+如果你不想每天开着自己的电脑，可以把项目放到 Ubuntu VPS 上跑。
+
+看这份说明：
+
+```text
+cloud_setup.md
+```
+
+核心命令是：
+
+```bash
+bash run_daily_qq.sh
+bash install_cloud_cron.sh
+```
+
+服务器版默认每天 UTC 00:15 运行，也就是北京时间 08:15。前提是服务器上的 NapCatQQ 一直在线。
+
+## GitHub Actions 自动更新
+
+`.github/workflows/update-shop.yml` 已经配置：
+
+- 每天北京时间 08:05 自动更新
+- 支持在 GitHub Actions 页面手动点击 `Run workflow`
 
 ## 文件说明
 
-- `index.html`：静态页面。
-- `update_shop.py`：请求 Fortnite API 并生成 `shop.json`。
-- `generate_shop_image.py`：读取 `shop.json` 并生成 `shop.png`。
-- `shop.json`：页面读取的商城数据。
-- `shop.png`：每天自动生成的商城图片。
-- `requirements.txt`：Python 依赖。
-- `publish.ps1`：一键发布脚本。
-- `.github/workflows/update-shop.yml`：每日自动更新和手动更新流程。
-
-## 常见问题
-
-如果页面打开后暂时没有数据，去 GitHub 仓库的 `Actions` 页面查看 `Update Fortnite Shop` 是否运行完成。第一次发布后 GitHub Pages 和 Actions 都可能需要等几分钟。
-
-如果 Actions 没有权限提交 `shop.json`，进入仓库 `Settings` -> `Actions` -> `General`，把 `Workflow permissions` 改成 `Read and write permissions`。
+- `update_shop.py`：请求 Fortnite API，生成 `shop.json`
+- `generate_shop_image.py`：读取 `shop.json`，生成 `shop.png`
+- `send_qq_shop.py`：通过 OneBot HTTP 发送 QQ 群图片
+- `send-qq-shop.bat`：测试发送当前 `shop.png`
+- `send-qq-update-and-send.bat`：更新后发送
+- `install-qq-daily-task.bat`：安装每天自动发图任务
+- `run_daily_qq.sh`：Linux/VPS 每日更新并发图脚本
+- `install_cloud_cron.sh`：Linux/VPS 安装 cron 定时任务
+- `index.html`：网页入口，展示 `shop.png`

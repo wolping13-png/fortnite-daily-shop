@@ -1,0 +1,9 @@
+{
+  "onebot_http_url": "http://127.0.0.1:3000",
+  "access_token": "",
+  "group_ids": [
+    123456789
+  ],
+  "caption": "Fortnite Daily Shop",
+  "image_url": ""
+}
