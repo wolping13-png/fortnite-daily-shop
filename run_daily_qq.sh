@@ -25,4 +25,5 @@ python -m pip install -r requirements.txt
 
 python update_shop.py
 python generate_shop_image.py
+python generate_shop_sections.py
 python send_qq_shop.py --config "$CONFIG_PATH" --image shop_qq.jpg

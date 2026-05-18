@@ -100,14 +100,15 @@ bash install_cloud_cron.sh
 
 服务器版默认每天 UTC 00:15 运行，也就是北京时间 08:15。前提是服务器上的 NapCatQQ 一直在线。
 
-## Gemini 群聊机器人
+## AI 群聊机器人
 
-支持把 NapCatQQ 的群消息接入 Gemini API。
+支持把 NapCatQQ 的群消息接入 DeepSeek 或 Gemini API。默认推荐 DeepSeek，对香港服务器更友好。
 
 默认指令：
 
-- `/问 你的问题`：调用 Gemini 回复
-- `/商店`：发送每日商店图片
+- `温德尔 你的问题`：调用 AI 回复
+- `商店`：发送带道具图片的每日商店分页图
+- `商店全部`：发送全部分页图
 
 服务器上配置：
 
@@ -116,7 +117,7 @@ cp gemini_bot_config.example.json gemini_bot_config.json
 nano gemini_bot_config.json
 ```
 
-把 `gemini_api_key` 和 `allowed_group_ids` 改成自己的值。API Key 不要提交到 GitHub。
+把 `provider` 设为 `deepseek`，并填写 `deepseek_api_key` 和 `allowed_group_ids`。API Key 不要提交到 GitHub。
 
 在 NapCatQQ 的 HTTP Server 配置里，把上报地址设置成：
 
