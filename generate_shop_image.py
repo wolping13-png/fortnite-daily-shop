@@ -23,6 +23,7 @@ WIDTH = 1080
 PADDING = 32
 GAP = 12
 COLUMNS = 3
+PREVIEW_ITEMS_PER_SECTION = 3
 SECTION_INSET = 16
 GRID_LEFT = PADDING + SECTION_INSET
 GRID_WIDTH = WIDTH - GRID_LEFT * 2
@@ -473,8 +474,8 @@ def calculate_height(groups: list[tuple[str, list[dict[str, Any]]]]) -> int:
         return 720
 
     height = PADDING + HEADER_HEIGHT
-    for _, items in groups:
-        rows = max(1, math.ceil(len(items) / COLUMNS))
+    for _, _items in groups:
+        rows = 1
         section_height = (
             SECTION_INSET * 2
             + SECTION_TITLE_HEIGHT
@@ -599,13 +600,13 @@ def render_shop_image() -> None:
     title = "FORTNITE 每日商店"
     draw.text((PADDING, PADDING + 12), title, fill=TEXT, font=FONT_TITLE)
     draw.text((PADDING, PADDING + 66), f"更新时间：{parse_date(data.get('updatedAt') or data.get('date'))}", fill=MUTED, font=FONT_META)
-    draw.text((PADDING, PADDING + 91), "按官方商店分区排列 · 数据来源：fortnite-api.com", fill=(123, 164, 213), font=FONT_SMALL)
+    draw.text((PADDING, PADDING + 91), "商店首页总览 · 发送“商店全部”查看所有分区分页", fill=(123, 164, 213), font=FONT_SMALL)
 
     vbuck_icon = download_image(str(data.get("vbuckIcon") or ""))
 
     y = PADDING + HEADER_HEIGHT
     for section_index, (section_name, section_items) in enumerate(groups):
-        rows = max(1, math.ceil(len(section_items) / COLUMNS))
+        rows = 1
         section_height = (
             SECTION_INSET * 2
             + SECTION_TITLE_HEIGHT
@@ -617,16 +618,30 @@ def render_shop_image() -> None:
         header_y = y + SECTION_INSET
         draw_section_header(draw, header_y, str(section_name), len(section_items), section_index)
         grid_y = header_y + SECTION_TITLE_HEIGHT
-        for index, item in enumerate(section_items):
+        preview_items = section_items[:PREVIEW_ITEMS_PER_SECTION]
+        for index, item in enumerate(preview_items):
             col = index % COLUMNS
             row = index // COLUMNS
             x = GRID_LEFT + col * (CARD_WIDTH + GAP)
             card_y = grid_y + row * (CARD_HEIGHT + GAP)
             draw_card(image, draw, item, x, card_y, vbuck_icon)
 
+        remaining = len(section_items) - len(preview_items)
+        if remaining > 0:
+            label = f"还有 {remaining} 件 · 发送“商店全部”查看"
+            label_width, label_height = text_size(draw, label, FONT_META)
+            label_box = (
+                WIDTH - GRID_LEFT - label_width - 34,
+                y + section_height - 42,
+                WIDTH - GRID_LEFT - 12,
+                y + section_height - 14,
+            )
+            draw.rounded_rectangle(label_box, radius=9, fill=(0, 0, 0, 126), outline=(255, 255, 255, 36), width=1)
+            draw.text((label_box[0] + 13, label_box[1] + 6), label, fill=MUTED, font=FONT_META)
+
         y += section_height + SECTION_GAP
 
-    footer = "发送“商店全部”可查看分区分页图"
+    footer = "总览只展示每个分区前 3 件 · 发送“商店全部”查看完整商城"
     footer_width, _ = text_size(draw, footer, FONT_SMALL)
     draw.text(((WIDTH - footer_width) // 2, height - 44), footer, fill=(116, 150, 190), font=FONT_SMALL)
 
