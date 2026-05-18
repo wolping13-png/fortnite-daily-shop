@@ -10,6 +10,7 @@ import requests
 
 
 API_URL = "https://fortnite-api.com/v2/shop"
+API_LANGUAGE = "zh-Hans"
 OUTPUT_PATH = Path(__file__).with_name("shop.json")
 REQUEST_TIMEOUT = 30
 
@@ -130,6 +131,24 @@ def pick_rarity(primary_item: dict[str, Any] | None, bundle: dict[str, Any] | No
     return first_text(*candidates, default="Unknown")
 
 
+def pick_section(entry: dict[str, Any], layout: dict[str, Any]) -> str:
+    section = entry.get("section") if isinstance(entry.get("section"), dict) else {}
+    display_name = first_text(
+        deep_get(layout, "name"),
+        deep_get(layout, "displayName"),
+        deep_get(section, "name"),
+        deep_get(section, "displayName"),
+        deep_get(layout, "category"),
+        entry.get("sectionName"),
+        entry.get("sectionId"),
+        default="每日商店",
+    )
+
+    if display_name.lower() in {"daily shop", "shop"}:
+        return "每日商店"
+    return display_name
+
+
 def normalize_entry(entry: dict[str, Any]) -> dict[str, Any]:
     bundle = entry.get("bundle") if isinstance(entry.get("bundle"), dict) else None
     offer_items = collect_offer_items(entry)
@@ -153,18 +172,14 @@ def normalize_entry(entry: dict[str, Any]) -> dict[str, Any]:
         "rarity": pick_rarity(primary_item, bundle),
         "price": first_number(entry.get("finalPrice"), entry.get("regularPrice")),
         "image": pick_offer_image(entry, primary_item),
-        "section": first_text(
-            deep_get(layout, "name"),
-            deep_get(layout, "category"),
-            deep_get(entry, "section", "name"),
-            default="Daily Shop",
-        ),
+        "section": pick_section(entry, layout),
     }
 
 
 def fetch_shop() -> dict[str, Any]:
     response = requests.get(
         API_URL,
+        params={"language": API_LANGUAGE},
         headers={"User-Agent": "fortnite-daily-shop-static-page/1.0"},
         timeout=REQUEST_TIMEOUT,
     )
@@ -191,6 +206,7 @@ def build_shop_json(data: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "source": API_URL,
+        "language": API_LANGUAGE,
         "date": data.get("date"),
         "hash": data.get("hash"),
         "updatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),

@@ -106,7 +106,13 @@ try {
   }
 
   Write-Step "Sending QQ group image"
-  Run-Python $python @("send_qq_shop.py")
+  $qqImage = Join-Path $Root "shop_qq.jpg"
+  if (Test-Path $qqImage) {
+    Run-Python $python @("send_qq_shop.py", "--image", "shop_qq.jpg")
+  }
+  else {
+    Run-Python $python @("send_qq_shop.py")
+  }
   Write-Host ""
   Write-Host "Done." -ForegroundColor Green
 }
