@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -19,6 +20,39 @@ SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
 SHOP_SECTIONS_DIR = BASE_DIR / "shop_sections"
 SHOP_SECTIONS_MANIFEST = SHOP_SECTIONS_DIR / "manifest.json"
+WEATHER_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
+WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+
+WEATHER_CODES = {
+    0: "晴",
+    1: "大部晴朗",
+    2: "局部多云",
+    3: "阴",
+    45: "有雾",
+    48: "雾凇",
+    51: "小毛毛雨",
+    53: "毛毛雨",
+    55: "较强毛毛雨",
+    56: "冻毛毛雨",
+    57: "较强冻毛毛雨",
+    61: "小雨",
+    63: "中雨",
+    65: "大雨",
+    66: "冻雨",
+    67: "较强冻雨",
+    71: "小雪",
+    73: "中雪",
+    75: "大雪",
+    77: "雪粒",
+    80: "阵雨",
+    81: "较强阵雨",
+    82: "强阵雨",
+    85: "阵雪",
+    86: "强阵雪",
+    95: "雷暴",
+    96: "雷暴伴小冰雹",
+    99: "雷暴伴强冰雹",
+}
 
 
 def load_config() -> dict[str, Any]:
@@ -180,6 +214,254 @@ def split_reply(text: str, limit: int = 900) -> list[str]:
         chunks.append(chunk.strip())
         value = value[len(chunk) :].strip()
     return chunks
+
+
+def weather_text(code: Any) -> str:
+    try:
+        return WEATHER_CODES.get(int(code), "未知天气")
+    except Exception:
+        return "未知天气"
+
+
+def is_weather_question(text: str) -> bool:
+    value = text.strip()
+    if not any(keyword in value for keyword in ("天气", "气温", "温度", "下雨", "降雨", "预报")):
+        return False
+    return any(
+        keyword in value
+        for keyword in (
+            "今天",
+            "明天",
+            "后天",
+            "现在",
+            "当前",
+            "怎么样",
+            "如何",
+            "多少",
+            "会不会",
+            "查",
+            "看",
+            "吗",
+            "呢",
+            "?",
+            "？",
+        )
+    )
+
+
+def weather_location_candidates(location: str) -> list[str]:
+    value = location.strip()
+    candidates: list[str] = []
+
+    def add(candidate: str) -> None:
+        candidate = candidate.strip()
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+
+    add(value)
+
+    compact = re.sub(r"\s+", "", value)
+    add(compact)
+
+    if compact.endswith(("区", "县", "旗")) and len(compact) > 2:
+        add(compact[:-1])
+
+    city_match = re.match(r"(.+?市)", compact)
+    if city_match:
+        add(city_match.group(1))
+        add(city_match.group(1).removesuffix("市"))
+
+    known_cities = (
+        "北京",
+        "上海",
+        "天津",
+        "重庆",
+        "武汉",
+        "广州",
+        "深圳",
+        "杭州",
+        "南京",
+        "成都",
+        "西安",
+        "长沙",
+        "郑州",
+        "苏州",
+        "青岛",
+        "厦门",
+        "福州",
+        "济南",
+        "沈阳",
+        "大连",
+        "哈尔滨",
+        "长春",
+        "昆明",
+        "贵阳",
+        "南宁",
+        "海口",
+        "石家庄",
+        "太原",
+        "合肥",
+        "南昌",
+        "兰州",
+        "银川",
+        "西宁",
+        "乌鲁木齐",
+        "拉萨",
+        "香港",
+        "澳门",
+        "台北",
+    )
+    for city in known_cities:
+        if city in compact:
+            add(city)
+
+    return candidates
+
+
+def extract_weather_location(question: str, default_location: str = "") -> tuple[str, int]:
+    value = question.strip()
+    day_index = 0
+    if "后天" in value:
+        day_index = 2
+    elif "明天" in value or "明日" in value:
+        day_index = 1
+
+    for token in (
+        "天气",
+        "气温",
+        "温度",
+        "预报",
+        "下雨",
+        "降雨",
+        "今天",
+        "现在",
+        "当前",
+        "实时",
+        "明天",
+        "明日",
+        "后天",
+        "帮我",
+        "查一下",
+        "查下",
+        "查询",
+        "看看",
+        "看下",
+        "怎么样",
+        "如何",
+        "会不会",
+        "吗",
+        "呢",
+        "呀",
+        "的",
+    ):
+        value = value.replace(token, " ")
+
+    value = re.sub(r"[，。！？、：:,.!?；;（）()\[\]【】]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value or default_location.strip(), day_index
+
+
+def first_value(values: list[Any], index: int, default: Any = None) -> Any:
+    if not isinstance(values, list) or index >= len(values):
+        return default
+    return values[index]
+
+
+def format_number(value: Any, suffix: str = "") -> str:
+    if isinstance(value, (int, float)):
+        rounded = round(float(value), 1)
+        text = str(int(rounded)) if rounded.is_integer() else str(rounded)
+        return f"{text}{suffix}"
+    return f"未知{suffix}" if suffix else "未知"
+
+
+def ask_weather(config: dict[str, Any], question: str) -> str:
+    default_location = str(config.get("default_weather_location") or "")
+    location, day_index = extract_weather_location(question, default_location)
+    if not location:
+        return "你想查哪里的天气？比如：温德尔 北京天气"
+
+    place = None
+    used_location = location
+    for candidate in weather_location_candidates(location):
+        geo_response = requests.get(
+            WEATHER_GEOCODING_URL,
+            params={"name": candidate, "count": 1, "language": "zh", "format": "json"},
+            timeout=20,
+        )
+        geo_response.raise_for_status()
+        geo_data = geo_response.json()
+        results = geo_data.get("results")
+        if isinstance(results, list) and results:
+            place = results[0]
+            used_location = candidate
+            break
+
+    if not isinstance(place, dict):
+        return f"我没找到“{location}”这个地方的天气。可以换成城市名试试，比如：北京天气。"
+
+    latitude = place.get("latitude")
+    longitude = place.get("longitude")
+    if latitude is None or longitude is None:
+        return f"我找到了“{location}”，但没有拿到经纬度，暂时查不了天气。"
+
+    forecast_response = requests.get(
+        WEATHER_FORECAST_URL,
+        params={
+            "latitude": latitude,
+            "longitude": longitude,
+            "current": ",".join(
+                [
+                    "temperature_2m",
+                    "apparent_temperature",
+                    "relative_humidity_2m",
+                    "precipitation",
+                    "weather_code",
+                    "wind_speed_10m",
+                ]
+            ),
+            "daily": ",".join(
+                [
+                    "weather_code",
+                    "temperature_2m_max",
+                    "temperature_2m_min",
+                    "precipitation_probability_max",
+                    "precipitation_sum",
+                ]
+            ),
+            "timezone": "auto",
+            "forecast_days": 3,
+        },
+        timeout=20,
+    )
+    forecast_response.raise_for_status()
+    weather = forecast_response.json()
+
+    current = weather.get("current") if isinstance(weather.get("current"), dict) else {}
+    daily = weather.get("daily") if isinstance(weather.get("daily"), dict) else {}
+    day_label = ["今天", "明天", "后天"][min(day_index, 2)]
+
+    name = str(place.get("name") or location)
+    admin = str(place.get("admin1") or "")
+    country = str(place.get("country") or "")
+    place_name = " ".join(part for part in (country, admin, name) if part)
+
+    day_weather_code = first_value(daily.get("weather_code"), day_index)
+    min_temp = first_value(daily.get("temperature_2m_min"), day_index)
+    max_temp = first_value(daily.get("temperature_2m_max"), day_index)
+    rain_probability = first_value(daily.get("precipitation_probability_max"), day_index)
+    rain_sum = first_value(daily.get("precipitation_sum"), day_index)
+
+    lines = [
+        f"{place_name}天气：",
+        f"现在：{weather_text(current.get('weather_code'))}，{format_number(current.get('temperature_2m'), '°C')}，体感 {format_number(current.get('apparent_temperature'), '°C')}，湿度 {format_number(current.get('relative_humidity_2m'), '%')}",
+        f"风速：{format_number(current.get('wind_speed_10m'), ' km/h')}，当前降水 {format_number(current.get('precipitation'), ' mm')}",
+        f"{day_label}：{weather_text(day_weather_code)}，{format_number(min_temp, '°C')} ~ {format_number(max_temp, '°C')}，降水概率最高 {format_number(rain_probability, '%')}，预计降水 {format_number(rain_sum, ' mm')}",
+        "数据来自 Open-Meteo，天气会有误差，出门前最好再看一下本地天气 App。",
+    ]
+    if used_location != location:
+        lines.insert(1, f"我没有精确匹配到“{location}”，先按“{used_location}”附近查询。")
+    return "\n".join(lines)
 
 
 def is_shop_question(question: str) -> bool:
@@ -370,9 +652,29 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     ask_prefix = str(config.get("ask_prefix") or "温德尔")
     shop_command = str(config.get("shop_command") or "商店")
     shop_all_command = str(config.get("shop_all_command") or "商店全部")
+    weather_command = str(config.get("weather_command") or "天气")
 
     if text in {shop_command, shop_all_command}:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
+        return
+
+    if text.startswith(weather_command):
+        weather_question = text[len(weather_command) :].strip()
+        try:
+            answer = ask_weather(config, weather_question)
+        except Exception as exc:
+            print(f"Weather request failed: {exc}", file=sys.stderr)
+            answer = "天气暂时查不到，稍后再试一下。"
+        send_group_text(config, group_id, answer)
+        return
+
+    if is_weather_question(text):
+        try:
+            answer = ask_weather(config, text)
+        except Exception as exc:
+            print(f"Weather request failed: {exc}", file=sys.stderr)
+            answer = "天气暂时查不到，稍后再试一下。"
+        send_group_text(config, group_id, answer)
         return
 
     if not text.startswith(ask_prefix):
@@ -382,6 +684,15 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     question = question.lstrip(" ：:，,")
     if not question:
         send_group_text(config, group_id, f"用法：{ask_prefix} 你想问的问题")
+        return
+
+    if is_weather_question(question):
+        try:
+            answer = ask_weather(config, question)
+        except Exception as exc:
+            print(f"Weather request failed: {exc}", file=sys.stderr)
+            answer = "天气暂时查不到，稍后再试一下。"
+        send_group_text(config, group_id, answer)
         return
 
     try:
