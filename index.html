@@ -3,22 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Fortnite 每日商城</title>
+    <title>Fortnite Daily Shop</title>
     <style>
       :root {
         color-scheme: dark;
         --bg: #061329;
         --bg-deep: #020817;
-        --panel: #0b2550;
-        --panel-soft: #103768;
         --line: rgba(151, 197, 255, 0.25);
         --text: #f3f8ff;
         --muted: #a9c4e8;
         --yellow: #ffd438;
-        --cyan: #28d8ff;
-        --pink: #ff4fb3;
-        --green: #52e39e;
-        --shadow: rgba(0, 0, 0, 0.35);
       }
 
       * {
@@ -29,7 +23,7 @@
         margin: 0;
         min-height: 100vh;
         background:
-          radial-gradient(circle at 20% 0%, rgba(40, 216, 255, 0.18), transparent 34rem),
+          radial-gradient(circle at 20% 0%, rgba(40, 216, 255, 0.16), transparent 34rem),
           linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
         color: var(--text);
         font-family:
@@ -37,32 +31,23 @@
           sans-serif;
       }
 
-      header {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        border-bottom: 1px solid var(--line);
-        background: rgba(3, 12, 31, 0.86);
-        backdrop-filter: blur(14px);
-      }
-
-      .header-inner,
+      header,
       main {
-        width: min(1180px, calc(100% - 28px));
+        width: min(1120px, calc(100% - 24px));
         margin: 0 auto;
       }
 
-      .header-inner {
+      header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
-        min-height: 76px;
+        padding: 22px 0 16px;
       }
 
       h1 {
         margin: 0;
-        font-size: clamp(1.65rem, 3vw, 2.7rem);
+        font-size: clamp(1.55rem, 4vw, 2.7rem);
         line-height: 1;
         letter-spacing: 0;
         text-transform: uppercase;
@@ -70,272 +55,88 @@
 
       .updated {
         color: var(--muted);
-        font-size: 0.88rem;
+        font-size: 0.9rem;
         text-align: right;
       }
 
-      main {
-        padding: 24px 0 42px;
+      .image-frame {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(3, 12, 31, 0.66);
+        box-shadow: 0 20px 46px rgba(0, 0, 0, 0.35);
+      }
+
+      .shop-image {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .actions {
+        display: flex;
+        justify-content: center;
+        padding: 18px 0 34px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border: 1px solid rgba(255, 212, 56, 0.55);
+        border-radius: 8px;
+        background: rgba(255, 212, 56, 0.12);
+        color: var(--yellow);
+        font-weight: 800;
+        text-decoration: none;
       }
 
       .status {
         display: grid;
         place-items: center;
-        min-height: 42vh;
+        min-height: 52vh;
         color: var(--muted);
         text-align: center;
       }
 
-      .section {
-        margin-top: 30px;
-      }
-
-      .section:first-child {
-        margin-top: 0;
-      }
-
-      .section-title {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 0 0 14px;
-        font-size: 1.15rem;
-        line-height: 1.15;
-        letter-spacing: 0;
-      }
-
-      .section-title::before {
-        display: block;
-        width: 7px;
-        height: 24px;
-        border-radius: 999px;
-        background: var(--yellow);
-        content: "";
-        box-shadow: 0 0 18px rgba(255, 212, 56, 0.45);
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-        gap: 14px;
-      }
-
-      .card {
-        position: relative;
-        overflow: hidden;
-        min-height: 286px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: linear-gradient(180deg, var(--panel-soft), var(--panel));
-        box-shadow: 0 16px 34px var(--shadow);
-      }
-
-      .card::after {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: inherit;
-        content: "";
-      }
-
-      .image-wrap {
-        position: relative;
-        display: grid;
-        place-items: end center;
-        min-height: 188px;
-        padding: 10px;
-        background:
-          linear-gradient(150deg, rgba(40, 216, 255, 0.18), rgba(255, 79, 179, 0.08)),
-          rgba(255, 255, 255, 0.03);
-      }
-
-      .image-wrap img {
-        width: 100%;
-        max-height: 178px;
-        object-fit: contain;
-        filter: drop-shadow(0 16px 20px rgba(0, 0, 0, 0.35));
-      }
-
-      .section-badge,
-      .rarity {
-        display: inline-flex;
-        align-items: center;
-        max-width: calc(100% - 20px);
-        min-height: 24px;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 0.74rem;
-        font-weight: 800;
-        line-height: 1.1;
-        text-transform: uppercase;
-      }
-
-      .section-badge {
-        position: absolute;
-        left: 10px;
-        top: 10px;
-        background: rgba(3, 12, 31, 0.76);
-        color: var(--text);
-      }
-
-      .content {
-        display: grid;
-        gap: 10px;
-        padding: 12px;
-      }
-
-      .name {
-        min-height: 42px;
-        margin: 0;
-        font-size: 1rem;
-        line-height: 1.2;
-      }
-
-      .meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-      }
-
-      .rarity {
-        background: rgba(40, 216, 255, 0.16);
-        color: #d9f8ff;
-      }
-
-      .rarity.legendary,
-      .rarity.mythic {
-        background: rgba(255, 212, 56, 0.17);
-        color: #ffeaa0;
-      }
-
-      .rarity.epic,
-      .rarity.marvel,
-      .rarity.dc {
-        background: rgba(255, 79, 179, 0.17);
-        color: #ffd5ee;
-      }
-
-      .rarity.rare {
-        background: rgba(40, 216, 255, 0.18);
-      }
-
-      .rarity.uncommon {
-        background: rgba(82, 227, 158, 0.17);
-        color: #d8ffe9;
-      }
-
-      .price {
-        display: inline-flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 5px;
-        color: var(--yellow);
-        font-size: 1rem;
-        font-weight: 900;
-        white-space: nowrap;
-      }
-
-      .price img {
-        width: 20px;
-        height: 20px;
-        object-fit: contain;
-      }
-
       @media (max-width: 640px) {
-        .header-inner {
+        header {
           align-items: flex-start;
           flex-direction: column;
-          justify-content: center;
-          min-height: 96px;
-          padding: 16px 0;
         }
 
         .updated {
           text-align: left;
-        }
-
-        main {
-          padding-top: 18px;
-        }
-
-        .grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
-        }
-
-        .card {
-          min-height: 250px;
-        }
-
-        .image-wrap {
-          min-height: 154px;
-        }
-
-        .image-wrap img {
-          max-height: 145px;
-        }
-
-        .content {
-          padding: 10px;
-        }
-
-        .name {
-          min-height: 38px;
-          font-size: 0.9rem;
-        }
-
-        .meta {
-          align-items: flex-start;
-          flex-direction: column;
         }
       }
     </style>
   </head>
   <body>
     <header>
-      <div class="header-inner">
-        <h1>Fortnite 每日商城</h1>
-        <div class="updated" id="updated">正在读取商城数据</div>
-      </div>
+      <h1>Fortnite Daily Shop</h1>
+      <div class="updated" id="updated">Loading shop image</div>
     </header>
 
-    <main id="app">
-      <div class="status">加载中</div>
+    <main>
+      <div class="image-frame">
+        <img class="shop-image" id="shop-image" src="shop.png" alt="Fortnite Daily Shop" />
+      </div>
+      <div class="actions">
+        <a class="button" id="image-link" href="shop.png">Open Image</a>
+      </div>
     </main>
 
-    <template id="card-template">
-      <article class="card">
-        <div class="image-wrap">
-          <span class="section-badge"></span>
-          <img alt="" loading="lazy" />
-        </div>
-        <div class="content">
-          <h3 class="name"></h3>
-          <div class="meta">
-            <span class="rarity"></span>
-            <span class="price"></span>
-          </div>
-        </div>
-      </article>
-    </template>
-
     <script>
-      const app = document.querySelector("#app");
       const updated = document.querySelector("#updated");
-      const template = document.querySelector("#card-template");
-
-      const rarityClass = (rarity) =>
-        String(rarity || "unknown")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "");
+      const image = document.querySelector("#shop-image");
+      const imageLink = document.querySelector("#image-link");
 
       const formatTime = (value) => {
-        if (!value) return "等待首次更新";
+        if (!value) return "Waiting for first update";
         const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return "已生成商城数据";
+        if (Number.isNaN(date.getTime())) return "Shop image ready";
 
         return new Intl.DateTimeFormat("zh-CN", {
           dateStyle: "medium",
@@ -343,88 +144,25 @@
         }).format(date);
       };
 
-      const groupBySection = (items) =>
-        items.reduce((groups, item) => {
-          const section = item.section || "Daily Shop";
-          if (!groups.has(section)) groups.set(section, []);
-          groups.get(section).push(item);
-          return groups;
-        }, new Map());
-
-      const renderPrice = (price, vbuckIcon) => {
-        const wrapper = document.createElement("span");
-        wrapper.className = "price";
-
-        if (vbuckIcon) {
-          const icon = document.createElement("img");
-          icon.src = vbuckIcon;
-          icon.alt = "V-Bucks";
-          wrapper.append(icon);
-        }
-
-        wrapper.append(document.createTextNode(Number(price || 0).toLocaleString("zh-CN")));
-        return wrapper;
-      };
-
-      const renderCard = (item, vbuckIcon) => {
-        const node = template.content.firstElementChild.cloneNode(true);
-        const image = node.querySelector("img");
-        const rarity = node.querySelector(".rarity");
-        const price = node.querySelector(".price");
-
-        node.querySelector(".section-badge").textContent = item.section || "Daily Shop";
-        node.querySelector(".name").textContent = item.name || "Unknown Item";
-
-        image.src = item.image || "";
-        image.alt = item.name || "Fortnite shop item";
-        image.addEventListener("error", () => {
-          image.style.visibility = "hidden";
-        });
-
-        rarity.textContent = item.rarity || "Unknown";
-        rarity.classList.add(rarityClass(item.rarity));
-
-        price.replaceWith(renderPrice(item.price, vbuckIcon));
-        return node;
-      };
-
-      const renderShop = (data) => {
-        const items = Array.isArray(data.items) ? data.items : [];
-        updated.textContent = `更新于 ${formatTime(data.updatedAt || data.date)}`;
-
-        if (!items.length) {
-          app.innerHTML = '<div class="status">暂无商城数据</div>';
-          return;
-        }
-
-        app.textContent = "";
-        for (const [sectionName, sectionItems] of groupBySection(items)) {
-          const section = document.createElement("section");
-          section.className = "section";
-
-          const title = document.createElement("h2");
-          title.className = "section-title";
-          title.textContent = sectionName;
-
-          const grid = document.createElement("div");
-          grid.className = "grid";
-          sectionItems.forEach((item) => grid.append(renderCard(item, data.vbuckIcon)));
-
-          section.append(title, grid);
-          app.append(section);
-        }
-      };
-
       fetch("shop.json", { cache: "no-store" })
         .then((response) => {
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return response.json();
         })
-        .then(renderShop)
+        .then((data) => {
+          const version = encodeURIComponent(data.hash || data.updatedAt || Date.now());
+          const imageUrl = `shop.png?v=${version}`;
+          image.src = imageUrl;
+          imageLink.href = imageUrl;
+          updated.textContent = `Updated ${formatTime(data.updatedAt || data.date)}`;
+        })
         .catch(() => {
-          updated.textContent = "读取失败";
-          app.innerHTML = '<div class="status">无法读取 shop.json</div>';
+          updated.textContent = "Shop image";
         });
+
+      image.addEventListener("error", () => {
+        document.querySelector("main").innerHTML = '<div class="status">shop.png is not ready yet</div>';
+      });
     </script>
   </body>
 </html>

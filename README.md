@@ -2,7 +2,7 @@
 
 一个可以部署到 GitHub Pages 的 Fortnite 每日商城静态网页项目。
 
-页面会读取 `shop.json`，用手机友好的卡片布局展示每日商城物品，包括名称、稀有度、价格、图片和分区名称。`update_shop.py` 会请求 `https://fortnite-api.com/v2/shop` 并生成最新的 `shop.json`。
+页面会读取并展示每天自动生成的 `shop.png`。`update_shop.py` 会请求 `https://fortnite-api.com/v2/shop` 并生成最新的 `shop.json`，`generate_shop_image.py` 会把商城内容渲染成一张适合手机查看和转发的长图。
 
 ## 一键发布
 
@@ -29,7 +29,7 @@ powershell -ExecutionPolicy Bypass -File .\publish.ps1 -RepoName "my-fortnite-sh
 - 检查 Git、Python、GitHub CLI。
 - 登录 GitHub CLI，如果没登录会打开浏览器让你登录。
 - 安装 Python 依赖并检查 `update_shop.py`。
-- 尝试生成一次真实 `shop.json`。
+- 尝试生成一次真实 `shop.json` 和 `shop.png`。
 - 初始化 Git 仓库并提交文件。
 - 创建 GitHub 仓库并推送代码。
 - 开启 GitHub Pages。
@@ -63,6 +63,12 @@ pip install -r requirements.txt
 python update_shop.py
 ```
 
+生成商城图片：
+
+```bash
+python generate_shop_image.py
+```
+
 启动本地预览：
 
 ```bash
@@ -93,7 +99,9 @@ GitHub Actions 使用 UTC 时间。`00:05 UTC` 对应北京时间 `08:05`，所�
 
 - `index.html`：静态页面。
 - `update_shop.py`：请求 Fortnite API 并生成 `shop.json`。
+- `generate_shop_image.py`：读取 `shop.json` 并生成 `shop.png`。
 - `shop.json`：页面读取的商城数据。
+- `shop.png`：每天自动生成的商城图片。
 - `requirements.txt`：Python 依赖。
 - `publish.ps1`：一键发布脚本。
 - `.github/workflows/update-shop.yml`：每日自动更新和手动更新流程。

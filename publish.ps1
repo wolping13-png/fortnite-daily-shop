@@ -158,6 +158,10 @@ function Ensure-GitRepository {
     git branch -M main | Out-Null
   }
 
+  if (Test-NativeCommand "git" @("ls-files", "--error-unmatch", "publish.log")) {
+    git rm --cached publish.log | Out-Null
+  }
+
   git add -A | Out-Null
 
   git diff --cached --quiet
@@ -258,11 +262,13 @@ try {
   Write-Step "Checking Python dependencies and script syntax"
   Run-Python $python @("-m", "pip", "install", "-r", "requirements.txt")
   Run-Python $python @("-m", "py_compile", "update_shop.py")
+  Run-Python $python @("-m", "py_compile", "generate_shop_image.py")
   Write-Ok "Python side is ready"
 
   Write-Step "Trying to generate shop.json locally"
   try {
     Run-Python $python @("update_shop.py")
+    Run-Python $python @("generate_shop_image.py")
     Write-Ok "shop.json was generated locally"
   }
   catch {

@@ -28,15 +28,18 @@ jobs:
       - name: Update shop.json
         run: python update_shop.py
 
+      - name: Generate shop image
+        run: python generate_shop_image.py
+
       - name: Commit updated shop data
         run: |
-          if git diff --quiet shop.json; then
-            echo "shop.json is already up to date."
+          if git diff --quiet shop.json shop.png; then
+            echo "Shop data and image are already up to date."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add shop.json
+          git add shop.json shop.png
           git commit -m "Update Fortnite shop data"
           git push
