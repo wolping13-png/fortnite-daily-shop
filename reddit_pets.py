@@ -18,18 +18,31 @@ BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_JSON = BASE_DIR / "reddit_pets.json"
 OUTPUT_IMAGE = BASE_DIR / "reddit_pets.jpg"
 CACHE_DIR = BASE_DIR / ".cache" / "reddit_pet_images"
+LOG_DIR = BASE_DIR / "logs"
+DEBUG_LOG = LOG_DIR / "reddit_pets_debug.log"
 
-USER_AGENT = "fortnite-daily-shop-reddit-pet-bot/1.0"
+USER_AGENT = "FortniteDailyShopQQBot/1.0 (Reddit pet digest; contact: local-user)"
 SUBREDDITS = (
     "aww",
     "cats",
+    "CatPics",
+    "kittens",
+    "dog",
     "dogpictures",
+    "puppies",
     "rarepuppers",
     "foxes",
+    "FoxPics",
+    "wolves",
     "wolfdogs",
     "AnimalsBeingBros",
 )
 SORTS = (("hot", ""), ("top", "day"))
+REDDIT_ENDPOINTS = (
+    "https://www.reddit.com/r/{subreddit}/{sort}.json",
+    "https://old.reddit.com/r/{subreddit}/{sort}.json",
+    "https://api.reddit.com/r/{subreddit}/{sort}",
+)
 PET_KEYWORDS = (
     "cat",
     "cats",
@@ -61,6 +74,16 @@ TEXT = (244, 249, 255)
 MUTED = (165, 195, 224)
 CYAN = (55, 205, 255)
 YELLOW = (255, 215, 88)
+
+
+def debug_log(message: str) -> None:
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        with DEBUG_LOG.open("a", encoding="utf-8") as file:
+            file.write(f"[{timestamp}] {message}\n")
+    except Exception:
+        return
 
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -162,7 +185,15 @@ def preview_image(data: dict[str, Any]) -> str:
         return ""
     first = images[0] if isinstance(images[0], dict) else {}
     source = first.get("source") if isinstance(first.get("source"), dict) else {}
-    return clean_image_url(source.get("url"))
+    source_url = clean_image_url(source.get("url"))
+    if source_url:
+        return source_url
+
+    resolutions = first.get("resolutions")
+    if isinstance(resolutions, list) and resolutions:
+        candidate = resolutions[-1] if isinstance(resolutions[-1], dict) else {}
+        return clean_image_url(candidate.get("url"))
+    return ""
 
 
 def gallery_image(data: dict[str, Any]) -> str:
@@ -181,7 +212,15 @@ def gallery_image(data: dict[str, Any]) -> str:
         return ""
 
     source = media.get("s") if isinstance(media.get("s"), dict) else {}
-    return clean_image_url(source.get("u") or source.get("gif"))
+    source_url = clean_image_url(source.get("u") or source.get("gif"))
+    if source_url:
+        return source_url
+
+    previews = media.get("p")
+    if isinstance(previews, list) and previews:
+        candidate = previews[-1] if isinstance(previews[-1], dict) else {}
+        return clean_image_url(candidate.get("u"))
+    return ""
 
 
 def extract_image_url(data: dict[str, Any]) -> str:
@@ -189,23 +228,48 @@ def extract_image_url(data: dict[str, Any]) -> str:
     if is_image_url(direct):
         return direct
 
-    for candidate in (gallery_image(data), preview_image(data)):
+    thumbnail = clean_image_url(data.get("thumbnail"))
+    if thumbnail.startswith("http") and thumbnail not in {"self", "default", "nsfw"}:
+        if is_image_url(thumbnail) or "thumbs.redditmedia.com" in thumbnail or "preview.redd.it" in thumbnail:
+            return thumbnail
+
+    for candidate in (gallery_image(data), preview_image(data), direct):
         if candidate:
             return candidate
     return ""
 
 
 def fetch_listing(subreddit: str, sort: str, timeframe: str = "", limit: int = 25) -> list[dict[str, Any]]:
-    url = f"https://www.reddit.com/r/{subreddit}/{sort}.json"
     params: dict[str, Any] = {"limit": limit, "raw_json": 1}
     if timeframe:
         params["t"] = timeframe
 
-    response = requests.get(url, params=params, headers={"User-Agent": USER_AGENT}, timeout=30)
-    response.raise_for_status()
-    payload = response.json()
+    errors: list[str] = []
+    payload: dict[str, Any] | None = None
+    headers = {
+        "Accept": "application/json,text/plain,*/*",
+        "User-Agent": USER_AGENT,
+    }
+    for endpoint in REDDIT_ENDPOINTS:
+        url = endpoint.format(subreddit=subreddit, sort=sort)
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=30)
+            if response.status_code in {403, 429}:
+                errors.append(f"{url} HTTP {response.status_code}: {response.text[:120]!r}")
+                continue
+            response.raise_for_status()
+            payload = response.json()
+            break
+        except Exception as exc:
+            errors.append(f"{url} {type(exc).__name__}: {exc}")
+
+    if payload is None:
+        debug_log(f"listing failed r/{subreddit} {sort} {timeframe or '-'} | " + " | ".join(errors))
+        return []
+
     children = payload.get("data", {}).get("children", [])
     if not isinstance(children, list):
+        debug_log(f"listing had no children r/{subreddit} {sort} {timeframe or '-'}")
         return []
 
     posts: list[dict[str, Any]] = []
@@ -251,24 +315,33 @@ def normalize_post(data: dict[str, Any]) -> dict[str, Any] | None:
 def fetch_pet_posts(limit: int = 5) -> list[dict[str, Any]]:
     seen: set[str] = set()
     posts: list[dict[str, Any]] = []
+    listing_count = 0
+    normalized_count = 0
+    no_image_count = 0
     for subreddit in SUBREDDITS:
         for sort, timeframe in SORTS:
-            try:
-                listing = fetch_listing(subreddit, sort, timeframe=timeframe, limit=28)
-            except Exception:
-                continue
+            listing = fetch_listing(subreddit, sort, timeframe=timeframe, limit=35)
+            listing_count += len(listing)
 
             for raw in listing:
                 post = normalize_post(raw)
-                if not post or post["id"] in seen:
+                if not post:
+                    if raw.get("over_18") or raw.get("stickied"):
+                        continue
+                    if not extract_image_url(raw):
+                        no_image_count += 1
                     continue
-                title = post["title"].lower()
-                if subreddit.lower() not in {"aww", "animalsbeingbros"} and not any(token in title for token in PET_KEYWORDS):
+                normalized_count += 1
+                if post["id"] in seen:
                     continue
                 seen.add(post["id"])
                 posts.append(post)
 
     posts.sort(key=lambda item: float(item.get("hot_score") or 0), reverse=True)
+    debug_log(
+        f"fetch summary listings={listing_count} normalized={normalized_count} "
+        f"images_missing={no_image_count} selected={len(posts[:limit])}"
+    )
     return posts[:limit]
 
 
@@ -373,7 +446,12 @@ def caption_for_posts(posts: list[dict[str, Any]]) -> str:
 
 def build_reddit_pet_update(limit: int = 5) -> tuple[str, Path, list[dict[str, Any]]]:
     posts = fetch_pet_posts(limit=limit)
-    OUTPUT_JSON.write_text(json.dumps({"updatedAt": datetime.now(timezone.utc).isoformat(), "posts": posts}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if not posts:
+        debug_log("no posts selected; Reddit may be unreachable from this server or returned no image posts")
+    OUTPUT_JSON.write_text(
+        json.dumps({"updatedAt": datetime.now(timezone.utc).isoformat(), "posts": posts}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     render_pet_image(posts)
     return caption_for_posts(posts), OUTPUT_IMAGE, posts
 

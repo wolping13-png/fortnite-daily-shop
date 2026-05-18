@@ -208,7 +208,11 @@ def send_reddit_pet_update(config: dict[str, Any], group_id: int | str) -> None:
     limit = int(config.get("reddit_pet_limit") or 5)
     caption, image_path, posts = build_reddit_pet_update(limit=max(1, min(limit, 8)))
     if not posts:
-        send_group_text(config, group_id, "暂时没抓到合适的 Reddit 宠物热点，稍后再试一下。")
+        send_group_text(
+            config,
+            group_id,
+            "暂时没抓到合适的 Reddit 宠物热点。可能是服务器访问 Reddit 被限流/拦截了；我已经把原因写到 logs/reddit_pets_debug.log。",
+        )
         return
 
     message = build_message(caption=caption, image_path=image_path)
