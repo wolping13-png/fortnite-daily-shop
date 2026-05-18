@@ -200,6 +200,27 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
     )
 
 
+def send_reddit_pet_update(config: dict[str, Any], group_id: int | str) -> None:
+    from reddit_pets import build_reddit_pet_update
+
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    limit = int(config.get("reddit_pet_limit") or 5)
+    caption, image_path, posts = build_reddit_pet_update(limit=max(1, min(limit, 8)))
+    if not posts:
+        send_group_text(config, group_id, "暂时没抓到合适的 Reddit 宠物热点，稍后再试一下。")
+        return
+
+    message = build_message(caption=caption, image_path=image_path)
+    post_onebot(
+        base_url=base_url,
+        action="send_group_msg",
+        payload={"group_id": group_id, "message": message},
+        access_token=access_token,
+        timeout=120,
+    )
+
+
 def split_reply(text: str, limit: int = 900) -> list[str]:
     value = text.strip()
     if len(value) <= limit:
@@ -653,9 +674,18 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     shop_command = str(config.get("shop_command") or "商店")
     shop_all_command = str(config.get("shop_all_command") or "商店全部")
     weather_command = str(config.get("weather_command") or "天气")
+    pet_command = str(config.get("pet_command") or "宠物热点")
 
     if text in {shop_command, shop_all_command}:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
+        return
+
+    if text in {pet_command, "猫猫热点", "狗狗热点", "狐狸热点", "动物热点", "reddit宠物"}:
+        try:
+            send_reddit_pet_update(config, group_id)
+        except Exception as exc:
+            print(f"Reddit pet update failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "Reddit 宠物热点暂时抓取失败，稍后再试一下。")
         return
 
     if text.startswith(weather_command):

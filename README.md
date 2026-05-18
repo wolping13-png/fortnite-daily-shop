@@ -112,6 +112,19 @@ bash install_cloud_cron.sh
 - `商店`：发送一张按官方商店分区排列的每日商店总图
 - `商店全部`：发送按分区拆开的分页图，适合总图发送失败时备用
 - `温德尔 北京天气`、`天气 北京`、`今天武汉洪山区天气怎么样`：查询实时天气和今日/明日预报
+- `宠物热点`、`猫猫热点`、`狗狗热点`：抓取 Reddit 宠物热门图文并发送到群里
+
+服务器上也可以手动发送一次 Reddit 宠物热点：
+
+```bash
+bash run_reddit_pets.sh
+```
+
+如果想每天北京时间 20:30 自动发一次：
+
+```bash
+bash install_reddit_pet_cron.sh
+```
 
 服务器上配置：
 
@@ -153,6 +166,10 @@ bash install_gemini_bot_service.sh
 - `generate_shop_image.py`：读取 `shop.json`，生成按官方分区排列的 `shop.png` 和 QQ 用 `shop_qq.jpg`
 - `generate_shop_sections.py`：生成分区分页图，作为 QQ 备用发送方案
 - `send_qq_shop.py`：通过 OneBot HTTP 发送 QQ 群图片
+- `reddit_pets.py`：抓取 Reddit 宠物热门帖并生成图文图片
+- `send_reddit_pets.py`：通过 OneBot HTTP 发送 Reddit 宠物热点
+- `run_reddit_pets.sh`：Linux/VPS 手动发送 Reddit 宠物热点
+- `install_reddit_pet_cron.sh`：Linux/VPS 安装 Reddit 宠物热点定时任务
 - `send-qq-shop.bat`：测试发送当前 `shop.png`
 - `send-qq-update-and-send.bat`：更新后发送
 - `install-qq-daily-task.bat`：安装每天自动发图任务
