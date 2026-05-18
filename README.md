@@ -36,12 +36,14 @@ push-updates.bat
 pip install -r requirements.txt
 python update_shop.py
 python generate_shop_image.py
+python generate_shop_sections.py
 ```
 
 生成结果是：
 
 ```text
 shop.png
+shop_qq.jpg
 ```
 
 ## QQ 机器人发图
@@ -107,8 +109,8 @@ bash install_cloud_cron.sh
 默认指令：
 
 - `温德尔 你的问题`：调用 AI 回复
-- `商店`：发送带道具图片的每日商店分页图
-- `商店全部`：发送全部分页图
+- `商店`：发送一张按官方商店分区排列的每日商店总图
+- `商店全部`：发送按分区拆开的分页图，适合总图发送失败时备用
 
 服务器上配置：
 
@@ -147,7 +149,8 @@ bash install_gemini_bot_service.sh
 ## 文件说明
 
 - `update_shop.py`：请求 Fortnite API，生成 `shop.json`
-- `generate_shop_image.py`：读取 `shop.json`，生成 `shop.png`
+- `generate_shop_image.py`：读取 `shop.json`，生成按官方分区排列的 `shop.png` 和 QQ 用 `shop_qq.jpg`
+- `generate_shop_sections.py`：生成分区分页图，作为 QQ 备用发送方案
 - `send_qq_shop.py`：通过 OneBot HTTP 发送 QQ 群图片
 - `send-qq-shop.bat`：测试发送当前 `shop.png`
 - `send-qq-update-and-send.bat`：更新后发送

@@ -161,6 +161,29 @@ def download_image(url: str) -> Image.Image | None:
         return None
 
 
+def item_image_urls(item: dict[str, Any]) -> list[str]:
+    urls: list[str] = []
+    image = item.get("image")
+    if isinstance(image, str) and image.startswith("http"):
+        urls.append(image)
+
+    images = item.get("images")
+    if isinstance(images, list):
+        for value in images:
+            if isinstance(value, str) and value.startswith("http") and value not in urls:
+                urls.append(value)
+
+    return urls
+
+
+def download_item_image(item: dict[str, Any]) -> Image.Image | None:
+    for url in item_image_urls(item):
+        image = download_image(url)
+        if image:
+            return image
+    return None
+
+
 def paste_contained(base: Image.Image, image: Image.Image, box: tuple[int, int, int, int]) -> None:
     left, top, right, bottom = box
     image = image.copy()
@@ -188,7 +211,7 @@ def draw_card(
     image_area = (x + 12, y + 24, x + CARD_WIDTH - 12, y + 24 + IMAGE_HEIGHT)
     draw.rounded_rectangle(image_area, radius=12, fill=mix(palette["top"], (255, 255, 255), 0.12))
 
-    image = download_image(str(item.get("image") or ""))
+    image = download_item_image(item)
     if image:
         paste_contained(base, image, image_area)
     else:

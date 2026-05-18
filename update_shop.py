@@ -58,8 +58,13 @@ def collect_offer_items(entry: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def pick_image_from_images(images: dict[str, Any] | None) -> str:
+    urls = image_urls_from_images(images)
+    return urls[0] if urls else ""
+
+
+def image_urls_from_images(images: dict[str, Any] | None) -> list[str]:
     if not isinstance(images, dict):
-        return ""
+        return []
 
     preferred_keys = (
         "OfferImage",
@@ -70,49 +75,54 @@ def pick_image_from_images(images: dict[str, Any] | None) -> str:
         "smallIcon",
         "url",
     )
+    urls: list[str] = []
     for key in preferred_keys:
         value = images.get(key)
         if isinstance(value, str) and value.startswith("http"):
-            return value
+            urls.append(value)
 
     for value in images.values():
-        if isinstance(value, str) and value.startswith("http"):
-            return value
+        if isinstance(value, str) and value.startswith("http") and value not in urls:
+            urls.append(value)
 
-    return ""
+    return urls
 
 
 def pick_offer_image(entry: dict[str, Any], primary_item: dict[str, Any] | None) -> str:
+    images = collect_offer_images(entry, primary_item)
+    return images[0] if images else ""
+
+
+def collect_offer_images(entry: dict[str, Any], primary_item: dict[str, Any] | None) -> list[str]:
+    urls: list[str] = []
+
+    def add_many(values: list[str]) -> None:
+        for value in values:
+            if value and value not in urls:
+                urls.append(value)
+
     new_display_asset = entry.get("newDisplayAsset")
     if isinstance(new_display_asset, dict):
         material_instances = new_display_asset.get("materialInstances")
         if isinstance(material_instances, list):
             for material in material_instances:
                 if isinstance(material, dict):
-                    image = pick_image_from_images(material.get("images"))
-                    if image:
-                        return image
+                    add_many(image_urls_from_images(material.get("images")))
 
     display_assets = entry.get("displayAssets")
     if isinstance(display_assets, list):
         for asset in display_assets:
             if isinstance(asset, dict):
-                image = pick_image_from_images(asset.get("images"))
-                if image:
-                    return image
+                add_many(image_urls_from_images(asset.get("images")))
 
     if isinstance(primary_item, dict):
-        image = pick_image_from_images(primary_item.get("images"))
-        if image:
-            return image
+        add_many(image_urls_from_images(primary_item.get("images")))
 
     bundle = entry.get("bundle")
     if isinstance(bundle, dict):
-        image = pick_image_from_images(bundle.get("images"))
-        if image:
-            return image
+        add_many(image_urls_from_images(bundle.get("images")))
 
-    return ""
+    return urls
 
 
 def pick_rarity(primary_item: dict[str, Any] | None, bundle: dict[str, Any] | None) -> str:
@@ -144,8 +154,6 @@ def pick_section(entry: dict[str, Any], layout: dict[str, Any]) -> str:
         default="每日商店",
     )
 
-    if display_name.lower() in {"daily shop", "shop"}:
-        return "每日商店"
     return display_name
 
 
@@ -165,13 +173,15 @@ def normalize_entry(entry: dict[str, Any]) -> dict[str, Any]:
         primary_name = f"{primary_name} + {len(offer_items) - 1}"
 
     layout = entry.get("layout") if isinstance(entry.get("layout"), dict) else {}
+    images = collect_offer_images(entry, primary_item)
 
     return {
         "id": first_text(entry.get("offerId"), deep_get(primary_item, "id"), default=primary_name),
         "name": primary_name,
         "rarity": pick_rarity(primary_item, bundle),
         "price": first_number(entry.get("finalPrice"), entry.get("regularPrice")),
-        "image": pick_offer_image(entry, primary_item),
+        "image": images[0] if images else "",
+        "images": images,
         "section": pick_section(entry, layout),
     }
 

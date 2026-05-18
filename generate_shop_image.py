@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import os
 import textwrap
 from datetime import datetime
 from io import BytesIO
@@ -15,18 +17,19 @@ BASE_DIR = Path(__file__).resolve().parent
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
 OUTPUT_PATH = BASE_DIR / "shop.png"
 QQ_OUTPUT_PATH = BASE_DIR / "shop_qq.jpg"
+CACHE_DIR = BASE_DIR / ".cache" / "item_images"
 
 WIDTH = 1080
-PADDING = 36
-GAP = 18
-COLUMNS = 3
+PADDING = 30
+GAP = 12
+COLUMNS = 4
 CARD_WIDTH = (WIDTH - PADDING * 2 - GAP * (COLUMNS - 1)) // COLUMNS
-CARD_HEIGHT = 440
-IMAGE_HEIGHT = 248
-HEADER_HEIGHT = 170
-SECTION_TITLE_HEIGHT = 76
-SECTION_GAP = 42
-FOOTER_HEIGHT = 70
+CARD_HEIGHT = 252
+IMAGE_HEIGHT = 132
+HEADER_HEIGHT = 132
+SECTION_TITLE_HEIGHT = 58
+SECTION_GAP = 28
+FOOTER_HEIGHT = 56
 
 BG_TOP = (6, 19, 41)
 BG_BOTTOM = (2, 8, 23)
@@ -38,7 +41,8 @@ MUTED = (167, 195, 230)
 YELLOW = (255, 212, 56)
 CYAN = (40, 216, 255)
 
-REQUEST_TIMEOUT = 25
+REQUEST_TIMEOUT = 12
+TARGET_QQ_BYTES = 4_500_000
 
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -65,12 +69,12 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFo
     return ImageFont.load_default()
 
 
-FONT_TITLE = load_font(56, bold=True)
-FONT_SECTION = load_font(34, bold=True)
-FONT_NAME = load_font(25, bold=True)
-FONT_META = load_font(19, bold=True)
-FONT_SMALL = load_font(17, bold=False)
-FONT_PRICE = load_font(26, bold=True)
+FONT_TITLE = load_font(46, bold=True)
+FONT_SECTION = load_font(25, bold=True)
+FONT_NAME = load_font(18, bold=True)
+FONT_META = load_font(14, bold=True)
+FONT_SMALL = load_font(12, bold=False)
+FONT_PRICE = load_font(18, bold=True)
 
 
 def text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
@@ -156,20 +160,55 @@ def make_gradient(width: int, height: int, top: tuple[int, int, int], bottom: tu
 def download_image(url: str) -> Image.Image | None:
     if not url:
         return None
+    if os.environ.get("FORTNITE_SKIP_IMAGE_DOWNLOADS") == "1":
+        return None
 
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cached = CACHE_DIR / f"{hashlib.sha1(url.encode('utf-8')).hexdigest()}.img"
     try:
+        if cached.exists():
+            return ImageOps.exif_transpose(Image.open(cached)).convert("RGBA")
+
         import requests
 
         response = requests.get(
             url,
-            headers={"User-Agent": "fortnite-daily-shop-image/1.0"},
+            headers={
+                "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                "Referer": "https://fortnite-api.com/",
+                "User-Agent": "Mozilla/5.0 fortnite-daily-shop-image/1.0",
+            },
             timeout=REQUEST_TIMEOUT,
         )
         response.raise_for_status()
+        cached.write_bytes(response.content)
         image = Image.open(BytesIO(response.content))
         return ImageOps.exif_transpose(image).convert("RGBA")
     except Exception:
         return None
+
+
+def item_image_urls(item: dict[str, Any]) -> list[str]:
+    urls: list[str] = []
+    image = item.get("image")
+    if isinstance(image, str) and image.startswith("http"):
+        urls.append(image)
+
+    images = item.get("images")
+    if isinstance(images, list):
+        for value in images:
+            if isinstance(value, str) and value.startswith("http") and value not in urls:
+                urls.append(value)
+
+    return urls
+
+
+def download_item_image(item: dict[str, Any]) -> Image.Image | None:
+    for url in item_image_urls(item):
+        image = download_image(url)
+        if image:
+            return image
+    return None
 
 
 def group_items(items: list[dict[str, Any]]) -> list[tuple[str, list[dict[str, Any]]]]:
@@ -182,8 +221,8 @@ def group_items(items: list[dict[str, Any]]) -> list[tuple[str, list[dict[str, A
 
 def clean_section_name(value: Any) -> str:
     section = str(value or "").strip()
-    if not section or section.lower() in {"daily shop", "shop", "unknown"}:
-        return "每日商店"
+    if not section or section.lower() == "unknown":
+        return "Daily Shop"
     return section
 
 
@@ -312,9 +351,9 @@ def draw_card(
     paste_rounded_gradient(base, x, y, CARD_WIDTH, CARD_HEIGHT, palette["top"], palette["bottom"], 18)
     draw.rounded_rectangle(card, radius=18, outline=palette["accent"], width=3)
     draw.rounded_rectangle((x + 3, y + 3, x + CARD_WIDTH - 3, y + CARD_HEIGHT - 3), radius=15, outline=(255, 255, 255, 36), width=1)
-    draw.rounded_rectangle((x + 16, y + 14, x + CARD_WIDTH - 16, y + 22), radius=4, fill=palette["accent"])
+    draw.rounded_rectangle((x + 13, y + 12, x + CARD_WIDTH - 13, y + 18), radius=4, fill=palette["accent"])
 
-    image_area = (x + 14, y + 34, x + CARD_WIDTH - 14, y + 34 + IMAGE_HEIGHT)
+    image_area = (x + 12, y + 28, x + CARD_WIDTH - 12, y + 28 + IMAGE_HEIGHT)
     paste_rounded_gradient(
         base,
         image_area[0],
@@ -327,40 +366,48 @@ def draw_card(
     )
     draw.rounded_rectangle(image_area, radius=14, outline=(255, 255, 255, 34), width=1)
 
-    image = download_image(str(item.get("image") or ""))
+    image = download_item_image(item)
     if image:
         paste_contained(base, image, image_area)
     else:
-        draw.text((image_area[0] + 26, image_area[1] + 92), "NO IMAGE", fill=MUTED, font=FONT_META)
+        label = "NO IMAGE"
+        label_width, label_height = text_size(draw, label, FONT_META)
+        draw.text(
+            (
+                image_area[0] + (image_area[2] - image_area[0] - label_width) // 2,
+                image_area[1] + (image_area[3] - image_area[1] - label_height) // 2,
+            ),
+            label,
+            fill=MUTED,
+            font=FONT_META,
+        )
 
-    info_panel = (x + 12, y + 300, x + CARD_WIDTH - 12, y + CARD_HEIGHT - 12)
-    draw.rounded_rectangle(info_panel, radius=14, fill=(3, 12, 31, 122))
+    info_panel = (x + 10, y + 166, x + CARD_WIDTH - 10, y + CARD_HEIGHT - 10)
+    draw.rounded_rectangle(info_panel, radius=13, fill=(3, 12, 31, 132))
 
-    name_y = y + 315
-    name_lines = wrap_lines(draw, str(item.get("name") or "Unknown Item"), FONT_NAME, CARD_WIDTH - 30, 2)
-    for line in name_lines:
-        draw.text((x + 15, name_y), line, fill=TEXT, font=FONT_NAME)
-        name_y += 30
+    name = fit_text(draw, str(item.get("name") or "Unknown Item"), FONT_NAME, CARD_WIDTH - 28)
+    draw.text((x + 14, y + 176), name, fill=TEXT, font=FONT_NAME)
 
-    draw_badge(draw, (x + 15, y + CARD_HEIGHT - 52), rarity, FONT_SMALL, palette["badge"], CARD_WIDTH - 128)
+    rarity_text = fit_text(draw, rarity, FONT_META, CARD_WIDTH - 104)
+    draw.text((x + 14, y + 201), rarity_text, fill=MUTED, font=FONT_META)
 
     price_text = f"{int(item.get('price') or 0):,}"
     price_width, price_height = text_size(draw, price_text, FONT_PRICE)
-    price_box_width = price_width + 54
-    price_box = (x + CARD_WIDTH - 16 - price_box_width, y + CARD_HEIGHT - 57, x + CARD_WIDTH - 15, y + CARD_HEIGHT - 18)
-    draw.rounded_rectangle(price_box, radius=12, fill=(0, 0, 0, 116), outline=(255, 212, 56, 118), width=1)
-    price_x = price_box[2] - 12 - price_width
-    icon_size = 28
+    price_box_width = price_width + 44
+    price_box = (x + CARD_WIDTH - 12 - price_box_width, y + CARD_HEIGHT - 39, x + CARD_WIDTH - 11, y + CARD_HEIGHT - 12)
+    draw.rounded_rectangle(price_box, radius=9, fill=(0, 0, 0, 116), outline=(255, 212, 56, 118), width=1)
+    price_x = price_box[2] - 8 - price_width
+    icon_size = 19
     if vbuck_icon:
         price_x -= icon_size + 7
         icon = vbuck_icon.copy()
         icon.thumbnail((icon_size, icon_size), Image.Resampling.LANCZOS)
-        base.alpha_composite(icon, (price_x, y + CARD_HEIGHT - 51))
+        base.alpha_composite(icon, (price_x, y + CARD_HEIGHT - 34))
         text_x = price_x + icon_size + 7
     else:
         text_x = price_x
 
-    draw.text((text_x, y + CARD_HEIGHT - 54), price_text, fill=YELLOW, font=FONT_PRICE)
+    draw.text((text_x, y + CARD_HEIGHT - 38), price_text, fill=YELLOW, font=FONT_PRICE)
 
 
 def parse_date(value: Any) -> str:
@@ -402,23 +449,23 @@ def draw_section_header(
         (255, 147, 64),
     ]
     accent = accents[index % len(accents)]
-    box = (PADDING, y, WIDTH - PADDING, y + SECTION_TITLE_HEIGHT - 14)
-    draw.rounded_rectangle(box, radius=16, fill=(3, 12, 31, 184), outline=(255, 255, 255, 30), width=1)
-    draw.rounded_rectangle((box[0] + 12, box[1] + 12, box[0] + 22, box[3] - 12), radius=5, fill=accent)
+    box = (PADDING, y, WIDTH - PADDING, y + SECTION_TITLE_HEIGHT - 10)
+    draw.rounded_rectangle(box, radius=14, fill=(3, 12, 31, 184), outline=(255, 255, 255, 30), width=1)
+    draw.rounded_rectangle((box[0] + 12, box[1] + 10, box[0] + 20, box[3] - 10), radius=4, fill=accent)
 
-    title = fit_text(draw, str(section_name), FONT_SECTION, WIDTH - PADDING * 2 - 210)
-    draw.text((box[0] + 38, box[1] + 14), title, fill=TEXT, font=FONT_SECTION)
+    title = fit_text(draw, str(section_name), FONT_SECTION, WIDTH - PADDING * 2 - 176)
+    draw.text((box[0] + 34, box[1] + 11), title, fill=TEXT, font=FONT_SECTION)
 
-    count_text = f"{item_count} 件商品"
+    count_text = f"{item_count} 件"
     count_width, count_height = text_size(draw, count_text, FONT_META)
     pill = (
-        box[2] - count_width - 42,
-        box[1] + 16,
-        box[2] - 16,
-        box[1] + 16 + count_height + 16,
+        box[2] - count_width - 34,
+        box[1] + 11,
+        box[2] - 13,
+        box[1] + 11 + count_height + 14,
     )
-    draw.rounded_rectangle(pill, radius=12, fill=mix_color(accent, (0, 0, 0), 0.62))
-    draw.text((pill[0] + 13, pill[1] + 8), count_text, fill=TEXT, font=FONT_META)
+    draw.rounded_rectangle(pill, radius=10, fill=mix_color(accent, (0, 0, 0), 0.62))
+    draw.text((pill[0] + 11, pill[1] + 7), count_text, fill=TEXT, font=FONT_META)
 
 
 def draw_placeholder(path: Path) -> None:
@@ -439,7 +486,15 @@ def save_qq_image(source: Path = OUTPUT_PATH, target: Path = QQ_OUTPUT_PATH) -> 
         height = int(image.height * max_width / image.width)
         image = image.resize((max_width, height), Image.Resampling.LANCZOS)
 
-    image.save(target, quality=75, optimize=True)
+    for quality in (76, 70, 64, 58):
+        image.save(target, quality=quality, optimize=True)
+        if target.stat().st_size <= TARGET_QQ_BYTES:
+            return
+
+    if target.stat().st_size > TARGET_QQ_BYTES and image.width > 780:
+        height = int(image.height * 780 / image.width)
+        smaller = image.resize((780, height), Image.Resampling.LANCZOS)
+        smaller.save(target, quality=60, optimize=True)
 
 
 def render_shop_image() -> None:
@@ -465,8 +520,8 @@ def render_shop_image() -> None:
 
     title = "FORTNITE 每日商店"
     draw.text((PADDING, PADDING + 12), title, fill=TEXT, font=FONT_TITLE)
-    draw.text((PADDING, PADDING + 82), f"更新时间：{parse_date(data.get('updatedAt') or data.get('date'))}", fill=MUTED, font=FONT_META)
-    draw.text((PADDING, PADDING + 112), "数据来源：fortnite-api.com", fill=(123, 164, 213), font=FONT_SMALL)
+    draw.text((PADDING, PADDING + 66), f"更新时间：{parse_date(data.get('updatedAt') or data.get('date'))}", fill=MUTED, font=FONT_META)
+    draw.text((PADDING, PADDING + 91), "按官方商店分区排列 · 数据来源：fortnite-api.com", fill=(123, 164, 213), font=FONT_SMALL)
 
     vbuck_icon = download_image(str(data.get("vbuckIcon") or ""))
 
@@ -485,7 +540,7 @@ def render_shop_image() -> None:
         rows = max(1, math.ceil(len(section_items) / COLUMNS))
         y += rows * CARD_HEIGHT + max(0, rows - 1) * GAP + SECTION_GAP
 
-    footer = "图片地址：/shop.png"
+    footer = "发送“商店全部”可查看分区分页图"
     footer_width, _ = text_size(draw, footer, FONT_SMALL)
     draw.text(((WIDTH - footer_width) // 2, height - 44), footer, fill=(116, 150, 190), font=FONT_SMALL)
 

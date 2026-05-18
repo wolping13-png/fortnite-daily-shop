@@ -128,14 +128,23 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
     caption = str(config.get("shop_caption") or "Fortnite 每日商店")
-    max_images = None if send_all else int(config.get("max_shop_images_per_command", 4))
-    pages = load_shop_pages(max_images)
+    if not send_all:
+        image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
+        message = build_message(caption=f"{caption}\n官方分区总图", image_path=image_path)
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={"group_id": group_id, "message": message},
+            access_token=access_token,
+            timeout=120,
+        )
+        return
+
+    pages = load_shop_pages()
 
     if pages:
         for index, (image_path, page_caption) in enumerate(pages, 1):
             text = f"{caption}\n{page_caption}"
-            if not send_all and index == len(pages):
-                text += "\n发送“商店全部”查看全部分页"
             message = build_message(caption=text, image_path=image_path)
             post_onebot(
                 base_url=base_url,
@@ -147,7 +156,7 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
         return
 
     image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
-    message = build_message(caption=caption, image_path=image_path)
+    message = build_message(caption=f"{caption}\n官方分区总图", image_path=image_path)
     post_onebot(
         base_url=base_url,
         action="send_group_msg",

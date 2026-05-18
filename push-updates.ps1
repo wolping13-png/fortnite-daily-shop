@@ -1,5 +1,5 @@
 param(
-  [string]$Message = "Add cloud QQ automation"
+  [string]$Message = "Improve Fortnite shop images"
 )
 
 $ErrorActionPreference = "Stop"
