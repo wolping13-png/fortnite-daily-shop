@@ -163,9 +163,14 @@ def download_image(url: str) -> Image.Image | None:
 
 def item_image_urls(item: dict[str, Any]) -> list[str]:
     urls: list[str] = []
+    tile_image = item.get("tileImage")
+    if isinstance(tile_image, str) and tile_image.startswith("http"):
+        urls.append(tile_image)
+
     image = item.get("image")
     if isinstance(image, str) and image.startswith("http"):
-        urls.append(image)
+        if image not in urls:
+            urls.append(image)
 
     images = item.get("images")
     if isinstance(images, list):

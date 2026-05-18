@@ -22,13 +22,13 @@ CACHE_DIR = BASE_DIR / ".cache" / "item_images"
 WIDTH = 1080
 PADDING = 32
 GAP = 12
-COLUMNS = 4
+COLUMNS = 3
 SECTION_INSET = 16
 GRID_LEFT = PADDING + SECTION_INSET
 GRID_WIDTH = WIDTH - GRID_LEFT * 2
 CARD_WIDTH = (GRID_WIDTH - GAP * (COLUMNS - 1)) // COLUMNS
-CARD_HEIGHT = 258
-IMAGE_HEIGHT = 132
+CARD_HEIGHT = 360
+IMAGE_HEIGHT = 224
 HEADER_HEIGHT = 132
 SECTION_TITLE_HEIGHT = 66
 SECTION_GAP = 44
@@ -74,10 +74,10 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFo
 
 FONT_TITLE = load_font(46, bold=True)
 FONT_SECTION = load_font(25, bold=True)
-FONT_NAME = load_font(18, bold=True)
-FONT_META = load_font(14, bold=True)
-FONT_SMALL = load_font(12, bold=False)
-FONT_PRICE = load_font(18, bold=True)
+FONT_NAME = load_font(23, bold=True)
+FONT_META = load_font(16, bold=True)
+FONT_SMALL = load_font(13, bold=False)
+FONT_PRICE = load_font(23, bold=True)
 
 
 def text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
@@ -193,9 +193,14 @@ def download_image(url: str) -> Image.Image | None:
 
 def item_image_urls(item: dict[str, Any]) -> list[str]:
     urls: list[str] = []
+    tile_image = item.get("tileImage")
+    if isinstance(tile_image, str) and tile_image.startswith("http"):
+        urls.append(tile_image)
+
     image = item.get("image")
     if isinstance(image, str) and image.startswith("http"):
-        urls.append(image)
+        if image not in urls:
+            urls.append(image)
 
     images = item.get("images")
     if isinstance(images, list):
@@ -204,6 +209,13 @@ def item_image_urls(item: dict[str, Any]) -> list[str]:
                 urls.append(value)
 
     return urls
+
+
+def download_tile_image(item: dict[str, Any]) -> Image.Image | None:
+    tile_image = item.get("tileImage")
+    if isinstance(tile_image, str) and tile_image.startswith("http"):
+        return download_image(tile_image)
+    return None
 
 
 def download_item_image(item: dict[str, Any]) -> Image.Image | None:
@@ -322,6 +334,28 @@ def paste_contained(
     base.alpha_composite(image, (x, y))
 
 
+def paste_cover(
+    base: Image.Image,
+    image: Image.Image,
+    box: tuple[int, int, int, int],
+    radius: int,
+) -> None:
+    left, top, right, bottom = box
+    width = right - left
+    height = bottom - top
+    source = image.copy().convert("RGBA")
+    scale = max(width / source.width, height / source.height)
+    resized = source.resize(
+        (max(1, int(source.width * scale)), max(1, int(source.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    x = max(0, (resized.width - width) // 2)
+    y = max(0, (resized.height - height) // 2)
+    cropped = resized.crop((x, y, x + width, y + height))
+    mask = rounded_mask((width, height), radius)
+    base.paste(cropped, (left, top), mask)
+
+
 def paste_rounded_gradient(
     base: Image.Image,
     x: int,
@@ -347,70 +381,79 @@ def draw_card(
 ) -> None:
     rarity = str(item.get("rarity") or "Unknown")
     palette = rarity_palette(rarity)
-    shadow = (x + 7, y + 8, x + CARD_WIDTH + 7, y + CARD_HEIGHT + 8)
-    draw.rounded_rectangle(shadow, radius=18, fill=(0, 0, 0, 80))
+    radius = 12
+    shadow = (x + 5, y + 7, x + CARD_WIDTH + 5, y + CARD_HEIGHT + 7)
+    draw.rounded_rectangle(shadow, radius=radius, fill=(0, 0, 0, 90))
 
     card = (x, y, x + CARD_WIDTH, y + CARD_HEIGHT)
-    paste_rounded_gradient(base, x, y, CARD_WIDTH, CARD_HEIGHT, palette["top"], palette["bottom"], 18)
-    draw.rounded_rectangle(card, radius=18, outline=palette["accent"], width=3)
-    draw.rounded_rectangle((x + 3, y + 3, x + CARD_WIDTH - 3, y + CARD_HEIGHT - 3), radius=15, outline=(255, 255, 255, 36), width=1)
-    draw.rounded_rectangle((x + 13, y + 12, x + CARD_WIDTH - 13, y + 18), radius=4, fill=palette["accent"])
+    paste_rounded_gradient(base, x, y, CARD_WIDTH, CARD_HEIGHT, palette["top"], palette["bottom"], radius)
 
-    image_area = (x + 12, y + 28, x + CARD_WIDTH - 12, y + 28 + IMAGE_HEIGHT)
-    paste_rounded_gradient(
-        base,
-        image_area[0],
-        image_area[1],
-        image_area[2] - image_area[0],
-        image_area[3] - image_area[1],
-        mix_color(palette["top"], (255, 255, 255), 0.12),
-        mix_color(palette["bottom"], (0, 0, 0), 0.05),
-        14,
-    )
-    draw.rounded_rectangle(image_area, radius=14, outline=(255, 255, 255, 34), width=1)
-
-    image = download_item_image(item)
-    if image:
-        paste_contained(base, image, image_area)
+    tile_image = download_tile_image(item)
+    if tile_image:
+        paste_cover(base, tile_image, card, radius)
     else:
-        label = "NO IMAGE"
-        label_width, label_height = text_size(draw, label, FONT_META)
-        draw.text(
-            (
-                image_area[0] + (image_area[2] - image_area[0] - label_width) // 2,
-                image_area[1] + (image_area[3] - image_area[1] - label_height) // 2,
-            ),
-            label,
-            fill=MUTED,
-            font=FONT_META,
+        image_area = (x + 13, y + 16, x + CARD_WIDTH - 13, y + 16 + IMAGE_HEIGHT)
+        paste_rounded_gradient(
+            base,
+            image_area[0],
+            image_area[1],
+            image_area[2] - image_area[0],
+            image_area[3] - image_area[1],
+            mix_color(palette["top"], (255, 255, 255), 0.12),
+            mix_color(palette["bottom"], (0, 0, 0), 0.05),
+            10,
         )
+        image = download_item_image(item)
+        if image:
+            paste_contained(base, image, image_area)
+        else:
+            label = "NO IMAGE"
+            label_width, label_height = text_size(draw, label, FONT_META)
+            draw.text(
+                (
+                    image_area[0] + (image_area[2] - image_area[0] - label_width) // 2,
+                    image_area[1] + (image_area[3] - image_area[1] - label_height) // 2,
+                ),
+                label,
+                fill=MUTED,
+                font=FONT_META,
+            )
 
-    info_panel = (x + 10, y + 166, x + CARD_WIDTH - 10, y + CARD_HEIGHT - 10)
-    draw.rounded_rectangle(info_panel, radius=13, fill=(3, 12, 31, 132))
+    draw.rounded_rectangle(card, radius=radius, outline=palette["accent"], width=3)
+    draw.rounded_rectangle((x + 3, y + 3, x + CARD_WIDTH - 3, y + CARD_HEIGHT - 3), radius=radius - 2, outline=(255, 255, 255, 42), width=1)
+    draw.rounded_rectangle((x + 12, y + 11, x + CARD_WIDTH - 12, y + 18), radius=4, fill=palette["accent"])
 
-    name = fit_text(draw, str(item.get("name") or "Unknown Item"), FONT_NAME, CARD_WIDTH - 28)
-    draw.text((x + 14, y + 176), name, fill=TEXT, font=FONT_NAME)
+    info_panel = (x + 12, y + CARD_HEIGHT - 92, x + CARD_WIDTH - 12, y + CARD_HEIGHT - 12)
+    draw.rounded_rectangle(info_panel, radius=11, fill=(2, 8, 23, 184))
 
-    rarity_text = fit_text(draw, rarity, FONT_META, CARD_WIDTH - 104)
-    draw.text((x + 14, y + 201), rarity_text, fill=MUTED, font=FONT_META)
+    name = fit_text(draw, str(item.get("name") or "Unknown Item"), FONT_NAME, CARD_WIDTH - 30)
+    draw.text((x + 18, y + CARD_HEIGHT - 84), name, fill=TEXT, font=FONT_NAME)
+
+    rarity_text = fit_text(draw, rarity, FONT_META, CARD_WIDTH - 132)
+    draw.text((x + 18, y + CARD_HEIGHT - 52), rarity_text, fill=MUTED, font=FONT_META)
 
     price_text = f"{int(item.get('price') or 0):,}"
     price_width, price_height = text_size(draw, price_text, FONT_PRICE)
-    price_box_width = price_width + 44
-    price_box = (x + CARD_WIDTH - 12 - price_box_width, y + CARD_HEIGHT - 39, x + CARD_WIDTH - 11, y + CARD_HEIGHT - 12)
-    draw.rounded_rectangle(price_box, radius=9, fill=(0, 0, 0, 116), outline=(255, 212, 56, 118), width=1)
-    price_x = price_box[2] - 8 - price_width
-    icon_size = 19
+    price_box_width = price_width + 52
+    price_box = (
+        x + CARD_WIDTH - 18 - price_box_width,
+        y + CARD_HEIGHT - 57,
+        x + CARD_WIDTH - 18,
+        y + CARD_HEIGHT - 22,
+    )
+    draw.rounded_rectangle(price_box, radius=9, fill=(0, 0, 0, 132), outline=(255, 212, 56, 128), width=1)
+    price_x = price_box[2] - 10 - price_width
+    icon_size = 24
     if vbuck_icon:
         price_x -= icon_size + 7
         icon = vbuck_icon.copy()
         icon.thumbnail((icon_size, icon_size), Image.Resampling.LANCZOS)
-        base.alpha_composite(icon, (price_x, y + CARD_HEIGHT - 34))
+        base.alpha_composite(icon, (price_x, y + CARD_HEIGHT - 52))
         text_x = price_x + icon_size + 7
     else:
         text_x = price_x
 
-    draw.text((text_x, y + CARD_HEIGHT - 38), price_text, fill=YELLOW, font=FONT_PRICE)
+    draw.text((text_x, y + CARD_HEIGHT - 57), price_text, fill=YELLOW, font=FONT_PRICE)
 
 
 def parse_date(value: Any) -> str:
@@ -489,7 +532,7 @@ def draw_section_header(
 
     title = fit_text(draw, str(section_name), FONT_SECTION, GRID_WIDTH - 216)
     draw.text((box[0] + 26, box[1] + 10), title, fill=TEXT, font=FONT_SECTION)
-    draw.text((box[0] + 27, box[1] + 39), "OFFICIAL SHOP SECTION", fill=(123, 164, 213), font=FONT_SMALL)
+    draw.text((box[0] + 27, box[1] + 39), "SHOP SECTION", fill=(123, 164, 213), font=FONT_SMALL)
 
     count_text = f"{item_count} 件"
     count_width, count_height = text_size(draw, count_text, FONT_META)

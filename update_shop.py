@@ -62,19 +62,24 @@ def pick_image_from_images(images: dict[str, Any] | None) -> str:
     return urls[0] if urls else ""
 
 
-def image_urls_from_images(images: dict[str, Any] | None) -> list[str]:
+def image_urls_from_images(
+    images: dict[str, Any] | None,
+    preferred_keys: tuple[str, ...] | None = None,
+) -> list[str]:
     if not isinstance(images, dict):
         return []
 
-    preferred_keys = (
-        "OfferImage",
-        "Background",
-        "FullBackground",
-        "featured",
-        "icon",
-        "smallIcon",
-        "url",
-    )
+    if preferred_keys is None:
+        preferred_keys = (
+            "OfferImage",
+            "Background",
+            "FullBackground",
+            "featured",
+            "icon",
+            "smallIcon",
+            "url",
+        )
+
     urls: list[str] = []
     for key in preferred_keys:
         value = images.get(key)
@@ -88,9 +93,70 @@ def image_urls_from_images(images: dict[str, Any] | None) -> list[str]:
     return urls
 
 
+def collect_urls_recursive(value: Any) -> list[str]:
+    urls: list[str] = []
+
+    def add(url: str) -> None:
+        if url.startswith("http") and url not in urls:
+            urls.append(url)
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            for key, child in node.items():
+                if isinstance(child, str):
+                    lower_key = str(key).lower()
+                    lower_value = child.lower()
+                    looks_like_image_key = any(
+                        token in lower_key
+                        for token in ("image", "icon", "background", "render", "texture", "url")
+                    )
+                    looks_like_image_url = any(
+                        lower_value.split("?", 1)[0].endswith(ext)
+                        for ext in (".png", ".jpg", ".jpeg", ".webp")
+                    )
+                    if looks_like_image_key or looks_like_image_url:
+                        add(child)
+                else:
+                    walk(child)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(value)
+    return urls
+
+
 def pick_offer_image(entry: dict[str, Any], primary_item: dict[str, Any] | None) -> str:
     images = collect_offer_images(entry, primary_item)
     return images[0] if images else ""
+
+
+def collect_tile_images(entry: dict[str, Any]) -> list[str]:
+    urls: list[str] = []
+    tile_keys = ("OfferImage", "FullBackground", "Background")
+
+    def add_many(values: list[str]) -> None:
+        for value in values:
+            if value and value not in urls:
+                urls.append(value)
+
+    new_display_asset = entry.get("newDisplayAsset")
+    if isinstance(new_display_asset, dict):
+        material_instances = new_display_asset.get("materialInstances")
+        if isinstance(material_instances, list):
+            for material in material_instances:
+                if isinstance(material, dict):
+                    add_many(image_urls_from_images(material.get("images"), tile_keys))
+        add_many(collect_urls_recursive(new_display_asset))
+
+    display_assets = entry.get("displayAssets")
+    if isinstance(display_assets, list):
+        for asset in display_assets:
+            if isinstance(asset, dict):
+                add_many(image_urls_from_images(asset.get("images"), tile_keys))
+                add_many(collect_urls_recursive(asset))
+
+    return urls
 
 
 def collect_offer_images(entry: dict[str, Any], primary_item: dict[str, Any] | None) -> list[str]:
@@ -108,12 +174,14 @@ def collect_offer_images(entry: dict[str, Any], primary_item: dict[str, Any] | N
             for material in material_instances:
                 if isinstance(material, dict):
                     add_many(image_urls_from_images(material.get("images")))
+        add_many(collect_urls_recursive(new_display_asset))
 
     display_assets = entry.get("displayAssets")
     if isinstance(display_assets, list):
         for asset in display_assets:
             if isinstance(asset, dict):
                 add_many(image_urls_from_images(asset.get("images")))
+                add_many(collect_urls_recursive(asset))
 
     if isinstance(primary_item, dict):
         add_many(image_urls_from_images(primary_item.get("images")))
@@ -123,6 +191,27 @@ def collect_offer_images(entry: dict[str, Any], primary_item: dict[str, Any] | N
         add_many(image_urls_from_images(bundle.get("images")))
 
     return urls
+
+
+def pick_tile_size(entry: dict[str, Any], layout: dict[str, Any]) -> str:
+    return first_text(
+        entry.get("tileSize"),
+        entry.get("tile_size"),
+        deep_get(entry, "newDisplayAsset", "tileSize"),
+        deep_get(layout, "tileSize"),
+        default="",
+    )
+
+
+def pick_sort_priority(entry: dict[str, Any], layout: dict[str, Any]) -> int:
+    return first_number(
+        entry.get("sortPriority"),
+        entry.get("sort_priority"),
+        deep_get(layout, "sortPriority"),
+        deep_get(layout, "rank"),
+        deep_get(layout, "index"),
+        default=0,
+    )
 
 
 def pick_rarity(primary_item: dict[str, Any] | None, bundle: dict[str, Any] | None) -> str:
@@ -173,6 +262,7 @@ def normalize_entry(entry: dict[str, Any]) -> dict[str, Any]:
         primary_name = f"{primary_name} + {len(offer_items) - 1}"
 
     layout = entry.get("layout") if isinstance(entry.get("layout"), dict) else {}
+    tile_images = collect_tile_images(entry)
     images = collect_offer_images(entry, primary_item)
 
     return {
@@ -180,9 +270,12 @@ def normalize_entry(entry: dict[str, Any]) -> dict[str, Any]:
         "name": primary_name,
         "rarity": pick_rarity(primary_item, bundle),
         "price": first_number(entry.get("finalPrice"), entry.get("regularPrice")),
-        "image": images[0] if images else "",
+        "image": (tile_images or images)[0] if (tile_images or images) else "",
+        "tileImage": tile_images[0] if tile_images else "",
         "images": images,
         "section": pick_section(entry, layout),
+        "tileSize": pick_tile_size(entry, layout),
+        "sortPriority": pick_sort_priority(entry, layout),
     }
 
 
