@@ -221,6 +221,26 @@ def send_reddit_pet_update(config: dict[str, Any], group_id: int | str) -> None:
     )
 
 
+def is_pet_hot_request(text: str, configured_command: str) -> bool:
+    value = re.sub(r"\s+", "", text.strip().lower())
+    exact_triggers = {
+        configured_command.lower(),
+        "猫猫热点",
+        "狗狗热点",
+        "狼狼",
+        "狼狼热点",
+        "狐狸热点",
+        "动物热点",
+        "reddit宠物",
+    }
+    if value in exact_triggers:
+        return True
+
+    animal_words = ("宠物", "猫猫", "猫咪", "狗狗", "狐狸", "狼狼", "小狼", "狼犬", "动物")
+    action_words = ("来点", "发点", "看看", "想看", "整点", "有没有", "热点", "热门", "图", "图片", "帖子")
+    return any(animal in value for animal in animal_words) and any(action in value for action in action_words)
+
+
 def split_reply(text: str, limit: int = 900) -> list[str]:
     value = text.strip()
     if len(value) <= limit:
@@ -680,7 +700,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
         return
 
-    if text in {pet_command, "猫猫热点", "狗狗热点", "狼狼", "狼狼热点", "狐狸热点", "动物热点", "reddit宠物"}:
+    if is_pet_hot_request(text, pet_command):
         try:
             send_reddit_pet_update(config, group_id)
         except Exception as exc:
