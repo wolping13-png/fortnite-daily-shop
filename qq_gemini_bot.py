@@ -680,7 +680,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
         return
 
-    if text in {pet_command, "猫猫热点", "狗狗热点", "狐狸热点", "动物热点", "reddit宠物"}:
+    if text in {pet_command, "猫猫热点", "狗狗热点", "狼狼", "狼狼热点", "狐狸热点", "动物热点", "reddit宠物"}:
         try:
             send_reddit_pet_update(config, group_id)
         except Exception as exc:
