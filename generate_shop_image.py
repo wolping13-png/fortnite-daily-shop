@@ -20,15 +20,18 @@ QQ_OUTPUT_PATH = BASE_DIR / "shop_qq.jpg"
 CACHE_DIR = BASE_DIR / ".cache" / "item_images"
 
 WIDTH = 1080
-PADDING = 30
+PADDING = 32
 GAP = 12
 COLUMNS = 4
-CARD_WIDTH = (WIDTH - PADDING * 2 - GAP * (COLUMNS - 1)) // COLUMNS
-CARD_HEIGHT = 252
+SECTION_INSET = 16
+GRID_LEFT = PADDING + SECTION_INSET
+GRID_WIDTH = WIDTH - GRID_LEFT * 2
+CARD_WIDTH = (GRID_WIDTH - GAP * (COLUMNS - 1)) // COLUMNS
+CARD_HEIGHT = 258
 IMAGE_HEIGHT = 132
 HEADER_HEIGHT = 132
-SECTION_TITLE_HEIGHT = 58
-SECTION_GAP = 28
+SECTION_TITLE_HEIGHT = 66
+SECTION_GAP = 44
 FOOTER_HEIGHT = 56
 
 BG_TOP = (6, 19, 41)
@@ -429,9 +432,40 @@ def calculate_height(groups: list[tuple[str, list[dict[str, Any]]]]) -> int:
     height = PADDING + HEADER_HEIGHT
     for _, items in groups:
         rows = max(1, math.ceil(len(items) / COLUMNS))
-        height += SECTION_TITLE_HEIGHT + rows * CARD_HEIGHT + max(0, rows - 1) * GAP + SECTION_GAP
+        section_height = (
+            SECTION_INSET * 2
+            + SECTION_TITLE_HEIGHT
+            + rows * CARD_HEIGHT
+            + max(0, rows - 1) * GAP
+        )
+        height += section_height + SECTION_GAP
 
     return height + FOOTER_HEIGHT
+
+
+def draw_section_panel(
+    base: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    y: int,
+    height: int,
+    index: int,
+) -> None:
+    accents = [
+        (255, 212, 56),
+        (40, 216, 255),
+        (255, 79, 179),
+        (82, 227, 158),
+        (255, 147, 64),
+    ]
+    accent = accents[index % len(accents)]
+    x = PADDING
+    width = WIDTH - PADDING * 2
+
+    shadow = (x + 5, y + 7, x + width + 5, y + height + 7)
+    draw.rounded_rectangle(shadow, radius=22, fill=(0, 0, 0, 90))
+    paste_rounded_gradient(base, x, y, width, height, (8, 30, 65), (3, 13, 32), 22)
+    draw.rounded_rectangle((x, y, x + width, y + height), radius=22, outline=mix_color(accent, (255, 255, 255), 0.18), width=2)
+    draw.rounded_rectangle((x + 2, y + 2, x + width - 2, y + height - 2), radius=20, outline=(255, 255, 255, 22), width=1)
 
 
 def draw_section_header(
@@ -449,23 +483,24 @@ def draw_section_header(
         (255, 147, 64),
     ]
     accent = accents[index % len(accents)]
-    box = (PADDING, y, WIDTH - PADDING, y + SECTION_TITLE_HEIGHT - 10)
-    draw.rounded_rectangle(box, radius=14, fill=(3, 12, 31, 184), outline=(255, 255, 255, 30), width=1)
-    draw.rounded_rectangle((box[0] + 12, box[1] + 10, box[0] + 20, box[3] - 10), radius=4, fill=accent)
+    box = (GRID_LEFT, y, WIDTH - GRID_LEFT, y + SECTION_TITLE_HEIGHT - 12)
+    draw.rounded_rectangle(box, radius=16, fill=(3, 12, 31, 210), outline=(255, 255, 255, 38), width=1)
+    draw.rounded_rectangle((box[0], box[1], box[0] + 9, box[3]), radius=4, fill=accent)
 
-    title = fit_text(draw, str(section_name), FONT_SECTION, WIDTH - PADDING * 2 - 176)
-    draw.text((box[0] + 34, box[1] + 11), title, fill=TEXT, font=FONT_SECTION)
+    title = fit_text(draw, str(section_name), FONT_SECTION, GRID_WIDTH - 216)
+    draw.text((box[0] + 26, box[1] + 10), title, fill=TEXT, font=FONT_SECTION)
+    draw.text((box[0] + 27, box[1] + 39), "OFFICIAL SHOP SECTION", fill=(123, 164, 213), font=FONT_SMALL)
 
     count_text = f"{item_count} 件"
     count_width, count_height = text_size(draw, count_text, FONT_META)
     pill = (
-        box[2] - count_width - 34,
-        box[1] + 11,
-        box[2] - 13,
-        box[1] + 11 + count_height + 14,
+        box[2] - count_width - 42,
+        box[1] + 14,
+        box[2] - 16,
+        box[1] + 14 + count_height + 16,
     )
     draw.rounded_rectangle(pill, radius=10, fill=mix_color(accent, (0, 0, 0), 0.62))
-    draw.text((pill[0] + 11, pill[1] + 7), count_text, fill=TEXT, font=FONT_META)
+    draw.text((pill[0] + 13, pill[1] + 8), count_text, fill=TEXT, font=FONT_META)
 
 
 def draw_placeholder(path: Path) -> None:
@@ -527,18 +562,26 @@ def render_shop_image() -> None:
 
     y = PADDING + HEADER_HEIGHT
     for section_index, (section_name, section_items) in enumerate(groups):
-        draw_section_header(draw, y, str(section_name), len(section_items), section_index)
-        y += SECTION_TITLE_HEIGHT
+        rows = max(1, math.ceil(len(section_items) / COLUMNS))
+        section_height = (
+            SECTION_INSET * 2
+            + SECTION_TITLE_HEIGHT
+            + rows * CARD_HEIGHT
+            + max(0, rows - 1) * GAP
+        )
+        draw_section_panel(image, draw, y, section_height, section_index)
 
+        header_y = y + SECTION_INSET
+        draw_section_header(draw, header_y, str(section_name), len(section_items), section_index)
+        grid_y = header_y + SECTION_TITLE_HEIGHT
         for index, item in enumerate(section_items):
             col = index % COLUMNS
             row = index // COLUMNS
-            x = PADDING + col * (CARD_WIDTH + GAP)
-            card_y = y + row * (CARD_HEIGHT + GAP)
+            x = GRID_LEFT + col * (CARD_WIDTH + GAP)
+            card_y = grid_y + row * (CARD_HEIGHT + GAP)
             draw_card(image, draw, item, x, card_y, vbuck_icon)
 
-        rows = max(1, math.ceil(len(section_items) / COLUMNS))
-        y += rows * CARD_HEIGHT + max(0, rows - 1) * GAP + SECTION_GAP
+        y += section_height + SECTION_GAP
 
     footer = "发送“商店全部”可查看分区分页图"
     footer_width, _ = text_size(draw, footer, FONT_SMALL)
