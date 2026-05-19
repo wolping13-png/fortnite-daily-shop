@@ -360,10 +360,66 @@ def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> None:
         )
 
 
+def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: str) -> None:
+    from random_food import build_random_food_recommendation
+
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    caption, image_path, _item = build_random_food_recommendation(kind)
+    result = post_onebot(
+        base_url=base_url,
+        action="send_group_msg",
+        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=image_path)},
+        access_token=access_token,
+        timeout=120,
+    )
+    if result.get("_napcat_callback_timeout"):
+        safe_path = make_safe_image(image_path)
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={
+                "group_id": group_id,
+                "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            },
+            access_token=access_token,
+            timeout=120,
+        )
+
+
 def is_pet_hot_request(text: str, configured_command: str) -> bool:
     value = re.sub(r"\s+", "", text.strip().lower())
     command = re.sub(r"\s+", "", configured_command.strip().lower())
     return bool(command) and value == command
+
+
+def random_food_kind(text: str) -> str | None:
+    compact = re.sub(r"\s+", "", text.strip().lower())
+    food_triggers = {
+        "吃什么",
+        "今天吃什么",
+        "中午吃什么",
+        "午饭吃什么",
+        "晚上吃什么",
+        "晚饭吃什么",
+        "夜宵吃什么",
+        "吃点什么",
+        "整点吃的",
+    }
+    drink_triggers = {
+        "喝什么",
+        "今天喝什么",
+        "喝点什么",
+        "整点喝的",
+        "饮料喝什么",
+        "奶茶喝什么",
+        "咖啡喝什么",
+    }
+    if compact in food_triggers:
+        return "food"
+    if compact in drink_triggers:
+        return "drink"
+    return None
 
 
 def is_game_deals_request(text: str, configured_command: str) -> bool:
@@ -964,6 +1020,15 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if text in {shop_command, shop_all_command}:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
+        return
+
+    food_kind = random_food_kind(text)
+    if food_kind:
+        try:
+            send_random_food_update(config, group_id, food_kind)
+        except Exception as exc:
+            print(f"Random food update failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "随机推荐暂时失败了，稍后再试一下。")
         return
 
     if is_game_deals_request(text, game_deals_command):
