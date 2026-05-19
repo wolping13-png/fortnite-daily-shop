@@ -116,6 +116,61 @@ def extract_text(event: dict[str, Any]) -> str:
     return "".join(parts).strip()
 
 
+def bot_qq_ids(config: dict[str, Any], event: dict[str, Any]) -> set[str]:
+    ids: set[str] = set()
+    for value in (
+        event.get("self_id"),
+        config.get("bot_qq"),
+        config.get("bot_id"),
+        config.get("self_id"),
+    ):
+        text = str(value or "").strip()
+        if text and text.lower() not in {"none", "null", "0"}:
+            ids.add(text)
+    return ids
+
+
+def extract_text_and_mention(event: dict[str, Any], config: dict[str, Any]) -> tuple[str, bool]:
+    ids = bot_qq_ids(config, event)
+    message = event.get("message")
+
+    if isinstance(message, list):
+        mentioned = False
+        parts: list[str] = []
+        for segment in message:
+            if not isinstance(segment, dict):
+                continue
+
+            data = segment.get("data")
+            if not isinstance(data, dict):
+                data = {}
+
+            if segment.get("type") == "at":
+                qq = str(data.get("qq") or "").strip()
+                if qq in ids:
+                    mentioned = True
+                continue
+
+            if segment.get("type") == "text":
+                parts.append(str(data.get("text") or ""))
+
+        return "".join(parts).strip(), mentioned
+
+    text = extract_text(event)
+    mentioned = False
+
+    def remove_at(match: re.Match[str]) -> str:
+        nonlocal mentioned
+        qq = str(match.group(1) or "").strip()
+        if qq in ids:
+            mentioned = True
+            return " "
+        return match.group(0)
+
+    text = re.sub(r"\[CQ:at,qq=([0-9]+)\]", remove_at, text).strip()
+    return text, mentioned
+
+
 def send_group_text(config: dict[str, Any], group_id: int | str, text: str) -> None:
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
@@ -690,8 +745,10 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     if groups and str(group_id) not in groups:
         return
 
-    text = extract_text(event)
+    text, mentioned = extract_text_and_mention(event, config)
     if not text:
+        if mentioned:
+            send_group_text(config, group_id, "我在，直接问我就行。比如：@我 今天武汉天气怎么样")
         return
 
     ask_prefix = str(config.get("ask_prefix") or "温德尔")
@@ -731,13 +788,16 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_group_text(config, group_id, answer)
         return
 
-    if not text.startswith(ask_prefix):
+    if mentioned:
+        question = text.strip().lstrip(" ：:，,")
+    elif text.startswith(ask_prefix):
+        question = text[len(ask_prefix) :].strip()
+        question = question.lstrip(" ：:，,")
+    else:
         return
 
-    question = text[len(ask_prefix) :].strip()
-    question = question.lstrip(" ：:，,")
     if not question:
-        send_group_text(config, group_id, f"用法：{ask_prefix} 你想问的问题")
+        send_group_text(config, group_id, "用法：@我 你想问的问题")
         return
 
     if is_weather_question(question):
