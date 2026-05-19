@@ -388,6 +388,35 @@ def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: s
         )
 
 
+def send_random_wolf_update(config: dict[str, Any], group_id: int | str, caption: str = "狼狼来啦") -> None:
+    from random_wolf import build_random_wolf
+
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    tavily_api_key = str(config.get("tavily_api_key") or "")
+    generated_caption, image_path, _item = build_random_wolf(tavily_api_key=tavily_api_key)
+    text = caption or generated_caption
+    result = post_onebot(
+        base_url=base_url,
+        action="send_group_msg",
+        payload={"group_id": group_id, "message": build_message(caption=text, image_path=image_path)},
+        access_token=access_token,
+        timeout=120,
+    )
+    if result.get("_napcat_callback_timeout"):
+        safe_path = make_safe_image(image_path)
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={
+                "group_id": group_id,
+                "message": build_message(caption=f"{text}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            },
+            access_token=access_token,
+            timeout=120,
+        )
+
+
 def is_pet_hot_request(text: str, configured_command: str) -> bool:
     value = re.sub(r"\s+", "", text.strip().lower())
     command = re.sub(r"\s+", "", configured_command.strip().lower())
@@ -421,6 +450,12 @@ def random_food_kind(text: str) -> str | None:
     if compact in drink_triggers:
         return "drink"
     return None
+
+
+def is_wolf_request(text: str, configured_command: str) -> bool:
+    compact = re.sub(r"\s+", "", text.strip().lower())
+    command = re.sub(r"\s+", "", configured_command.strip().lower())
+    return compact == (command or "狼狼")
 
 
 def is_game_deals_request(text: str, configured_command: str) -> bool:
@@ -1018,9 +1053,18 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     reddit_pet_enabled = config_bool(config.get("reddit_pet_enabled"), False)
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
+    wolf_command = str(config.get("wolf_command") or "狼狼")
 
     if text in {shop_command, shop_all_command}:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
+        return
+
+    if mentioned and is_wolf_request(text, wolf_command):
+        try:
+            send_random_wolf_update(config, group_id)
+        except Exception as exc:
+            print(f"Random wolf update failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "狼狼图片暂时找不到能发送的真实照片，稍后再试一下。")
         return
 
     food_kind = random_food_kind(text)

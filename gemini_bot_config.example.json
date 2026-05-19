@@ -24,6 +24,7 @@
   "game_deals_command": "游戏优惠",
   "game_deals_steam_limit": 12,
   "game_deals_epic_country": "CN",
+  "wolf_command": "狼狼",
   "web_search_command": "联网查",
   "web_search_depth": "basic",
   "web_search_max_results": 5,
