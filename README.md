@@ -121,6 +121,7 @@ bash install_cloud_cron.sh
 - `温德尔 北京天气`、`天气 北京`、`今天武汉洪山区天气怎么样`：查询实时天气和今日/明日预报
 - `宠物热点`、`猫猫热点`、`狗狗热点`、`狼狼`：抓取 Reddit 宠物热门图文并发送到群里
 - `给我来点狼狼`、`想看猫猫`、`发点狗狗图片`：也会触发宠物热点
+- `@机器人 联网查 今天有什么 AI 新闻`、`@机器人 最新 Fortnite 更新是什么`：用 Tavily 搜索后再让 DeepSeek 总结
 
 如果服务器访问 Reddit 返回 `HTTP 403`，机器人会自动切换到 Wikimedia Commons 备用动物图片来源。
 
@@ -143,7 +144,17 @@ cp gemini_bot_config.example.json gemini_bot_config.json
 nano gemini_bot_config.json
 ```
 
-把 `provider` 设为 `deepseek`，并填写 `deepseek_api_key` 和 `allowed_group_ids`。API Key 不要提交到 GitHub。
+把 `provider` 设为 `deepseek`，并填写 `deepseek_api_key` 和 `allowed_group_ids`。如果要让机器人联网搜索，再填写 `tavily_api_key`。API Key 不要提交到 GitHub。
+
+联网搜索默认使用 Tavily `basic` 搜索，每次大约消耗 1 个 credit。机器人只有在你明确说 `联网查`、`搜索`、`搜一下`，或者问题里有 `最新`、`热点`、`新闻`、`实时` 这类词时才会联网。
+
+如果不想手动编辑配置，可以在服务器上运行：
+
+```bash
+bash set_tavily_key.sh
+```
+
+粘贴 Tavily API Key 后，脚本会自动写入配置并重启机器人。
 
 在 NapCatQQ 的 HTTP Server 配置里，把上报地址设置成：
 
@@ -180,6 +191,7 @@ bash install_gemini_bot_service.sh
 - `send_reddit_pets.py`：通过 OneBot HTTP 发送 Reddit 宠物热点
 - `run_reddit_pets.sh`：Linux/VPS 手动发送 Reddit 宠物热点
 - `install_reddit_pet_cron.sh`：Linux/VPS 安装 Reddit 宠物热点定时任务
+- `set_tavily_key.sh`：Linux/VPS 一键写入 Tavily API Key 并重启 AI 群聊机器人
 - `send-qq-shop.bat`：测试发送当前 `shop.png`
 - `send-qq-update-and-send.bat`：更新后发送
 - `install-qq-daily-task.bat`：安装每天自动发图任务

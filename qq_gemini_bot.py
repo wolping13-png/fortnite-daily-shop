@@ -22,6 +22,33 @@ SHOP_SECTIONS_DIR = BASE_DIR / "shop_sections"
 SHOP_SECTIONS_MANIFEST = SHOP_SECTIONS_DIR / "manifest.json"
 WEATHER_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+TAVILY_SEARCH_URL = "https://api.tavily.com/search"
+
+WEB_SEARCH_EXPLICIT_PREFIXES = (
+    "联网查",
+    "联网搜索",
+    "联网搜",
+    "搜索",
+    "搜一下",
+    "搜下",
+    "查一下",
+    "查查",
+    "帮我搜",
+    "帮我查",
+)
+
+WEB_SEARCH_AUTO_KEYWORDS = (
+    "最新",
+    "热点",
+    "热搜",
+    "新闻",
+    "实时",
+    "刚刚",
+    "最近",
+    "近期",
+    "现在的",
+    "资料",
+)
 
 WEATHER_CODES = {
     0: "晴",
@@ -76,6 +103,12 @@ def load_config() -> dict[str, Any]:
         if not api_key or api_key == "PASTE_YOUR_GEMINI_API_KEY_HERE":
             raise ValueError("Gemini API key is missing.")
         data["gemini_api_key"] = api_key
+
+    tavily_api_key = os.environ.get("TAVILY_API_KEY") or str(data.get("tavily_api_key") or "")
+    if tavily_api_key and tavily_api_key != "PASTE_YOUR_TAVILY_API_KEY_HERE":
+        data["tavily_api_key"] = tavily_api_key
+    else:
+        data["tavily_api_key"] = ""
 
     return data
 
@@ -637,6 +670,118 @@ def enrich_question(question: str) -> str:
     )
 
 
+def is_explicit_web_search_command(text: str, configured_command: str) -> bool:
+    value = text.strip()
+    prefixes = [configured_command.strip()] if configured_command.strip() else []
+    prefixes.extend(WEB_SEARCH_EXPLICIT_PREFIXES)
+    return any(value.startswith(prefix) for prefix in prefixes if prefix)
+
+
+def should_use_web_search(question: str, configured_command: str) -> bool:
+    value = question.strip()
+    if not value:
+        return False
+    if is_explicit_web_search_command(value, configured_command):
+        return True
+    return any(keyword in value for keyword in WEB_SEARCH_AUTO_KEYWORDS)
+
+
+def strip_web_search_command(question: str, configured_command: str) -> str:
+    value = question.strip()
+    prefixes = [configured_command.strip()] if configured_command.strip() else []
+    prefixes.extend(WEB_SEARCH_EXPLICIT_PREFIXES)
+    for prefix in prefixes:
+        if prefix and value.startswith(prefix):
+            return value[len(prefix) :].strip().lstrip("：:，, ")
+    return value
+
+
+def tavily_search(config: dict[str, Any], query: str) -> dict[str, Any]:
+    api_key = str(config.get("tavily_api_key") or "").strip()
+    if not api_key:
+        raise ValueError("Tavily API key is missing.")
+
+    max_results = int(config.get("web_search_max_results") or 5)
+    max_results = max(1, min(max_results, 10))
+    search_depth = str(config.get("web_search_depth") or "basic").lower()
+    if search_depth not in {"basic", "advanced"}:
+        search_depth = "basic"
+
+    topic = str(config.get("web_search_topic") or "").strip().lower()
+    if not topic:
+        topic = "news" if any(word in query for word in ("新闻", "热点", "热搜", "最新")) else "general"
+    if topic not in {"general", "news"}:
+        topic = "general"
+
+    response = requests.post(
+        TAVILY_SEARCH_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "query": query,
+            "topic": topic,
+            "search_depth": search_depth,
+            "max_results": max_results,
+            "include_answer": bool(config.get("web_search_include_answer", False)),
+            "include_raw_content": False,
+        },
+        timeout=40,
+    )
+    response.raise_for_status()
+    data = response.json()
+    if not isinstance(data, dict):
+        raise ValueError("Tavily returned an unexpected response.")
+    return data
+
+
+def format_web_search_context(data: dict[str, Any]) -> str:
+    lines: list[str] = []
+    answer = str(data.get("answer") or "").strip()
+    if answer:
+        lines.append(f"Tavily answer: {answer}")
+
+    results = data.get("results")
+    if not isinstance(results, list) or not results:
+        return "\n".join(lines) if lines else "没有搜索结果。"
+
+    for index, item in enumerate(results[:8], 1):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title") or "无标题").strip()
+        url = str(item.get("url") or "").strip()
+        content = str(item.get("content") or "").strip()
+        published_date = str(item.get("published_date") or "").strip()
+        score = item.get("score")
+        meta = []
+        if published_date:
+            meta.append(f"date={published_date}")
+        if isinstance(score, (int, float)):
+            meta.append(f"score={score:.3f}")
+        meta_text = f" ({', '.join(meta)})" if meta else ""
+        lines.append(f"[{index}] {title}{meta_text}\nURL: {url}\n摘要: {content}")
+
+    return "\n\n".join(lines)
+
+
+def ask_model_with_web_search(config: dict[str, Any], question: str) -> str:
+    search_query = strip_web_search_command(question, str(config.get("web_search_command") or "联网查"))
+    if not search_query:
+        search_query = question
+
+    search_data = tavily_search(config, search_query)
+    context = format_web_search_context(search_data)
+    prompt = (
+        f"用户问题：{search_query}\n\n"
+        "下面是 Tavily 联网搜索结果。请只基于这些结果和你已有的通用知识回答；"
+        "如果搜索结果不足或互相矛盾，要直接说明不确定。用简体中文，语气自然，尽量简洁。"
+        "最后用“参考：”列出最多 3 个来源标题或链接。\n\n"
+        f"{context}"
+    )
+    return ask_model(config, prompt)
+
+
 def ask_gemini(config: dict[str, Any], question: str) -> str:
     model = str(config.get("model") or "gemini-2.0-flash")
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
@@ -756,6 +901,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     shop_all_command = str(config.get("shop_all_command") or "商店全部")
     weather_command = str(config.get("weather_command") or "天气")
     pet_command = str(config.get("pet_command") or "宠物热点")
+    web_search_command = str(config.get("web_search_command") or "联网查")
 
     if text in {shop_command, shop_all_command}:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
@@ -767,6 +913,18 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         except Exception as exc:
             print(f"Reddit pet update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "Reddit 宠物热点暂时抓取失败，稍后再试一下。")
+        return
+
+    if is_explicit_web_search_command(text, web_search_command):
+        try:
+            answer = ask_model_with_web_search(config, text)
+        except ValueError as exc:
+            print(f"Web search request failed: {exc}", file=sys.stderr)
+            answer = "联网搜索还没配置 Tavily API Key。把 tavily_api_key 填进 gemini_bot_config.json 后重启我就能搜了。"
+        except Exception as exc:
+            print(f"Web search request failed: {exc}", file=sys.stderr)
+            answer = "联网搜索暂时失败了，稍后再试一下。"
+        send_group_text(config, group_id, answer)
         return
 
     if text.startswith(weather_command):
@@ -810,7 +968,17 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     try:
-        answer = ask_model(config, question)
+        if should_use_web_search(question, web_search_command):
+            answer = ask_model_with_web_search(config, question)
+        else:
+            answer = ask_model(config, question)
+    except ValueError as exc:
+        print(f"Model request failed: {exc}", file=sys.stderr)
+        if "Tavily API key" in str(exc):
+            send_group_text(config, group_id, "联网搜索还没配置 Tavily API Key。把 tavily_api_key 填进 gemini_bot_config.json 后重启我就能搜了。")
+        else:
+            send_group_text(config, group_id, "AI 暂时没有回复成功，稍后再试一下。")
+        return
     except Exception as exc:
         print(f"Model request failed: {exc}", file=sys.stderr)
         send_group_text(config, group_id, "AI 暂时没有回复成功，稍后再试一下。")
