@@ -951,12 +951,32 @@ def web_search_image_urls(data: dict[str, Any], limit: int = 2) -> list[str]:
     return urls[: max(0, limit)]
 
 
-def send_web_search_images(config: dict[str, Any], group_id: int | str, image_urls: list[str]) -> None:
-    if not image_urls:
-        return
-
+def send_web_search_reply(config: dict[str, Any], group_id: int | str, answer: str, image_urls: list[str]) -> None:
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
+
+    if image_urls:
+        message: list[dict[str, Any]] = []
+        if answer.strip():
+            message.append({"type": "text", "data": {"text": answer.strip() + "\n"}})
+        for image_url in image_urls:
+            message.append({"type": "image", "data": {"file": image_url}})
+
+        try:
+            post_onebot(
+                base_url=base_url,
+                action="send_group_msg",
+                payload={"group_id": group_id, "message": message},
+                access_token=access_token,
+                timeout=120,
+            )
+            return
+        except Exception as exc:
+            print(f"Web search rich message send failed: {exc}", file=sys.stderr)
+
+    for chunk in split_reply(answer):
+        send_group_text(config, group_id, chunk)
+
     for index, image_url in enumerate(image_urls, 1):
         try:
             post_onebot(
@@ -1168,9 +1188,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             print(f"Web search request failed: {exc}", file=sys.stderr)
             answer = "联网搜索暂时失败了，稍后再试一下。"
             image_urls = []
-        for chunk in split_reply(answer):
-            send_group_text(config, group_id, chunk)
-        send_web_search_images(config, group_id, image_urls)
+        send_web_search_reply(config, group_id, answer, image_urls)
         return
 
     if text.startswith(weather_command):
@@ -1231,9 +1249,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_group_text(config, group_id, "AI 暂时没有回复成功，稍后再试一下。")
         return
 
-    for chunk in split_reply(answer):
-        send_group_text(config, group_id, chunk)
-    send_web_search_images(config, group_id, image_urls)
+    send_web_search_reply(config, group_id, answer, image_urls)
 
 
 class OneBotHandler(BaseHTTPRequestHandler):

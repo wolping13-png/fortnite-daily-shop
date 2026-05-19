@@ -123,7 +123,7 @@ bash install_cloud_cron.sh
 - `吃什么`、`喝什么`：随机推荐一种食物或饮品，并发送真实实物图片；优先用 Wikimedia，失败后会用 Tavily 图片结果
 - `@机器人 狼狼`：随机发送一张可爱的真实狼图
 - `温德尔 北京天气`、`天气 北京`、`今天武汉洪山区天气怎么样`：查询实时天气和今日/明日预报
-- `@机器人 联网查 今天有什么 AI 新闻`、`@机器人 最新 Fortnite 更新是什么`：用 Tavily 搜索后再让 DeepSeek 总结；如果搜索结果带图片，会额外发送 1-2 张相关图片
+- `@机器人 联网查 今天有什么 AI 新闻`、`@机器人 最新 Fortnite 更新是什么`：用 Tavily 搜索后再让 DeepSeek 总结；如果搜索结果带图片，会在同一条消息里附带 1-2 张相关图片
 
 服务器上也可以手动发一次 Steam / Epic 游戏优惠日报：
 
@@ -171,7 +171,7 @@ nano gemini_bot_config.json
 把 `provider` 设为 `deepseek`，并填写 `deepseek_api_key` 和 `allowed_group_ids`。如果要让机器人联网搜索，再填写 `tavily_api_key`。API Key 不要提交到 GitHub。
 
 联网搜索默认使用 Tavily `basic` 搜索，每次大约消耗 1 个 credit。机器人只有在你明确说 `联网查`、`搜索`、`搜一下`，或者问题里有 `最新`、`热点`、`新闻`、`实时` 这类词时才会联网。
-联网搜索默认会请求 Tavily 图片结果，最多发送 2 张相关图片。可以在 `gemini_bot_config.json` 里用 `web_search_include_images` 和 `web_search_image_limit` 调整。
+联网搜索默认会请求 Tavily 图片结果，最多在同一条消息里附带 2 张相关图片。可以在 `gemini_bot_config.json` 里用 `web_search_include_images` 和 `web_search_image_limit` 调整。
 
 如果不想手动编辑配置，可以在服务器上运行：
 
