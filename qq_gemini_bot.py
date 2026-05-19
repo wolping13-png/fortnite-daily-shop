@@ -365,7 +365,8 @@ def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: s
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
-    caption, image_path, _item = build_random_food_recommendation(kind)
+    tavily_api_key = str(config.get("tavily_api_key") or "")
+    caption, image_path, _item = build_random_food_recommendation(kind, tavily_api_key=tavily_api_key)
     result = post_onebot(
         base_url=base_url,
         action="send_group_msg",
@@ -1028,7 +1029,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_random_food_update(config, group_id, food_kind)
         except Exception as exc:
             print(f"Random food update failed: {exc}", file=sys.stderr)
-            send_group_text(config, group_id, "随机推荐暂时失败了，稍后再试一下。")
+            send_group_text(config, group_id, "随机推荐暂时找不到能发送的真实图片。请确认 tavily_api_key 已配置，或者稍后再试一下。")
         return
 
     if is_game_deals_request(text, game_deals_command):

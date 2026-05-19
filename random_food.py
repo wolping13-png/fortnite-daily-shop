@@ -14,6 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR / ".cache" / "random_food"
 OUTPUT_DIR = BASE_DIR / ".cache" / "random_food_output"
 COMMONS_API_URL = "https://commons.wikimedia.org/w/api.php"
+TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 
 REQUEST_TIMEOUT = 18
 USER_AGENT = (
@@ -117,6 +118,64 @@ def commons_image_urls(session: requests.Session, query: str, limit: int = 8) ->
     return urls
 
 
+def tavily_image_urls(session: requests.Session, api_key: str, query: str, limit: int = 8) -> list[str]:
+    api_key = api_key.strip()
+    if not api_key:
+        return []
+
+    response = session.post(
+        TAVILY_SEARCH_URL,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "query": f"{query} real food drink photo",
+            "topic": "general",
+            "search_depth": "basic",
+            "max_results": 3,
+            "include_answer": False,
+            "include_raw_content": False,
+            "include_images": True,
+        },
+        timeout=REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    data = response.json()
+    urls: list[str] = []
+
+    images = data.get("images")
+    if isinstance(images, list):
+        for image in images:
+            if isinstance(image, str):
+                urls.append(image)
+            elif isinstance(image, dict) and image.get("url"):
+                urls.append(str(image["url"]))
+
+    results = data.get("results")
+    if isinstance(results, list):
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            result_images = result.get("images")
+            if not isinstance(result_images, list):
+                continue
+            for image in result_images:
+                if isinstance(image, str):
+                    urls.append(image)
+                elif isinstance(image, dict) and image.get("url"):
+                    urls.append(str(image["url"]))
+
+    seen: set[str] = set()
+    unique_urls: list[str] = []
+    for url in urls:
+        if url and url not in seen:
+            seen.add(url)
+            unique_urls.append(url)
+    random.shuffle(unique_urls)
+    return unique_urls[:limit]
+
+
 def save_real_photo(session: requests.Session, url: str, output_path: Path) -> Path:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -139,7 +198,7 @@ def save_real_photo(session: requests.Session, url: str, output_path: Path) -> P
     return output_path
 
 
-def build_random_food_recommendation(kind: str) -> tuple[str, Path, dict[str, Any]]:
+def build_random_food_recommendation(kind: str, tavily_api_key: str = "") -> tuple[str, Path, dict[str, Any]]:
     normalized = "drink" if kind == "drink" else "food"
     pool = DRINKS if normalized == "drink" else FOODS
     session = make_session()
@@ -147,7 +206,18 @@ def build_random_food_recommendation(kind: str) -> tuple[str, Path, dict[str, An
     errors: list[str] = []
 
     for item in candidates:
-        urls = commons_image_urls(session, str(item["query"]))
+        urls: list[str] = []
+        try:
+            urls.extend(commons_image_urls(session, str(item["query"])))
+        except Exception as exc:
+            errors.append(f"{item['name']} Wikimedia: {exc}")
+
+        if not urls:
+            try:
+                urls.extend(tavily_image_urls(session, tavily_api_key, str(item["query"])))
+            except Exception as exc:
+                errors.append(f"{item['name']} Tavily: {exc}")
+
         for url in urls:
             try:
                 key = hashlib.sha1(f"{normalized}:{item['name']}:{url}".encode("utf-8")).hexdigest()[:12]
@@ -159,7 +229,8 @@ def build_random_food_recommendation(kind: str) -> tuple[str, Path, dict[str, An
                 errors.append(f"{item['name']}: {exc}")
                 continue
 
-    raise RuntimeError("没有找到可发送的实物图片。")
+    detail = "；".join(errors[:5])
+    raise RuntimeError(f"没有找到可发送的实物图片。{detail}")
 
 
 def main() -> int:

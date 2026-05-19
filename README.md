@@ -120,7 +120,7 @@ bash install_cloud_cron.sh
 - `商店`：发送一张按官方商店分区排列的每日商店总图
 - `商店全部`：发送按分区拆开的分页图，适合总图发送失败时备用
 - `游戏优惠`、`Steam折扣榜`、`Epic喜加一`：发送 Steam 高销量折扣榜和 Epic 免费游戏日报
-- `吃什么`、`喝什么`：随机推荐一种食物或饮品，并发送真实实物图片
+- `吃什么`、`喝什么`：随机推荐一种食物或饮品，并发送真实实物图片；优先用 Wikimedia，失败后会用 Tavily 图片结果
 - `温德尔 北京天气`、`天气 北京`、`今天武汉洪山区天气怎么样`：查询实时天气和今日/明日预报
 - `@机器人 联网查 今天有什么 AI 新闻`、`@机器人 最新 Fortnite 更新是什么`：用 Tavily 搜索后再让 DeepSeek 总结
 
@@ -140,6 +140,12 @@ bash install_game_deals_cron.sh
 
 ```bash
 bash disable_reddit_pets.sh
+```
+
+如果 `吃什么`、`喝什么` 没有发出图片，可以在服务器上单独测试图片抓取：
+
+```bash
+bash test_random_food.sh
 ```
 
 服务器上配置：
@@ -203,6 +209,7 @@ bash install_gemini_bot_service.sh
 - `run_game_deals_qq.sh`：Linux/VPS 手动发送游戏优惠日报
 - `install_game_deals_cron.sh`：Linux/VPS 安装游戏优惠日报定时任务
 - `random_food.py`：随机推荐食物/饮品并发送真实实物图片，供 QQ 群触发 `吃什么`、`喝什么`
+- `test_random_food.sh`：Linux/VPS 单独测试 `吃什么`、`喝什么` 的真实图片抓取
 - `disable_reddit_pets.sh`：Linux/VPS 关闭旧的 Reddit 宠物触发、移除定时任务并重启机器人
 - `uninstall_reddit_pet_cron.sh`：Linux/VPS 移除旧的 Reddit 宠物热点定时任务
 - `set_tavily_key.sh`：Linux/VPS 一键写入 Tavily API Key 并重启 AI 群聊机器人
