@@ -108,6 +108,13 @@ def post_onebot(
     status = str(data.get("status", "")).lower()
     retcode = data.get("retcode")
     if status not in {"ok", "async"} and retcode not in {0, "0"}:
+        wording = str(data.get("wording") or data.get("message") or "")
+        # NapCat sometimes reports sendMsg as failed when QQ's callback times out,
+        # even though the native result is success: {"result": 0, "errMsg": ""}.
+        # Treat that specific false-negative as success so scheduled tasks continue.
+        if retcode in {200, "200"} and "Timeout:" in wording and '"result": 0' in wording:
+            print("NapCat send callback timed out, but native send result is success. Treating it as sent.")
+            return data
         raise RuntimeError(f"OneBot returned an error: {json.dumps(data, ensure_ascii=False)}")
 
     return data
@@ -125,6 +132,7 @@ def send_to_groups(
             action="send_group_msg",
             payload={"group_id": group_id, "message": message},
             access_token=access_token,
+            timeout=120,
         )
         message_id = result.get("data", {}).get("message_id") if isinstance(result.get("data"), dict) else None
         suffix = f" message_id={message_id}" if message_id else ""
