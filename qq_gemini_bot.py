@@ -875,6 +875,7 @@ def tavily_search(config: dict[str, Any], query: str) -> dict[str, Any]:
             "max_results": max_results,
             "include_answer": bool(config.get("web_search_include_answer", False)),
             "include_raw_content": False,
+            "include_images": bool(config.get("web_search_include_images", True)),
         },
         timeout=40,
     )
@@ -914,12 +915,76 @@ def format_web_search_context(data: dict[str, Any]) -> str:
     return "\n\n".join(lines)
 
 
-def ask_model_with_web_search(config: dict[str, Any], question: str) -> str:
+def web_search_image_urls(data: dict[str, Any], limit: int = 2) -> list[str]:
+    urls: list[str] = []
+
+    def add_url(value: Any) -> None:
+        if isinstance(value, str):
+            url = value.strip()
+        elif isinstance(value, dict):
+            url = str(value.get("url") or "").strip()
+        else:
+            return
+
+        lower = url.lower()
+        if not url or url in urls:
+            return
+        if lower.endswith((".svg", ".gif", ".webm", ".mp4")):
+            return
+        urls.append(url)
+
+    images = data.get("images")
+    if isinstance(images, list):
+        for image in images:
+            add_url(image)
+
+    results = data.get("results")
+    if isinstance(results, list):
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            result_images = result.get("images")
+            if isinstance(result_images, list):
+                for image in result_images:
+                    add_url(image)
+
+    return urls[: max(0, limit)]
+
+
+def send_web_search_images(config: dict[str, Any], group_id: int | str, image_urls: list[str]) -> None:
+    if not image_urls:
+        return
+
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    for index, image_url in enumerate(image_urls, 1):
+        try:
+            post_onebot(
+                base_url=base_url,
+                action="send_group_msg",
+                payload={
+                    "group_id": group_id,
+                    "message": build_message(
+                        caption=f"相关图片 {index}",
+                        image_path=BASE_DIR / "unused.jpg",
+                        image_url=image_url,
+                    ),
+                },
+                access_token=access_token,
+                timeout=120,
+            )
+        except Exception as exc:
+            print(f"Web search image send failed: {image_url} {exc}", file=sys.stderr)
+
+
+def ask_model_with_web_search(config: dict[str, Any], question: str) -> tuple[str, list[str]]:
     search_query = strip_web_search_command(question, str(config.get("web_search_command") or "联网查"))
     if not search_query:
         search_query = question
 
     search_data = tavily_search(config, search_query)
+    image_limit = int(config.get("web_search_image_limit") or 2)
+    image_urls = web_search_image_urls(search_data, limit=max(0, min(image_limit, 4)))
     context = format_web_search_context(search_data)
     prompt = (
         f"用户问题：{search_query}\n\n"
@@ -928,7 +993,7 @@ def ask_model_with_web_search(config: dict[str, Any], question: str) -> str:
         "最后用“参考：”列出最多 3 个来源标题或链接。\n\n"
         f"{context}"
     )
-    return ask_model(config, prompt)
+    return ask_model(config, prompt), image_urls
 
 
 def ask_gemini(config: dict[str, Any], question: str) -> str:
@@ -1094,14 +1159,18 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if is_explicit_web_search_command(text, web_search_command):
         try:
-            answer = ask_model_with_web_search(config, text)
+            answer, image_urls = ask_model_with_web_search(config, text)
         except ValueError as exc:
             print(f"Web search request failed: {exc}", file=sys.stderr)
             answer = "联网搜索还没配置 Tavily API Key。把 tavily_api_key 填进 gemini_bot_config.json 后重启我就能搜了。"
+            image_urls = []
         except Exception as exc:
             print(f"Web search request failed: {exc}", file=sys.stderr)
             answer = "联网搜索暂时失败了，稍后再试一下。"
-        send_group_text(config, group_id, answer)
+            image_urls = []
+        for chunk in split_reply(answer):
+            send_group_text(config, group_id, chunk)
+        send_web_search_images(config, group_id, image_urls)
         return
 
     if text.startswith(weather_command):
@@ -1144,9 +1213,10 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_group_text(config, group_id, answer)
         return
 
+    image_urls: list[str] = []
     try:
         if should_use_web_search(question, web_search_command):
-            answer = ask_model_with_web_search(config, question)
+            answer, image_urls = ask_model_with_web_search(config, question)
         else:
             answer = ask_model(config, question)
     except ValueError as exc:
@@ -1163,6 +1233,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     for chunk in split_reply(answer):
         send_group_text(config, group_id, chunk)
+    send_web_search_images(config, group_id, image_urls)
 
 
 class OneBotHandler(BaseHTTPRequestHandler):
