@@ -149,6 +149,20 @@ bash run_everyday_one_wolf.sh
 bash install_everyday_one_wolf_cron.sh
 ```
 
+服务器上也可以手动发一次睡觉提醒：
+
+```bash
+bash run_bedtime_reminder.sh
+```
+
+如果想每天北京时间 23:30 自动提醒群友睡觉：
+
+```bash
+bash install_bedtime_reminder_cron.sh
+```
+
+睡觉提醒会附带第二天日期、星期、农历/节日信息、默认城市天气；如果明天是节日，会让 AI 按温德尔的人设发挥几句。它也会检查 Epic 免费游戏是否快结束，并附带 Steam 热销折扣榜摘要。
+
 如果之前安装过 Reddit 宠物热点定时任务，但现在不想再发，可以在服务器上运行：
 
 ```bash
@@ -228,6 +242,9 @@ bash install_gemini_bot_service.sh
 - `send_wolf.py`：通过 OneBot HTTP 发送每日一狼
 - `run_everyday_one_wolf.sh`：Linux/VPS 手动发送每日一狼
 - `install_everyday_one_wolf_cron.sh`：Linux/VPS 安装每日一狼定时任务
+- `bedtime_reminder.py`：生成睡觉提醒、第二天信息、节日文案和游戏优惠临期提醒
+- `run_bedtime_reminder.sh`：Linux/VPS 手动发送睡觉提醒
+- `install_bedtime_reminder_cron.sh`：Linux/VPS 安装每天 23:30 的睡觉提醒定时任务
 - `disable_reddit_pets.sh`：Linux/VPS 关闭旧的 Reddit 宠物触发、移除定时任务并重启机器人
 - `uninstall_reddit_pet_cron.sh`：Linux/VPS 移除旧的 Reddit 宠物热点定时任务
 - `set_tavily_key.sh`：Linux/VPS 一键写入 Tavily API Key 并重启 AI 群聊机器人
