@@ -124,6 +124,21 @@ def allowed_groups(config: dict[str, Any]) -> set[str]:
     return {str(group_id).strip() for group_id in config.get("allowed_group_ids", []) if str(group_id).strip()}
 
 
+def config_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return value != 0
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "y", "on"}:
+        return True
+    if text in {"0", "false", "no", "n", "off", ""}:
+        return False
+    return default
+
+
 def extract_text(event: dict[str, Any]) -> str:
     raw = event.get("raw_message")
     if isinstance(raw, str) and raw.strip():
@@ -347,22 +362,8 @@ def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> None:
 
 def is_pet_hot_request(text: str, configured_command: str) -> bool:
     value = re.sub(r"\s+", "", text.strip().lower())
-    exact_triggers = {
-        configured_command.lower(),
-        "猫猫热点",
-        "狗狗热点",
-        "狼狼",
-        "狼狼热点",
-        "狐狸热点",
-        "动物热点",
-        "reddit宠物",
-    }
-    if value in exact_triggers:
-        return True
-
-    animal_words = ("宠物", "猫猫", "猫咪", "狗狗", "狐狸", "狼狼", "小狼", "狼犬", "动物")
-    action_words = ("来点", "发点", "看看", "想看", "整点", "有没有", "热点", "热门", "图", "图片", "帖子")
-    return any(animal in value for animal in animal_words) and any(action in value for action in action_words)
+    command = re.sub(r"\s+", "", configured_command.strip().lower())
+    return bool(command) and value == command
 
 
 def is_game_deals_request(text: str, configured_command: str) -> bool:
@@ -957,6 +958,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     shop_all_command = str(config.get("shop_all_command") or "商店全部")
     weather_command = str(config.get("weather_command") or "天气")
     pet_command = str(config.get("pet_command") or "宠物热点")
+    reddit_pet_enabled = config_bool(config.get("reddit_pet_enabled"), False)
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
 
@@ -972,7 +974,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "游戏优惠日报暂时抓取失败，稍后再试一下。")
         return
 
-    if is_pet_hot_request(text, pet_command):
+    if reddit_pet_enabled and is_pet_hot_request(text, pet_command):
         try:
             send_reddit_pet_update(config, group_id, topic=text)
         except Exception as exc:
