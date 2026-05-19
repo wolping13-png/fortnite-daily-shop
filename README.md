@@ -119,12 +119,25 @@ bash install_cloud_cron.sh
 - `@机器人 你的问题`：调用 AI 回复，推荐用这个方式
 - `商店`：发送一张按官方商店分区排列的每日商店总图
 - `商店全部`：发送按分区拆开的分页图，适合总图发送失败时备用
+- `游戏优惠`、`Steam折扣榜`、`Epic喜加一`：发送 Steam 高销量折扣榜和 Epic 免费游戏日报
 - `温德尔 北京天气`、`天气 北京`、`今天武汉洪山区天气怎么样`：查询实时天气和今日/明日预报
 - `宠物热点`、`猫猫热点`、`狗狗热点`、`狼狼`：抓取 Reddit 宠物热门图文并发送到群里
 - `给我来点狼狼`、`想看猫猫`、`发点狗狗图片`：也会触发宠物热点
 - `@机器人 联网查 今天有什么 AI 新闻`、`@机器人 最新 Fortnite 更新是什么`：用 Tavily 搜索后再让 DeepSeek 总结
 
 如果服务器访问 Reddit 返回 `HTTP 403`，机器人会自动切换到 Wikimedia Commons 备用动物图片来源。
+
+服务器上也可以手动发一次 Steam / Epic 游戏优惠日报：
+
+```bash
+bash run_game_deals_qq.sh
+```
+
+如果想每天北京时间 10:05 自动发一次：
+
+```bash
+bash install_game_deals_cron.sh
+```
 
 服务器上也可以手动发送一次 Reddit 宠物热点：
 
@@ -198,6 +211,10 @@ bash install_gemini_bot_service.sh
 - `send_reddit_pets.py`：通过 OneBot HTTP 发送 Reddit 宠物热点
 - `run_reddit_pets.sh`：Linux/VPS 手动发送 Reddit 宠物热点
 - `install_reddit_pet_cron.sh`：Linux/VPS 安装 Reddit 宠物热点定时任务
+- `game_deals.py`：抓取 Steam 高销量折扣榜和 Epic 喜加一，并生成 `game_deals.jpg`
+- `send_game_deals.py`：通过 OneBot HTTP 发送游戏优惠日报
+- `run_game_deals_qq.sh`：Linux/VPS 手动发送游戏优惠日报
+- `install_game_deals_cron.sh`：Linux/VPS 安装游戏优惠日报定时任务
 - `set_tavily_key.sh`：Linux/VPS 一键写入 Tavily API Key 并重启 AI 群聊机器人
 - `set_bot_persona.sh`：Linux/VPS 一键更新 AI 群聊机器人的游戏专家人设并重启
 - `send-qq-shop.bat`：测试发送当前 `shop.png`

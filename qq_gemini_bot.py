@@ -11,7 +11,7 @@ from typing import Any
 
 import requests
 
-from send_qq_shop import build_message, post_onebot
+from send_qq_shop import build_message, make_safe_image, post_onebot
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -313,6 +313,38 @@ def send_reddit_pet_update(config: dict[str, Any], group_id: int | str, topic: s
     )
 
 
+def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> None:
+    from game_deals import build_game_deals_update
+
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    steam_limit = int(config.get("game_deals_steam_limit") or 12)
+    epic_country = str(config.get("game_deals_epic_country") or "CN")
+    caption, image_path, _data = build_game_deals_update(
+        steam_limit=max(4, min(steam_limit, 20)),
+        epic_country=epic_country,
+    )
+    result = post_onebot(
+        base_url=base_url,
+        action="send_group_msg",
+        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=image_path)},
+        access_token=access_token,
+        timeout=120,
+    )
+    if result.get("_napcat_callback_timeout"):
+        safe_path = make_safe_image(image_path)
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={
+                "group_id": group_id,
+                "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            },
+            access_token=access_token,
+            timeout=120,
+        )
+
+
 def is_pet_hot_request(text: str, configured_command: str) -> bool:
     value = re.sub(r"\s+", "", text.strip().lower())
     exact_triggers = {
@@ -331,6 +363,30 @@ def is_pet_hot_request(text: str, configured_command: str) -> bool:
     animal_words = ("宠物", "猫猫", "猫咪", "狗狗", "狐狸", "狼狼", "小狼", "狼犬", "动物")
     action_words = ("来点", "发点", "看看", "想看", "整点", "有没有", "热点", "热门", "图", "图片", "帖子")
     return any(animal in value for animal in animal_words) and any(action in value for action in action_words)
+
+
+def is_game_deals_request(text: str, configured_command: str) -> bool:
+    value = text.strip().lower()
+    compact = re.sub(r"\s+", "", value)
+    commands = {
+        configured_command.strip().lower(),
+        "游戏优惠",
+        "游戏折扣",
+        "折扣榜",
+        "steam折扣",
+        "steam折扣榜",
+        "steam优惠",
+        "epic喜加一",
+        "epic免费",
+        "喜加一",
+    }
+    if compact in {re.sub(r"\s+", "", command) for command in commands if command}:
+        return True
+    return (
+        ("steam" in compact and ("折扣" in compact or "优惠" in compact or "销量" in compact))
+        or ("epic" in compact and ("喜加一" in compact or "免费" in compact))
+        or ("游戏" in compact and ("折扣" in compact or "优惠" in compact))
+    )
 
 
 def split_reply(text: str, limit: int = 900) -> list[str]:
@@ -902,9 +958,18 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     weather_command = str(config.get("weather_command") or "天气")
     pet_command = str(config.get("pet_command") or "宠物热点")
     web_search_command = str(config.get("web_search_command") or "联网查")
+    game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
 
     if text in {shop_command, shop_all_command}:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
+        return
+
+    if is_game_deals_request(text, game_deals_command):
+        try:
+            send_game_deals_update(config, group_id)
+        except Exception as exc:
+            print(f"Game deals update failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "游戏优惠日报暂时抓取失败，稍后再试一下。")
         return
 
     if is_pet_hot_request(text, pet_command):
