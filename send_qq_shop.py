@@ -12,6 +12,7 @@ from urllib.parse import urljoin
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = BASE_DIR / "qq_bot_config.json"
 DEFAULT_IMAGE_PATH = BASE_DIR / "shop.png"
+SAFE_IMAGE_MAX_BYTES = 1_200_000
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -80,6 +81,42 @@ def build_message(caption: str, image_path: Path, image_url: str | None = None) 
     return message
 
 
+def make_safe_image(path: Path) -> Path:
+    if not path.exists():
+        return path
+
+    target = path.with_name(f"{path.stem}_safe.jpg")
+    try:
+        from PIL import Image
+
+        image = Image.open(path).convert("RGB")
+        max_width = 640
+        max_height = 9000
+
+        if image.width > max_width:
+            height = int(image.height * max_width / image.width)
+            image = image.resize((max_width, height), Image.Resampling.LANCZOS)
+
+        if image.height > max_height:
+            width = int(image.width * max_height / image.height)
+            image = image.resize((width, max_height), Image.Resampling.LANCZOS)
+
+        for quality in (68, 62, 56, 50, 44):
+            image.save(target, quality=quality, optimize=True)
+            if target.stat().st_size <= SAFE_IMAGE_MAX_BYTES:
+                return target
+
+        return target
+    except Exception:
+        return path
+
+
+def is_napcat_callback_timeout_success(data: dict[str, Any]) -> bool:
+    wording = str(data.get("wording") or data.get("message") or "")
+    retcode = data.get("retcode")
+    return retcode in {200, "200"} and "Timeout:" in wording and '"result": 0' in wording
+
+
 def post_onebot(
     base_url: str,
     action: str,
@@ -108,12 +145,8 @@ def post_onebot(
     status = str(data.get("status", "")).lower()
     retcode = data.get("retcode")
     if status not in {"ok", "async"} and retcode not in {0, "0"}:
-        wording = str(data.get("wording") or data.get("message") or "")
-        # NapCat sometimes reports sendMsg as failed when QQ's callback times out,
-        # even though the native result is success: {"result": 0, "errMsg": ""}.
-        # Treat that specific false-negative as success so scheduled tasks continue.
-        if retcode in {200, "200"} and "Timeout:" in wording and '"result": 0' in wording:
-            print("NapCat send callback timed out, but native send result is success. Treating it as sent.")
+        if is_napcat_callback_timeout_success(data):
+            data["_napcat_callback_timeout"] = True
             return data
         raise RuntimeError(f"OneBot returned an error: {json.dumps(data, ensure_ascii=False)}")
 
@@ -123,10 +156,13 @@ def post_onebot(
 def send_to_groups(
     base_url: str,
     group_ids: list[int | str],
-    message: list[dict[str, Any]],
+    caption: str,
+    image_path: Path,
+    image_url: str | None,
     access_token: str,
 ) -> None:
     for group_id in group_ids:
+        message = build_message(caption=caption, image_path=image_path, image_url=image_url)
         result = post_onebot(
             base_url=base_url,
             action="send_group_msg",
@@ -134,6 +170,44 @@ def send_to_groups(
             access_token=access_token,
             timeout=120,
         )
+
+        if result.get("_napcat_callback_timeout"):
+            print("NapCat callback timed out. Retrying with a smaller safe image.")
+            safe_path = make_safe_image(image_path)
+            safe_message = build_message(
+                caption=f"{caption}\n原图回执超时，已改发压缩版。",
+                image_path=safe_path,
+                image_url=None,
+            )
+            retry = post_onebot(
+                base_url=base_url,
+                action="send_group_msg",
+                payload={"group_id": group_id, "message": safe_message},
+                access_token=access_token,
+                timeout=120,
+            )
+            if retry.get("_napcat_callback_timeout"):
+                post_onebot(
+                    base_url=base_url,
+                    action="send_group_msg",
+                    payload={
+                        "group_id": group_id,
+                        "message": [
+                            {
+                                "type": "text",
+                                "data": {
+                                    "text": "商店图片发送被 QQ 回执卡住了。请在群里发“商店全部”查看分页版，或稍后再试。"
+                                },
+                            }
+                        ],
+                    },
+                    access_token=access_token,
+                    timeout=60,
+                )
+                print(f"Safe image callback also timed out for group {group_id}.")
+                continue
+            result = retry
+
         message_id = result.get("data", {}).get("message_id") if isinstance(result.get("data"), dict) else None
         suffix = f" message_id={message_id}" if message_id else ""
         print(f"Sent shop image to group {group_id}.{suffix}")
@@ -192,8 +266,14 @@ def main() -> int:
         )
         return 0
 
-    message = build_message(caption=caption, image_path=image_path, image_url=image_url)
-    send_to_groups(base_url=base_url, group_ids=group_ids, message=message, access_token=access_token)
+    send_to_groups(
+        base_url=base_url,
+        group_ids=group_ids,
+        caption=caption,
+        image_path=image_path,
+        image_url=image_url,
+        access_token=access_token,
+    )
     return 0
 
 
