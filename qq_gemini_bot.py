@@ -787,7 +787,7 @@ def ask_gemini(config: dict[str, Any], question: str) -> str:
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     system_prompt = str(
         config.get("system_prompt")
-        or "你是一个友好的 QQ 群助手。用简体中文回答，简洁一点。"
+        or "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店。回答用简体中文，像朋友聊天一样自然、有趣、实用；不确定就直接说不确定，不要编造。"
     )
 
     user_question = enrich_question(question)
@@ -833,7 +833,7 @@ def ask_deepseek(config: dict[str, Any], question: str) -> str:
     model = str(config.get("model") or "deepseek-v4-flash")
     system_prompt = str(
         config.get("system_prompt")
-        or "你是一个友好的 QQ 群助手。用简体中文回答，简洁一点。"
+        or "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店。回答用简体中文，像朋友聊天一样自然、有趣、实用；不确定就直接说不确定，不要编造。"
     )
 
     user_question = enrich_question(question)

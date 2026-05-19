@@ -111,6 +111,7 @@ bash install_cloud_cron.sh
 ## AI 群聊机器人
 
 支持把 NapCatQQ 的群消息接入 DeepSeek 或 Gemini API。默认推荐 DeepSeek，对香港服务器更友好。
+默认人设是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。
 
 默认指令：
 
@@ -156,6 +157,12 @@ bash set_tavily_key.sh
 
 粘贴 Tavily API Key 后，脚本会自动写入配置并重启机器人。
 
+如果想把旧配置里比较死板的堡垒之夜专属人设更新成“游戏专家，主修堡垒之夜”，可以在服务器上运行：
+
+```bash
+bash set_bot_persona.sh
+```
+
 在 NapCatQQ 的 HTTP Server 配置里，把上报地址设置成：
 
 ```text
@@ -192,6 +199,7 @@ bash install_gemini_bot_service.sh
 - `run_reddit_pets.sh`：Linux/VPS 手动发送 Reddit 宠物热点
 - `install_reddit_pet_cron.sh`：Linux/VPS 安装 Reddit 宠物热点定时任务
 - `set_tavily_key.sh`：Linux/VPS 一键写入 Tavily API Key 并重启 AI 群聊机器人
+- `set_bot_persona.sh`：Linux/VPS 一键更新 AI 群聊机器人的游戏专家人设并重启
 - `send-qq-shop.bat`：测试发送当前 `shop.png`
 - `send-qq-update-and-send.bat`：更新后发送
 - `install-qq-daily-task.bat`：安装每天自动发图任务
