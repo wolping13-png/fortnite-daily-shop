@@ -19,6 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--access-token", help="OneBot access token, if enabled in NapCatQQ.")
     parser.add_argument("--group-id", action="append", help="QQ group ID. Can be provided multiple times.")
     parser.add_argument("--limit", type=int, default=5, help="Number of Reddit posts to include.")
+    parser.add_argument("--topic", default="", help="Preferred pet topic, for example wolf, fox, cat, or dog.")
     return parser.parse_args()
 
 
@@ -31,7 +32,7 @@ def main() -> int:
     if access_token is None:
         access_token = str(config.get("access_token") or "")
 
-    caption, image_path, posts = build_reddit_pet_update(limit=max(1, min(args.limit, 8)))
+    caption, image_path, posts = build_reddit_pet_update(limit=max(1, min(args.limit, 8)), topic=args.topic)
     if not posts:
         raise RuntimeError("No Reddit pet posts were found.")
 

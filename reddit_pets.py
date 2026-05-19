@@ -5,6 +5,7 @@ import json
 import math
 import re
 import time
+import urllib.parse
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -57,6 +58,14 @@ PET_KEYWORDS = (
     "pet",
     "animal",
 )
+FALLBACK_TOPICS = {
+    "cat": ("cat pet", "猫猫"),
+    "dog": ("dog pet", "狗狗"),
+    "fox": ("fox animal", "狐狸"),
+    "wolf": ("wolf animal", "狼狼"),
+    "pet": ("cat dog fox wolf animal", "宠物"),
+}
+WIKIMEDIA_API_URL = "https://commons.wikimedia.org/w/api.php"
 
 WIDTH = 1080
 PADDING = 34
@@ -345,6 +354,82 @@ def fetch_pet_posts(limit: int = 5) -> list[dict[str, Any]]:
     return posts[:limit]
 
 
+def normalize_topic(topic: str = "") -> str:
+    value = topic.lower()
+    if any(token in value for token in ("狼", "wolf")):
+        return "wolf"
+    if any(token in value for token in ("狐", "fox")):
+        return "fox"
+    if any(token in value for token in ("狗", "dog", "puppy")):
+        return "dog"
+    if any(token in value for token in ("猫", "cat", "kitten")):
+        return "cat"
+    return "pet"
+
+
+def fetch_wikimedia_fallback_posts(limit: int = 5, topic: str = "") -> list[dict[str, Any]]:
+    topic_key = normalize_topic(topic)
+    query, label = FALLBACK_TOPICS.get(topic_key, FALLBACK_TOPICS["pet"])
+    params = {
+        "action": "query",
+        "generator": "search",
+        "gsrsearch": f"{query} filetype:bitmap",
+        "gsrnamespace": 6,
+        "gsrlimit": max(limit * 3, 12),
+        "prop": "imageinfo",
+        "iiprop": "url|mime|size",
+        "format": "json",
+        "formatversion": 2,
+        "origin": "*",
+    }
+    try:
+        response = requests.get(WIKIMEDIA_API_URL, params=params, headers={"User-Agent": USER_AGENT}, timeout=30)
+        response.raise_for_status()
+        payload = response.json()
+    except Exception as exc:
+        debug_log(f"wikimedia fallback failed topic={topic_key}: {type(exc).__name__}: {exc}")
+        return []
+
+    pages = payload.get("query", {}).get("pages", [])
+    if not isinstance(pages, list):
+        return []
+
+    posts: list[dict[str, Any]] = []
+    for page in pages:
+        if not isinstance(page, dict):
+            continue
+        imageinfo = page.get("imageinfo")
+        if not isinstance(imageinfo, list) or not imageinfo:
+            continue
+        info = imageinfo[0] if isinstance(imageinfo[0], dict) else {}
+        url = str(info.get("url") or "")
+        mime = str(info.get("mime") or "")
+        if not url.startswith("http") or not mime.startswith("image/"):
+            continue
+
+        title = safe_title(str(page.get("title") or "").removeprefix("File:"))
+        file_page = "https://commons.wikimedia.org/wiki/" + urllib.parse.quote(str(page.get("title") or ""))
+        posts.append(
+            {
+                "id": f"wikimedia:{page.get('pageid') or url}",
+                "title": f"{label}备用图：{title}",
+                "subreddit": "Wikimedia Commons",
+                "score": 0,
+                "comments": 0,
+                "created_utc": time.time(),
+                "image_url": url,
+                "url": file_page,
+                "hot_score": 0,
+                "fallback": True,
+            }
+        )
+        if len(posts) >= limit:
+            break
+
+    debug_log(f"wikimedia fallback topic={topic_key} selected={len(posts)}")
+    return posts
+
+
 def download_image(url: str) -> Image.Image | None:
     if not url:
         return None
@@ -434,7 +519,10 @@ def render_pet_image(posts: list[dict[str, Any]], output: Path = OUTPUT_IMAGE) -
 
 
 def caption_for_posts(posts: list[dict[str, Any]]) -> str:
-    lines = ["Reddit 宠物热点"]
+    using_fallback = bool(posts and posts[0].get("fallback"))
+    lines = ["动物图片推荐" if using_fallback else "Reddit 宠物热点"]
+    if using_fallback:
+        lines.append("Reddit 被服务器拒绝访问，已切换到 Wikimedia Commons 备用来源。")
     for index, post in enumerate(posts[:5], 1):
         title = str(post.get("title") or "")
         if len(title) > 42:
@@ -444,10 +532,11 @@ def caption_for_posts(posts: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def build_reddit_pet_update(limit: int = 5) -> tuple[str, Path, list[dict[str, Any]]]:
+def build_reddit_pet_update(limit: int = 5, topic: str = "") -> tuple[str, Path, list[dict[str, Any]]]:
     posts = fetch_pet_posts(limit=limit)
     if not posts:
         debug_log("no posts selected; Reddit may be unreachable from this server or returned no image posts")
+        posts = fetch_wikimedia_fallback_posts(limit=limit, topic=topic)
     OUTPUT_JSON.write_text(
         json.dumps({"updatedAt": datetime.now(timezone.utc).isoformat(), "posts": posts}, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",

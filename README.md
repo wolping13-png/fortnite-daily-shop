@@ -100,7 +100,13 @@ bash run_daily_qq.sh
 bash install_cloud_cron.sh
 ```
 
-服务器版默认每天 UTC 00:15 运行，也就是北京时间 08:15。前提是服务器上的 NapCatQQ 一直在线。
+服务器版默认每天北京时间 08:15 运行。前提是服务器上的 NapCatQQ 一直在线。
+如果服务器时区不是北京时间，先运行：
+
+```bash
+timedatectl set-timezone Asia/Shanghai
+bash install_cloud_cron.sh
+```
 
 ## AI 群聊机器人
 
@@ -114,6 +120,8 @@ bash install_cloud_cron.sh
 - `温德尔 北京天气`、`天气 北京`、`今天武汉洪山区天气怎么样`：查询实时天气和今日/明日预报
 - `宠物热点`、`猫猫热点`、`狗狗热点`、`狼狼`：抓取 Reddit 宠物热门图文并发送到群里
 - `给我来点狼狼`、`想看猫猫`、`发点狗狗图片`：也会触发宠物热点
+
+如果服务器访问 Reddit 返回 `HTTP 403`，机器人会自动切换到 Wikimedia Commons 备用动物图片来源。
 
 服务器上也可以手动发送一次 Reddit 宠物热点：
 

@@ -200,13 +200,13 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
     )
 
 
-def send_reddit_pet_update(config: dict[str, Any], group_id: int | str) -> None:
+def send_reddit_pet_update(config: dict[str, Any], group_id: int | str, topic: str = "") -> None:
     from reddit_pets import build_reddit_pet_update
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
     limit = int(config.get("reddit_pet_limit") or 5)
-    caption, image_path, posts = build_reddit_pet_update(limit=max(1, min(limit, 8)))
+    caption, image_path, posts = build_reddit_pet_update(limit=max(1, min(limit, 8)), topic=topic)
     if not posts:
         send_group_text(
             config,
@@ -706,7 +706,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if is_pet_hot_request(text, pet_command):
         try:
-            send_reddit_pet_update(config, group_id)
+            send_reddit_pet_update(config, group_id, topic=text)
         except Exception as exc:
             print(f"Reddit pet update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "Reddit 宠物热点暂时抓取失败，稍后再试一下。")

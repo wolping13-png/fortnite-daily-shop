@@ -8,9 +8,10 @@ LOG_FILE="$LOG_DIR/qq_daily.log"
 MARK_BEGIN="# BEGIN FortniteDailyShopQQ"
 MARK_END="# END FortniteDailyShopQQ"
 
-# GitHub Actions uses 00:05 UTC for Beijing 08:05.
-# This QQ task uses 00:15 UTC, which is Beijing 08:15.
-CRON_TIME="${CRON_TIME:-15 0 * * *}"
+# Run at 08:15 in the server's local timezone.
+# Before installing, set the server timezone with:
+#   timedatectl set-timezone Asia/Shanghai
+CRON_TIME="${CRON_TIME:-15 8 * * *}"
 
 mkdir -p "$LOG_DIR"
 chmod +x "$TASK_SCRIPT"
@@ -38,4 +39,5 @@ rm -f "$existing_cron" "$new_cron"
 echo "Installed cloud cron task."
 echo "Schedule: $CRON_TIME"
 echo "Log file: $LOG_FILE"
+echo "Recommended timezone: Asia/Shanghai"
 echo "Keep NapCatQQ running and logged in before the scheduled time."
