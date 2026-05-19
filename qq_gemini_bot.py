@@ -5,9 +5,11 @@ import os
 import re
 import sys
 import threading
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -23,6 +25,8 @@ SHOP_SECTIONS_MANIFEST = SHOP_SECTIONS_DIR / "manifest.json"
 WEATHER_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
+CHINA_TZ = ZoneInfo("Asia/Shanghai")
+WEEKDAYS_ZH = ("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
 
 WEB_SEARCH_EXPLICIT_PREFIXES = (
     "联网查",
@@ -458,6 +462,40 @@ def is_wolf_request(text: str, configured_command: str) -> bool:
     return compact == (command or "狼狼")
 
 
+def is_help_request(text: str) -> bool:
+    compact = re.sub(r"\s+", "", text.strip().lower())
+    return compact in {"指令", "帮助", "菜单", "使用说明", "功能", "help", "commands"}
+
+
+def command_help_text(config: dict[str, Any]) -> str:
+    ask_prefix = str(config.get("ask_prefix") or "温德尔")
+    shop_command = str(config.get("shop_command") or "商店")
+    shop_all_command = str(config.get("shop_all_command") or "商店全部")
+    weather_command = str(config.get("weather_command") or "天气")
+    web_search_command = str(config.get("web_search_command") or "联网查")
+    game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
+    wolf_command = str(config.get("wolf_command") or "狼狼")
+
+    return (
+        "温德尔指令表\n"
+        "\n"
+        "直接发：\n"
+        f"- {shop_command}：发送 Fortnite 每日商店总图\n"
+        f"- {shop_all_command}：发送 Fortnite 商店分区图\n"
+        f"- {game_deals_command} / Steam折扣榜 / Epic喜加一：发送游戏优惠日报\n"
+        "- 吃什么：随机推荐食物并发实物图\n"
+        "- 喝什么：随机推荐饮品并发实物图\n"
+        f"- {weather_command} 北京 / 今天武汉洪山区天气怎么样：查天气\n"
+        "\n"
+        "需要艾特我：\n"
+        "- @我 指令：显示这份指令表\n"
+        f"- @我 {wolf_command}：随机发一张狼图\n"
+        f"- @我 {web_search_command} 最近有什么游戏新闻：联网搜索，文字和图片尽量合在一条消息里\n"
+        "- @我 今天几号 / 推荐几个游戏 / 你想问的问题：普通聊天\n"
+        f"- {ask_prefix} 你的问题：旧版前缀聊天，也还能用"
+    )
+
+
 def is_game_deals_request(text: str, configured_command: str) -> bool:
     value = text.strip().lower()
     compact = re.sub(r"\s+", "", value)
@@ -819,6 +857,32 @@ def enrich_question(question: str) -> str:
     )
 
 
+def current_time_context() -> str:
+    now = datetime.now(CHINA_TZ)
+    yesterday = now - timedelta(days=1)
+    tomorrow = now + timedelta(days=1)
+    return (
+        "当前时间信息：\n"
+        f"- 中国内地北京时间现在是 {now:%Y-%m-%d %H:%M:%S}，{WEEKDAYS_ZH[now.weekday()]}。\n"
+        f"- 今天 = {now:%Y-%m-%d}。\n"
+        f"- 昨天 = {yesterday:%Y-%m-%d}。\n"
+        f"- 明天 = {tomorrow:%Y-%m-%d}。\n"
+        "- 回答任何日期、今天、昨天、明天、最近、最新、今晚、明早相关问题时，都必须以这段北京时间为准。"
+    )
+
+
+def add_time_context_to_prompt(question: str) -> str:
+    return f"{current_time_context()}\n\n用户问题：{question}"
+
+
+def add_time_context_to_system(system_prompt: str) -> str:
+    return (
+        f"{system_prompt.rstrip()}\n\n"
+        f"{current_time_context()}\n"
+        "如果用户询问当前日期或相对日期，直接给出具体日期，不要猜。"
+    )
+
+
 def is_explicit_web_search_command(text: str, configured_command: str) -> bool:
     value = text.strip()
     prefixes = [configured_command.strip()] if configured_command.strip() else []
@@ -1007,9 +1071,11 @@ def ask_model_with_web_search(config: dict[str, Any], question: str) -> tuple[st
     image_urls = web_search_image_urls(search_data, limit=max(0, min(image_limit, 4)))
     context = format_web_search_context(search_data)
     prompt = (
+        f"{current_time_context()}\n\n"
         f"用户问题：{search_query}\n\n"
         "下面是 Tavily 联网搜索结果。请只基于这些结果和你已有的通用知识回答；"
         "如果搜索结果不足或互相矛盾，要直接说明不确定。用简体中文，语气自然，尽量简洁。"
+        "涉及今天、昨天、明天、最近、最新、今晚、明早时，必须结合上面的北京时间判断。"
         "最后用“参考：”列出最多 3 个来源标题或链接。\n\n"
         f"{context}"
     )
@@ -1023,8 +1089,9 @@ def ask_gemini(config: dict[str, Any], question: str) -> str:
         config.get("system_prompt")
         or "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店。回答用简体中文，像朋友聊天一样自然、有趣、实用；不确定就直接说不确定，不要编造。"
     )
+    system_prompt = add_time_context_to_system(system_prompt)
 
-    user_question = enrich_question(question)
+    user_question = add_time_context_to_prompt(enrich_question(question))
 
     response = requests.post(
         endpoint,
@@ -1069,8 +1136,9 @@ def ask_deepseek(config: dict[str, Any], question: str) -> str:
         config.get("system_prompt")
         or "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店。回答用简体中文，像朋友聊天一样自然、有趣、实用；不确定就直接说不确定，不要编造。"
     )
+    system_prompt = add_time_context_to_system(system_prompt)
 
-    user_question = enrich_question(question)
+    user_question = add_time_context_to_prompt(enrich_question(question))
 
     response = requests.post(
         f"{base_url}/chat/completions",
@@ -1139,6 +1207,11 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
     wolf_command = str(config.get("wolf_command") or "狼狼")
+
+    if is_help_request(text):
+        for chunk in split_reply(command_help_text(config), limit=850):
+            send_group_text(config, group_id, chunk)
+        return
 
     if text in {shop_command, shop_all_command}:
         send_shop_image(config, group_id, send_all=text == shop_all_command)
@@ -1220,6 +1293,11 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if not question:
         send_group_text(config, group_id, "用法：@我 你想问的问题")
+        return
+
+    if is_help_request(question):
+        for chunk in split_reply(command_help_text(config), limit=850):
+            send_group_text(config, group_id, chunk)
         return
 
     if is_weather_question(question):
