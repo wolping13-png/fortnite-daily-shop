@@ -37,7 +37,7 @@ if token.lower().startswith("bearer "):
 data = json.loads(path.read_text(encoding="utf-8"))
 
 data["x_bearer_token"] = token
-data.setdefault("x_search_command", "X宠物")
+data["x_search_command"] = "X搜索"
 data.setdefault("x_search_limit", 3)
 try:
     data["x_search_fetch_limit"] = min(int(data.get("x_search_fetch_limit") or 10), 10)

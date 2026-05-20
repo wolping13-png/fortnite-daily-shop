@@ -637,34 +637,22 @@ def is_wolf_request(text: str, configured_command: str) -> bool:
 
 
 def is_x_posts_request(text: str, configured_command: str) -> bool:
-    value = text.strip().lower()
+    value = text.strip()
     compact = re.sub(r"\s+", "", value)
     commands = {
-        configured_command.strip().lower(),
-        "x宠物",
-        "x热点",
-        "x帖子",
-        "x狼狼",
-        "x福瑞",
-        "xfurry",
-        "x兽设",
-        "x兽人",
-        "推特宠物",
-        "推特热点",
-        "推特帖子",
-        "推特狼狼",
-        "推特福瑞",
-        "推特兽设",
-        "twitter宠物",
-        "twitter热点",
-        "twitter帖子",
-        "twitter狼狼",
-        "twitterfurry",
+        configured_command.strip(),
+        "X搜索",
+        "X搜",
+        "X找",
+        "X看",
+        "推特搜索",
+        "推特搜",
+        "推特找",
+        "Twitter搜索",
+        "Twitter搜",
     }
     compact_commands = {re.sub(r"\s+", "", command) for command in commands if command}
-    if compact in compact_commands:
-        return True
-    return compact.startswith(("x搜", "x找", "x看", "推特搜", "推特找", "twitter搜"))
+    return any(compact.startswith(command) and compact != command for command in compact_commands)
 
 
 def is_x_timeline_request(text: str, configured_command: str) -> bool:
@@ -698,7 +686,7 @@ def command_help_text(config: dict[str, Any]) -> str:
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
     wolf_command = str(config.get("wolf_command") or "狼狼")
-    x_search_command = str(config.get("x_search_command") or "X宠物")
+    x_search_command = str(config.get("x_search_command") or "X搜索")
     x_timeline_command = str(config.get("x_timeline_command") or "X日常")
 
     return (
@@ -715,7 +703,7 @@ def command_help_text(config: dict[str, Any]) -> str:
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
         f"- @我 {wolf_command}：随机发一张狼图\n"
-        f"- @我 {x_search_command} / X狼狼 / X福瑞：抓取 X 公开图片帖子并生成卡片\n"
+        f"- @我 {x_search_command} 关键词：搜索 X 公开图片帖子并生成卡片\n"
         f"- @我 {x_timeline_command} / X关注：抓取你 X 账号关注时间线里的图片帖子\n"
         f"- @我 {web_search_command} 最近有什么游戏新闻：联网搜索，文字和图片尽量合在一条消息里\n"
         "- @我 今天几号 / 推荐几个游戏 / 你想问的问题：普通聊天\n"
@@ -1434,7 +1422,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
     wolf_command = str(config.get("wolf_command") or "狼狼")
-    x_search_command = str(config.get("x_search_command") or "X宠物")
+    x_search_command = str(config.get("x_search_command") or "X搜索")
     x_timeline_command = str(config.get("x_timeline_command") or "X日常")
 
     if is_help_request(text):

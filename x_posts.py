@@ -189,25 +189,10 @@ def topic_to_query(topic: str, fallback_query: str) -> str:
     if not fallback_query.strip():
         fallback_query = "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet"
 
-    compact = re.sub(r"\s+", "", topic.strip().lower())
-    if any(keyword in compact for keyword in ("furry", "福瑞", "兽设", "兽人", "兽圈", "anthro", "kemono")):
-        return (
-            '("furry art" OR "furry artwork" OR "furry drawing" OR "anthro art" '
-            'OR kemono OR 福瑞 OR 兽设 OR 兽人) has:media -is:retweet -nsfw -porn -18+'
-        )
-    if "狼" in compact or "wolf" in compact:
-        return "(wolf OR wolves OR 狼 OR 狼狼) has:media -is:retweet"
-    if "狐" in compact or "fox" in compact:
-        return "(fox OR foxes OR 狐狸) has:media -is:retweet"
-    if "猫" in compact or "cat" in compact:
-        return "(cat OR cats OR 猫 OR 猫猫) has:media -is:retweet"
-    if "狗" in compact or "dog" in compact:
-        return "(dog OR dogs OR puppy OR 狗 OR 狗狗) has:media -is:retweet"
-    if topic.strip() and not compact.startswith(("x宠物", "x热点", "x帖子", "x福瑞", "xfurry", "x兽设")):
-        value = topic.strip()
-        value = re.sub(r"^(x|X|推特|twitter)\s*", "", value).strip()
-        if value:
-            return f"({value}) has:media -is:retweet"
+    value = topic.strip()
+    value = re.sub(r"^(x|X|推特|twitter)\s*(搜索|搜|找|看)?\s*", "", value).strip()
+    if value:
+        return f"({value}) has:media -is:retweet -nsfw -porn -18+"
     return fallback_query
 
 
@@ -645,7 +630,7 @@ def build_x_timeline_update(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch public X posts and render a QQ-friendly image.")
     parser.add_argument("--config", default=str(BASE_DIR / "gemini_bot_config.json"))
-    parser.add_argument("--topic", default="X宠物")
+    parser.add_argument("--topic", default="X搜索 宠物")
     parser.add_argument("--timeline", action="store_true", help="Fetch the authorized account's Following timeline.")
     args = parser.parse_args()
 
