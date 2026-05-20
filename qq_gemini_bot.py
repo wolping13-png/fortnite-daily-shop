@@ -1407,6 +1407,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
     wolf_command = str(config.get("wolf_command") or "狼狼")
+    x_search_command = str(config.get("x_search_command") or "X宠物")
 
     if is_help_request(text):
         for chunk in split_reply(command_help_text(config), limit=850):
