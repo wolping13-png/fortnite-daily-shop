@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -18,6 +18,7 @@ CACHE_DIR = BASE_DIR / ".cache" / "x_posts"
 OUTPUT_PATH = BASE_DIR / "x_posts.jpg"
 X_TIMELINE_RECENT_PATH = CACHE_DIR / "timeline_recent.json"
 X_TIMELINE_QUEUE_PATH = CACHE_DIR / "timeline_queue.json"
+X_SEARCH_QUEUE_DIR = CACHE_DIR / "search_queues"
 X_SEARCH_URL = "https://api.x.com/2/tweets/search/recent"
 X_TOKEN_URL = "https://api.x.com/2/oauth2/token"
 X_ME_URL = "https://api.x.com/2/users/me"
@@ -179,6 +180,27 @@ def paste_rounded(base: Image.Image, source: Image.Image, box: tuple[int, int, i
     base.paste(image, box[:2], mask)
 
 
+def paste_rounded_contain(base: Image.Image, source: Image.Image, box: tuple[int, int, int, int], radius: int = 20) -> None:
+    width = box[2] - box[0]
+    height = box[3] - box[1]
+    background = crop_cover(source, width, height).filter(ImageFilter.GaussianBlur(18))
+    shade = Image.new("RGB", (width, height), (0, 0, 0))
+    background = Image.blend(background, shade, 0.48)
+
+    image = source.copy()
+    scale = min(width / image.width, height / image.height)
+    resized = image.resize(
+        (max(1, int(image.width * scale)), max(1, int(image.height * scale))),
+        Image.Resampling.LANCZOS,
+    )
+    paste_x = (width - resized.width) // 2
+    paste_y = (height - resized.height) // 2
+    background.paste(resized, (paste_x, paste_y))
+
+    mask = rounded_mask((width, height), radius)
+    base.paste(background, box[:2], mask)
+
+
 def paste_circle(base: Image.Image, source: Image.Image, x: int, y: int, size: int) -> None:
     image = crop_cover(source, size, size)
     mask = Image.new("L", (size, size), 0)
@@ -226,6 +248,7 @@ def search_x_posts(
     bearer_token: str,
     query: str,
     fetch_limit: int = 30,
+    pagination_token: str = "",
     timeout: int = 25,
 ) -> dict[str, Any]:
     token = normalize_bearer_token(bearer_token)
@@ -235,12 +258,14 @@ def search_x_posts(
     params = {
         "query": query,
         "max_results": str(max(10, min(fetch_limit, 100))),
-        "sort_order": "relevancy",
+        "sort_order": "recency",
         "tweet.fields": "created_at,public_metrics,author_id,possibly_sensitive,lang",
         "expansions": "author_id,attachments.media_keys",
         "media.fields": "media_key,type,url,preview_image_url,width,height",
         "user.fields": "username,name,profile_image_url",
     }
+    if pagination_token:
+        params["next_token"] = pagination_token
     headers = {
         "Authorization": f"Bearer {token}",
         "User-Agent": "fortnite-daily-shop-qq-bot/1.0",
@@ -428,14 +453,14 @@ def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) 
         if isinstance(item, dict)
     }
 
-    def media_url(tweet: dict[str, Any]) -> str:
+    def tweet_media(tweet: dict[str, Any]) -> dict[str, Any]:
         keys = tweet.get("attachments", {}).get("media_keys", [])
         for key in keys:
             item = media.get(str(key)) or {}
             url = str(item.get("url") or item.get("preview_image_url") or "")
             if url:
-                return url
-        return ""
+                return item
+        return {}
 
     posts: list[dict[str, Any]] = []
     for tweet in data.get("data", []) or []:
@@ -443,7 +468,8 @@ def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) 
             continue
 
         display_tweet = tweet
-        image_url = media_url(display_tweet)
+        media_item = tweet_media(display_tweet)
+        image_url = str(media_item.get("url") or media_item.get("preview_image_url") or "")
         if not image_url:
             for reference in tweet.get("referenced_tweets", []) or []:
                 if not isinstance(reference, dict):
@@ -451,9 +477,11 @@ def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) 
                 candidate = included_tweets.get(str(reference.get("id")))
                 if not candidate or candidate.get("possibly_sensitive"):
                     continue
-                candidate_url = media_url(candidate)
+                candidate_media = tweet_media(candidate)
+                candidate_url = str(candidate_media.get("url") or candidate_media.get("preview_image_url") or "")
                 if candidate_url:
                     display_tweet = candidate
+                    media_item = candidate_media
                     image_url = candidate_url
                     break
         if not image_url:
@@ -476,6 +504,8 @@ def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) 
                 "username": username,
                 "avatar_url": str(user.get("profile_image_url") or ""),
                 "image_url": image_url,
+                "media_width": int(media_item.get("width") or 0),
+                "media_height": int(media_item.get("height") or 0),
                 "score": score,
                 "likes": int(metrics.get("like_count") or 0),
                 "retweets": int(metrics.get("retweet_count") or 0),
@@ -574,6 +604,49 @@ def save_timeline_queue_state(state: dict[str, Any]) -> None:
     )
 
 
+def search_queue_path(query: str) -> Path:
+    digest = hashlib.sha1(query.encode("utf-8")).hexdigest()
+    return X_SEARCH_QUEUE_DIR / f"{digest}.json"
+
+
+def load_search_queue_state(query: str) -> dict[str, Any]:
+    path = search_queue_path(query)
+    if not path.exists():
+        return {"query": query, "queue": [], "sent_ids": [], "next_token": ""}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"query": query, "queue": [], "sent_ids": [], "next_token": ""}
+    if not isinstance(data, dict):
+        return {"query": query, "queue": [], "sent_ids": [], "next_token": ""}
+
+    queue = data.get("queue") if isinstance(data.get("queue"), list) else []
+    sent_ids = data.get("sent_ids") if isinstance(data.get("sent_ids"), list) else []
+    return {
+        "query": query,
+        "queue": [post for post in queue if isinstance(post, dict) and str(post.get("id") or "").strip()],
+        "sent_ids": [str(item) for item in sent_ids if str(item).strip()],
+        "next_token": str(data.get("next_token") or ""),
+    }
+
+
+def save_search_queue_state(query: str, state: dict[str, Any]) -> None:
+    X_SEARCH_QUEUE_DIR.mkdir(parents=True, exist_ok=True)
+    queue = state.get("queue") if isinstance(state.get("queue"), list) else []
+    sent_ids = state.get("sent_ids") if isinstance(state.get("sent_ids"), list) else []
+    compact = {
+        "query": query,
+        "queue": queue[:120],
+        "sent_ids": [str(item) for item in sent_ids if str(item).strip()][:400],
+        "next_token": str(state.get("next_token") or ""),
+        "updated_at": int(time.time()),
+    }
+    search_queue_path(query).write_text(
+        json.dumps(compact, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def append_unique_timeline_posts(queue: list[dict[str, Any]], posts: list[dict[str, Any]], blocked_ids: set[str]) -> None:
     known_ids = blocked_ids | {str(post.get("id") or "") for post in queue}
     for post in posts:
@@ -582,6 +655,49 @@ def append_unique_timeline_posts(queue: list[dict[str, Any]], posts: list[dict[s
             continue
         queue.append(post)
         known_ids.add(post_id)
+
+
+def take_search_queue_posts(
+    bearer_token: str,
+    query: str,
+    limit: int,
+    fetch_limit: int,
+) -> list[dict[str, Any]]:
+    count = max(1, min(limit, 8))
+    page_size = max(10, min(fetch_limit, 100))
+    state = load_search_queue_state(query)
+    queue = state["queue"]
+    sent_ids = [str(item) for item in state["sent_ids"] if str(item).strip()]
+    sent_set = set(sent_ids)
+
+    attempts = 0
+    while len(queue) < count and attempts < 5:
+        attempts += 1
+        before = len(queue)
+        data = search_x_posts(
+            bearer_token=bearer_token,
+            query=query,
+            fetch_limit=page_size,
+            pagination_token=str(state.get("next_token") or ""),
+        )
+        state["next_token"] = str(data.get("meta", {}).get("next_token") or "")
+        candidates = extract_posts(data, limit=page_size, sort_by_score=True)
+        append_unique_timeline_posts(queue, candidates, sent_set)
+
+        if len(queue) == before and not state["next_token"] and sent_ids:
+            sent_ids = []
+            sent_set = set()
+            state["sent_ids"] = []
+            continue
+        if not state["next_token"]:
+            break
+
+    selected = queue[:count]
+    state["queue"] = queue[count:]
+    selected_ids = [str(post.get("id") or "") for post in selected if str(post.get("id") or "")]
+    state["sent_ids"] = selected_ids + [item for item in sent_ids if item not in selected_ids]
+    save_search_queue_state(query, state)
+    return selected
 
 
 def take_timeline_queue_posts(
@@ -630,7 +746,15 @@ def post_layout(draw: ImageDraw.ImageDraw, post: dict[str, Any]) -> dict[str, An
     content_x = PADDING + 24 + AVATAR_SIZE + 14
     content_width = card_width - 24 - AVATAR_SIZE - 14 - 24
     text_lines = wrap_text(draw, str(post.get("text") or ""), FONT_TEXT, content_width, 6)
-    image_height = 420
+    media_width = int(post.get("media_width") or 0)
+    media_height = int(post.get("media_height") or 0)
+    ratio = media_height / media_width if media_width > 0 and media_height > 0 else 0
+    if ratio >= 1.3:
+        image_height = 620
+    elif ratio >= 0.9:
+        image_height = 540
+    else:
+        image_height = 420
     text_height = max(1, len(text_lines)) * 31
     card_height = 24 + 34 + 10 + text_height + 18 + image_height + 44 + 22
     return {
@@ -676,7 +800,7 @@ def draw_post_card(base: Image.Image, draw: ImageDraw.ImageDraw, y: int, post: d
     image_box = (content_x, image_y, content_x + content_width, image_y + layout["image_height"])
     media = download_image(str(post.get("image_url") or ""))
     if media is not None:
-        paste_rounded(base, media, image_box, radius=18)
+        paste_rounded_contain(base, media, image_box, radius=18)
     draw.rounded_rectangle(image_box, radius=18, outline=BORDER, width=1)
 
     metrics_y = image_box[3] + 17
@@ -703,7 +827,7 @@ def render_x_posts_image(posts: list[dict[str, Any]], query: str, path: Path = O
     draw = ImageDraw.Draw(image)
 
     draw.text((PADDING, 22), "X", fill=TEXT, font=FONT_TITLE)
-    draw.text((PADDING + 45, 28), "热门公开帖子", fill=TEXT, font=FONT_NAME)
+    draw.text((PADDING + 45, 28), "搜索图片帖子", fill=TEXT, font=FONT_NAME)
     subtitle = fit_text(draw, query, FONT_META, WIDTH - PADDING * 2)
     draw.text((PADDING, 62), subtitle, fill=MUTED, font=FONT_META)
     draw.line((0, 95, WIDTH, 95), fill=BORDER, width=1)
@@ -724,18 +848,22 @@ def render_x_posts_image(posts: list[dict[str, Any]], query: str, path: Path = O
 def build_x_posts_update(
     bearer_token: str,
     topic: str = "",
-    limit: int = 3,
+    limit: int = 6,
     fetch_limit: int = 30,
     fallback_query: str = "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet",
 ) -> tuple[str, Path, list[dict[str, Any]]]:
     query = topic_to_query(topic, fallback_query)
-    data = search_x_posts(bearer_token=bearer_token, query=query, fetch_limit=fetch_limit)
-    posts = extract_posts(data, limit=max(1, min(limit, 5)))
+    posts = take_search_queue_posts(
+        bearer_token=bearer_token,
+        query=query,
+        limit=max(1, min(limit, 8)),
+        fetch_limit=fetch_limit,
+    )
     if not posts:
         return "暂时没抓到合适的 X 图片帖子。", OUTPUT_PATH, []
 
     path = render_x_posts_image(posts, query=query)
-    caption = f"X 热门公开帖子 · {len(posts)} 条"
+    caption = f"X 搜索图片帖子 · {len(posts)} 条"
     return caption, path, posts
 
 
@@ -782,8 +910,8 @@ def main() -> int:
         caption, path, posts = build_x_posts_update(
             bearer_token=token,
             topic=args.topic,
-            limit=int(config.get("x_search_limit") or 3),
-            fetch_limit=int(config.get("x_search_fetch_limit") or 10),
+            limit=int(config.get("x_search_limit") or 6),
+            fetch_limit=int(config.get("x_search_fetch_limit") or 30),
             fallback_query=str(config.get("x_search_query") or ""),
         )
     print(caption)

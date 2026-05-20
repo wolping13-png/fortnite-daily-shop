@@ -534,8 +534,8 @@ def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str 
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
-    limit = int(config.get("x_search_limit") or 3)
-    fetch_limit = int(config.get("x_search_fetch_limit") or 10)
+    limit = int(config.get("x_search_limit") or 6)
+    fetch_limit = int(config.get("x_search_fetch_limit") or 30)
     fallback_query = str(
         config.get("x_search_query")
         or "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet"
@@ -555,7 +555,7 @@ def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str 
         caption, image_path, posts = build_x_posts_update(
             bearer_token=bearer_token,
             topic=topic,
-            limit=max(1, min(limit, 5)),
+            limit=max(1, min(limit, 8)),
             fetch_limit=max(10, min(fetch_limit, 100)),
             fallback_query=fallback_query,
     )
