@@ -451,6 +451,54 @@ def send_reddit_pet_update(config: dict[str, Any], group_id: int | str, topic: s
     )
 
 
+def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str = "") -> None:
+    from x_posts import build_x_posts_update
+
+    bearer_token = str(config.get("x_bearer_token") or "")
+    if not bearer_token:
+        raise ValueError("X Bearer Token has not been configured.")
+
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    limit = int(config.get("x_search_limit") or 3)
+    fetch_limit = int(config.get("x_search_fetch_limit") or 30)
+    fallback_query = str(
+        config.get("x_search_query")
+        or "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet"
+    )
+
+    caption, image_path, posts = build_x_posts_update(
+        bearer_token=bearer_token,
+        topic=topic,
+        limit=max(1, min(limit, 5)),
+        fetch_limit=max(10, min(fetch_limit, 100)),
+        fallback_query=fallback_query,
+    )
+    if not posts:
+        send_group_text(config, group_id, "暂时没抓到合适的 X 图片帖子。可能是 X API 没额度、搜索条件太窄，或者稍后再试。")
+        return
+
+    result = post_onebot(
+        base_url=base_url,
+        action="send_group_msg",
+        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=choose_send_image(image_path))},
+        access_token=access_token,
+        timeout=120,
+    )
+    if result.get("_napcat_callback_timeout"):
+        safe_path = make_safe_image(image_path)
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={
+                "group_id": group_id,
+                "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            },
+            access_token=access_token,
+            timeout=120,
+        )
+
+
 def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> None:
     from game_deals import build_game_deals_update
 
@@ -581,6 +629,30 @@ def is_wolf_request(text: str, configured_command: str) -> bool:
     return compact == (command or "狼狼")
 
 
+def is_x_posts_request(text: str, configured_command: str) -> bool:
+    value = text.strip().lower()
+    compact = re.sub(r"\s+", "", value)
+    commands = {
+        configured_command.strip().lower(),
+        "x宠物",
+        "x热点",
+        "x帖子",
+        "x狼狼",
+        "推特宠物",
+        "推特热点",
+        "推特帖子",
+        "推特狼狼",
+        "twitter宠物",
+        "twitter热点",
+        "twitter帖子",
+        "twitter狼狼",
+    }
+    compact_commands = {re.sub(r"\s+", "", command) for command in commands if command}
+    if compact in compact_commands:
+        return True
+    return compact.startswith(("x搜", "x找", "x看", "推特搜", "推特找", "twitter搜"))
+
+
 def is_help_request(text: str) -> bool:
     compact = re.sub(r"\s+", "", text.strip().lower())
     return compact in {"指令", "帮助", "菜单", "使用说明", "功能", "help", "commands"}
@@ -594,6 +666,7 @@ def command_help_text(config: dict[str, Any]) -> str:
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
     wolf_command = str(config.get("wolf_command") or "狼狼")
+    x_search_command = str(config.get("x_search_command") or "X宠物")
 
     return (
         "温德尔指令表\n"
@@ -609,6 +682,7 @@ def command_help_text(config: dict[str, Any]) -> str:
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
         f"- @我 {wolf_command}：随机发一张狼图\n"
+        f"- @我 {x_search_command} / X狼狼：抓取 X 公开图片帖子并生成卡片\n"
         f"- @我 {web_search_command} 最近有什么游戏新闻：联网搜索，文字和图片尽量合在一条消息里\n"
         "- @我 今天几号 / 推荐几个游戏 / 你想问的问题：普通聊天\n"
         f"- {ask_prefix} 你的问题：旧版前缀聊天，也还能用"
@@ -1346,6 +1420,16 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         except Exception as exc:
             print(f"Random wolf update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "狼狼图片暂时找不到能发送的真实照片，稍后再试一下。")
+        return
+
+    if is_x_posts_request(text, x_search_command):
+        try:
+            send_x_posts_update(config, group_id, topic=text)
+        except ValueError:
+            send_group_text(config, group_id, "X API 还没配置 Bearer Token。先把 x_bearer_token 填进 gemini_bot_config.json，然后重启我。")
+        except Exception as exc:
+            print(f"X posts update failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "X 图片帖子暂时抓取失败。可能是 token 没权限、额度不足，或者 X API 暂时限制了请求。")
         return
 
     food_kind = random_food_kind(text)
