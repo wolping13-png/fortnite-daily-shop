@@ -20,6 +20,7 @@ from send_qq_shop import build_message, choose_send_image, make_safe_image, post
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "gemini_bot_config.json"
+CHAT_HISTORY_PATH = BASE_DIR / "bot_memory" / "chat_history.json"
 SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
 SHOP_SECTIONS_DIR = BASE_DIR / "shop_sections"
@@ -238,6 +239,78 @@ def send_group_text(config: dict[str, Any], group_id: int | str, text: str) -> N
         access_token=access_token,
         timeout=60,
     )
+
+
+def chat_history_limit(config: dict[str, Any]) -> int:
+    return max(0, min(int(config.get("chat_history_limit") or 12), 40))
+
+
+def load_chat_history() -> dict[str, list[dict[str, str]]]:
+    if not CHAT_HISTORY_PATH.exists():
+        return {}
+    try:
+        data = json.loads(CHAT_HISTORY_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+
+    result: dict[str, list[dict[str, str]]] = {}
+    for group_id, messages in data.items():
+        if not isinstance(messages, list):
+            continue
+        cleaned: list[dict[str, str]] = []
+        for item in messages:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role") or "")
+            content = str(item.get("content") or "").strip()
+            if role in {"user", "assistant"} and content:
+                cleaned.append({"role": role, "content": content[:2000]})
+        if cleaned:
+            result[str(group_id)] = cleaned[-40:]
+    return result
+
+
+def save_chat_history(data: dict[str, list[dict[str, str]]]) -> None:
+    CHAT_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = CHAT_HISTORY_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(CHAT_HISTORY_PATH)
+
+
+def get_group_history(group_id: int | str, limit: int) -> list[dict[str, str]]:
+    if limit <= 0:
+        return []
+    data = load_chat_history()
+    return data.get(str(group_id), [])[-limit:]
+
+
+def append_group_history(config: dict[str, Any], group_id: int | str, role: str, content: str) -> None:
+    limit = chat_history_limit(config)
+    if limit <= 0:
+        return
+    text = str(content or "").strip()
+    if not text:
+        return
+
+    data = load_chat_history()
+    key = str(group_id)
+    messages = data.get(key, [])
+    messages.append({"role": role, "content": text[:2000]})
+    data[key] = messages[-limit:]
+    save_chat_history(data)
+
+
+def clear_group_history(group_id: int | str) -> None:
+    data = load_chat_history()
+    data.pop(str(group_id), None)
+    save_chat_history(data)
+
+
+def is_clear_history_request(text: str) -> bool:
+    compact = re.sub(r"\s+", "", text.strip().lower())
+    return compact in {"清空上下文", "清除上下文", "忘掉刚才", "忘记刚才", "重置对话", "清空记忆", "forget"}
 
 
 def regenerate_shop_assets(include_sections: bool = False) -> None:
@@ -702,6 +775,7 @@ def command_help_text(config: dict[str, Any]) -> str:
         "\n"
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
+        "- @我 清空上下文：清掉本群短期聊天记录\n"
         f"- @我 {wolf_command}：随机发一张狼图\n"
         f"- @我 {x_search_command} 关键词：搜索 X 公开图片帖子并生成卡片\n"
         f"- @我 {x_timeline_command} / X关注：抓取你 X 账号关注时间线里的图片帖子\n"
@@ -1297,7 +1371,7 @@ def ask_model_with_web_search(config: dict[str, Any], question: str) -> tuple[st
     return ask_model(config, prompt), image_urls
 
 
-def ask_gemini(config: dict[str, Any], question: str) -> str:
+def ask_gemini(config: dict[str, Any], question: str, history: list[dict[str, str]] | None = None) -> str:
     model = str(config.get("model") or "gemini-2.0-flash")
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     system_prompt = str(
@@ -1307,6 +1381,14 @@ def ask_gemini(config: dict[str, Any], question: str) -> str:
     system_prompt = add_time_context_to_system(system_prompt)
 
     user_question = add_time_context_to_prompt(enrich_question(question))
+
+    contents: list[dict[str, Any]] = []
+    for message in history or []:
+        role = "model" if message.get("role") == "assistant" else "user"
+        content = str(message.get("content") or "").strip()
+        if content:
+            contents.append({"role": role, "parts": [{"text": content}]})
+    contents.append({"role": "user", "parts": [{"text": user_question}]})
 
     response = requests.post(
         endpoint,
@@ -1318,12 +1400,7 @@ def ask_gemini(config: dict[str, Any], question: str) -> str:
             "systemInstruction": {
                 "parts": [{"text": system_prompt}],
             },
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [{"text": user_question}],
-                }
-            ],
+            "contents": contents,
             "generationConfig": {
                 "temperature": float(config.get("temperature", 0.7)),
                 "maxOutputTokens": int(config.get("max_output_tokens", 700)),
@@ -1344,7 +1421,7 @@ def ask_gemini(config: dict[str, Any], question: str) -> str:
     return answer or "Gemini 没有返回文字内容。"
 
 
-def ask_deepseek(config: dict[str, Any], question: str) -> str:
+def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, str]] | None = None) -> str:
     base_url = str(config.get("deepseek_base_url") or "https://api.deepseek.com").rstrip("/")
     model = str(config.get("model") or "deepseek-v4-flash")
     system_prompt = str(
@@ -1355,6 +1432,14 @@ def ask_deepseek(config: dict[str, Any], question: str) -> str:
 
     user_question = add_time_context_to_prompt(enrich_question(question))
 
+    messages = [{"role": "system", "content": system_prompt}]
+    for message in history or []:
+        role = message.get("role")
+        content = str(message.get("content") or "").strip()
+        if role in {"user", "assistant"} and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": user_question})
+
     response = requests.post(
         f"{base_url}/chat/completions",
         headers={
@@ -1363,10 +1448,7 @@ def ask_deepseek(config: dict[str, Any], question: str) -> str:
         },
         json={
             "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_question},
-            ],
+            "messages": messages,
             "temperature": float(config.get("temperature", 0.7)),
             "max_tokens": int(config.get("max_output_tokens", 700)),
             "stream": False,
@@ -1386,11 +1468,11 @@ def ask_deepseek(config: dict[str, Any], question: str) -> str:
     return answer or "DeepSeek 没有返回文字内容。"
 
 
-def ask_model(config: dict[str, Any], question: str) -> str:
+def ask_model(config: dict[str, Any], question: str, history: list[dict[str, str]] | None = None) -> str:
     provider = str(config.get("provider") or "gemini").lower()
     if provider == "deepseek":
-        return ask_deepseek(config, question)
-    return ask_gemini(config, question)
+        return ask_deepseek(config, question, history=history)
+    return ask_gemini(config, question, history=history)
 
 
 def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
@@ -1531,6 +1613,11 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, chunk)
         return
 
+    if is_clear_history_request(question):
+        clear_group_history(group_id)
+        send_group_text(config, group_id, "已清空本群短期上下文。")
+        return
+
     if is_weather_question(question):
         try:
             answer = ask_weather(config, question)
@@ -1545,7 +1632,8 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         if should_use_web_search(question, web_search_command):
             answer, image_urls = ask_model_with_web_search(config, question)
         else:
-            answer = ask_model(config, question)
+            history = get_group_history(group_id, chat_history_limit(config))
+            answer = ask_model(config, question, history=history)
     except ValueError as exc:
         print(f"Model request failed: {exc}", file=sys.stderr)
         if "Tavily API key" in str(exc):
@@ -1559,6 +1647,8 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     send_web_search_reply(config, group_id, answer, image_urls)
+    append_group_history(config, group_id, "user", question)
+    append_group_history(config, group_id, "assistant", answer)
 
 
 class OneBotHandler(BaseHTTPRequestHandler):
