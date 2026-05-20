@@ -152,15 +152,26 @@ def topic_to_query(topic: str, fallback_query: str) -> str:
     return fallback_query
 
 
+def normalize_bearer_token(value: str) -> str:
+    token = value.strip().strip('"').strip("'")
+    if token.startswith("{"):
+        try:
+            data = json.loads(token)
+            token = str(data.get("access_token") or data.get("bearer_token") or token).strip()
+        except Exception:
+            pass
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
+    return token.strip().strip('"').strip("'")
+
+
 def search_x_posts(
     bearer_token: str,
     query: str,
     fetch_limit: int = 30,
     timeout: int = 25,
 ) -> dict[str, Any]:
-    token = bearer_token.strip()
-    if token.lower().startswith("bearer "):
-        token = token[7:].strip()
+    token = normalize_bearer_token(bearer_token)
     if not token:
         raise ValueError("X Bearer Token has not been configured.")
 

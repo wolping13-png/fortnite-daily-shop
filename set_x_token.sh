@@ -25,7 +25,15 @@ import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-token = sys.argv[2].strip()
+token = sys.argv[2].strip().strip('"').strip("'")
+if token.startswith("{"):
+    try:
+        token_data = json.loads(token)
+        token = str(token_data.get("access_token") or token_data.get("bearer_token") or token).strip()
+    except Exception:
+        pass
+if token.lower().startswith("bearer "):
+    token = token[7:].strip()
 data = json.loads(path.read_text(encoding="utf-8"))
 
 data["x_bearer_token"] = token
