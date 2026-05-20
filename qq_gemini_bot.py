@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -14,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from send_qq_shop import build_message, choose_send_image, make_safe_image, post_onebot
+from send_qq_shop import build_message, choose_send_image, make_safe_image, post_onebot, should_prefer_section_pages
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -292,6 +293,35 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
     ensure_shop_assets(include_sections=send_all)
     if not send_all:
         image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
+        if should_prefer_section_pages(image_path):
+            ensure_shop_assets(include_sections=True)
+            pages = load_shop_pages()
+            if pages:
+                try:
+                    send_group_text(config, group_id, "商店总图太长，我直接发分区小图。")
+                except Exception as exc:
+                    print(f"Shop section notice failed: {exc}", file=sys.stderr)
+
+                for page_path, page_caption in pages:
+                    try:
+                        post_onebot(
+                            base_url=base_url,
+                            action="send_group_msg",
+                            payload={
+                                "group_id": group_id,
+                                "message": build_message(
+                                    caption=f"{caption}\n{page_caption}",
+                                    image_path=choose_send_image(page_path),
+                                ),
+                            },
+                            access_token=access_token,
+                            timeout=90,
+                        )
+                    except Exception as exc:
+                        print(f"Shop section send failed for {page_path.name}: {exc}", file=sys.stderr)
+                    time.sleep(0.6)
+                return
+
         send_path = choose_send_image(image_path)
         message = build_message(caption=f"{caption}\n官方分区总图", image_path=send_path)
         result = post_onebot(
@@ -317,6 +347,34 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
                 timeout=120,
             )
             if retry.get("_napcat_callback_timeout"):
+                ensure_shop_assets(include_sections=True)
+                pages = load_shop_pages()
+                if pages:
+                    try:
+                        send_group_text(config, group_id, "总图被 QQ 回执卡住了，我自动改发分区小图。")
+                    except Exception as exc:
+                        print(f"Shop fallback notice failed: {exc}", file=sys.stderr)
+
+                    for page_path, page_caption in pages:
+                        try:
+                            post_onebot(
+                                base_url=base_url,
+                                action="send_group_msg",
+                                payload={
+                                    "group_id": group_id,
+                                    "message": build_message(
+                                        caption=f"{caption}\n{page_caption}",
+                                        image_path=choose_send_image(page_path),
+                                    ),
+                                },
+                                access_token=access_token,
+                                timeout=90,
+                            )
+                        except Exception as exc:
+                            print(f"Shop section fallback failed for {page_path.name}: {exc}", file=sys.stderr)
+                        time.sleep(0.6)
+                    return
+
                 try:
                     send_group_text(
                         config,

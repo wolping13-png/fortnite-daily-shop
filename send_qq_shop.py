@@ -4,6 +4,7 @@ import argparse
 import base64
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -12,7 +13,8 @@ from urllib.parse import urljoin
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = BASE_DIR / "qq_bot_config.json"
 DEFAULT_IMAGE_PATH = BASE_DIR / "shop.png"
-SAFE_IMAGE_MAX_BYTES = 600_000
+SHOP_SECTIONS_MANIFEST = BASE_DIR / "shop_sections" / "manifest.json"
+SAFE_IMAGE_MAX_BYTES = 450_000
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -90,8 +92,8 @@ def make_safe_image(path: Path) -> Path:
         from PIL import Image
 
         image = Image.open(path).convert("RGB")
-        max_width = 480
-        max_height = 7000
+        max_width = 420
+        max_height = 3600
 
         if image.width > max_width:
             height = int(image.height * max_width / image.width)
@@ -101,7 +103,7 @@ def make_safe_image(path: Path) -> Path:
             width = int(image.width * max_height / image.height)
             image = image.resize((width, max_height), Image.Resampling.LANCZOS)
 
-        for quality in (62, 56, 50, 44, 38, 34):
+        for quality in (58, 52, 46, 40, 34, 30):
             image.save(target, quality=quality, optimize=True)
             if target.stat().st_size <= SAFE_IMAGE_MAX_BYTES:
                 return target
@@ -122,6 +124,103 @@ def choose_send_image(path: Path, image_url: str | None = None) -> Path:
         return path
 
     return path
+
+
+def should_prefer_section_pages(path: Path) -> bool:
+    if not path.exists():
+        return False
+
+    try:
+        if path.stat().st_size > SAFE_IMAGE_MAX_BYTES * 2:
+            return True
+    except Exception:
+        return False
+
+    try:
+        from PIL import Image
+
+        with Image.open(path) as image:
+            return image.height > 5000
+    except Exception:
+        return False
+
+
+def load_section_pages(limit: int | None = None) -> list[tuple[Path, str]]:
+    if not SHOP_SECTIONS_MANIFEST.exists():
+        return []
+
+    try:
+        data = json.loads(SHOP_SECTIONS_MANIFEST.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+    pages = data.get("pages")
+    if not isinstance(pages, list):
+        return []
+
+    result: list[tuple[Path, str]] = []
+    for page in pages:
+        if not isinstance(page, dict):
+            continue
+        path = BASE_DIR / str(page.get("path") or "")
+        if not path.exists():
+            continue
+        caption = str(page.get("caption") or "Fortnite 每日商店")
+        result.append((path, caption))
+        if limit is not None and len(result) >= limit:
+            break
+    return result
+
+
+def send_section_pages_fallback(
+    base_url: str,
+    group_id: int | str,
+    caption: str,
+    access_token: str,
+) -> int:
+    pages = load_section_pages()
+    if not pages:
+        return 0
+
+    sent = 0
+    try:
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={
+                "group_id": group_id,
+                "message": [{"type": "text", "data": {"text": "总图被 QQ 回执卡住了，我自动改发分区小图。"}}],
+            },
+            access_token=access_token,
+            timeout=60,
+        )
+    except Exception as exc:
+        print(f"Failed to send section fallback notice to group {group_id}: {exc}", file=sys.stderr)
+
+    for image_path, page_caption in pages:
+        try:
+            result = post_onebot(
+                base_url=base_url,
+                action="send_group_msg",
+                payload={
+                    "group_id": group_id,
+                    "message": build_message(
+                        caption=f"{caption}\n{page_caption}",
+                        image_path=choose_send_image(image_path),
+                        image_url=None,
+                    ),
+                },
+                access_token=access_token,
+                timeout=90,
+            )
+            sent += 1
+            if result.get("_napcat_callback_timeout"):
+                print(f"Section image callback timed out for group {group_id}: {image_path.name}")
+            time.sleep(0.6)
+        except Exception as exc:
+            print(f"Failed to send section image {image_path.name} to group {group_id}: {exc}", file=sys.stderr)
+
+    return sent
 
 
 def is_napcat_callback_timeout_success(data: dict[str, Any]) -> bool:
@@ -175,6 +274,17 @@ def send_to_groups(
     access_token: str,
 ) -> None:
     for group_id in group_ids:
+        if not image_url and should_prefer_section_pages(image_path):
+            sent_sections = send_section_pages_fallback(
+                base_url=base_url,
+                group_id=group_id,
+                caption=caption,
+                access_token=access_token,
+            )
+            if sent_sections:
+                print(f"Shop image is too long; sent {sent_sections} section images to group {group_id}.")
+                continue
+
         prepared_image_path = choose_send_image(image_path, image_url=image_url)
         message = build_message(caption=caption, image_path=prepared_image_path, image_url=image_url)
         result = post_onebot(
@@ -201,6 +311,16 @@ def send_to_groups(
                 timeout=120,
             )
             if retry.get("_napcat_callback_timeout"):
+                sent_sections = send_section_pages_fallback(
+                    base_url=base_url,
+                    group_id=group_id,
+                    caption=caption,
+                    access_token=access_token,
+                )
+                if sent_sections:
+                    print(f"Sent {sent_sections} shop section images as fallback for group {group_id}.")
+                    continue
+
                 try:
                     post_onebot(
                         base_url=base_url,
