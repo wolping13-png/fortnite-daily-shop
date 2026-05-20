@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import random
 import re
 import time
 from io import BytesIO
@@ -18,6 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR / ".cache" / "x_posts"
 OUTPUT_PATH = BASE_DIR / "x_posts.jpg"
 X_TIMELINE_RECENT_PATH = CACHE_DIR / "timeline_recent.json"
+X_TIMELINE_QUEUE_PATH = CACHE_DIR / "timeline_queue.json"
 X_SEARCH_URL = "https://api.x.com/2/tweets/search/recent"
 X_TOKEN_URL = "https://api.x.com/2/oauth2/token"
 X_ME_URL = "https://api.x.com/2/users/me"
@@ -360,6 +360,7 @@ def fetch_x_home_timeline(
     config: dict[str, Any],
     config_path: Path | None = None,
     fetch_limit: int = 10,
+    pagination_token: str = "",
 ) -> dict[str, Any]:
     user_id = ensure_x_user_id(config, config_path)
     params = {
@@ -369,6 +370,8 @@ def fetch_x_home_timeline(
         "media.fields": "media_key,type,url,preview_image_url,width,height",
         "user.fields": "username,name,profile_image_url",
     }
+    if pagination_token:
+        params["pagination_token"] = pagination_token
     return x_user_get(
         config,
         config_path,
@@ -525,19 +528,89 @@ def save_recent_timeline_ids(ids: list[str]) -> None:
     )
 
 
-def choose_timeline_posts(posts: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
-    if not posts:
-        return []
+def load_timeline_queue_state() -> dict[str, Any]:
+    if not X_TIMELINE_QUEUE_PATH.exists():
+        return {"queue": [], "sent_ids": load_recent_timeline_ids(), "next_token": ""}
+    try:
+        data = json.loads(X_TIMELINE_QUEUE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"queue": [], "sent_ids": load_recent_timeline_ids(), "next_token": ""}
+    if not isinstance(data, dict):
+        return {"queue": [], "sent_ids": load_recent_timeline_ids(), "next_token": ""}
 
-    count = max(1, min(limit, len(posts)))
-    recent_ids = load_recent_timeline_ids()
-    recent_set = set(recent_ids)
-    fresh = [post for post in posts if str(post.get("id") or "") not in recent_set]
-    pool = fresh if len(fresh) >= count else posts
-    selected = random.sample(pool, count) if len(pool) > count else list(pool)
+    queue = data.get("queue") if isinstance(data.get("queue"), list) else []
+    sent_ids = data.get("sent_ids") if isinstance(data.get("sent_ids"), list) else load_recent_timeline_ids()
+    return {
+        "queue": [post for post in queue if isinstance(post, dict) and str(post.get("id") or "").strip()],
+        "sent_ids": [str(item) for item in sent_ids if str(item).strip()],
+        "next_token": str(data.get("next_token") or ""),
+    }
 
+
+def save_timeline_queue_state(state: dict[str, Any]) -> None:
+    X_TIMELINE_QUEUE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    queue = state.get("queue") if isinstance(state.get("queue"), list) else []
+    sent_ids = state.get("sent_ids") if isinstance(state.get("sent_ids"), list) else []
+    compact = {
+        "queue": queue[:80],
+        "sent_ids": [str(item) for item in sent_ids if str(item).strip()][:300],
+        "next_token": str(state.get("next_token") or ""),
+        "updated_at": int(time.time()),
+    }
+    X_TIMELINE_QUEUE_PATH.write_text(
+        json.dumps(compact, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def append_unique_timeline_posts(queue: list[dict[str, Any]], posts: list[dict[str, Any]], blocked_ids: set[str]) -> None:
+    known_ids = blocked_ids | {str(post.get("id") or "") for post in queue}
+    for post in posts:
+        post_id = str(post.get("id") or "").strip()
+        if not post_id or post_id in known_ids:
+            continue
+        queue.append(post)
+        known_ids.add(post_id)
+
+
+def take_timeline_queue_posts(
+    config: dict[str, Any],
+    config_path: Path | None,
+    limit: int,
+    fetch_limit: int,
+) -> list[dict[str, Any]]:
+    count = max(1, min(limit, 5))
+    page_size = max(5, min(fetch_limit, 100))
+    state = load_timeline_queue_state()
+    queue = state["queue"]
+    sent_ids = [str(item) for item in state["sent_ids"] if str(item).strip()]
+    sent_set = set(sent_ids)
+
+    attempts = 0
+    while len(queue) < count and attempts < 4:
+        attempts += 1
+        data = fetch_x_home_timeline(
+            config,
+            config_path=config_path,
+            fetch_limit=page_size,
+            pagination_token=str(state.get("next_token") or ""),
+        )
+        state["next_token"] = str(data.get("meta", {}).get("next_token") or "")
+        candidates = extract_posts(
+            data,
+            limit=page_size,
+            sort_by_score=False,
+        )
+        append_unique_timeline_posts(queue, candidates, sent_set)
+        if not state["next_token"]:
+            break
+
+    selected = queue[:count]
+    state["queue"] = queue[count:]
     selected_ids = [str(post.get("id") or "") for post in selected if str(post.get("id") or "")]
-    save_recent_timeline_ids(selected_ids + recent_ids)
+    state["sent_ids"] = selected_ids + [item for item in sent_ids if item not in selected_ids]
+    save_timeline_queue_state(state)
+    save_recent_timeline_ids(state["sent_ids"])
     return selected
 
 
@@ -661,13 +734,12 @@ def build_x_timeline_update(
     limit: int = 3,
     fetch_limit: int = 10,
 ) -> tuple[str, Path, list[dict[str, Any]]]:
-    data = fetch_x_home_timeline(config, config_path=config_path, fetch_limit=fetch_limit)
-    candidates = extract_posts(
-        data,
-        limit=max(1, min(fetch_limit, 100)),
-        sort_by_score=False,
+    posts = take_timeline_queue_posts(
+        config=config,
+        config_path=config_path,
+        limit=max(1, min(limit, 5)),
+        fetch_limit=max(5, min(fetch_limit, 100)),
     )
-    posts = choose_timeline_posts(candidates, limit=max(1, min(limit, 5)))
     username = str(config.get("x_username") or "").strip()
     label = f"Following timeline @{username}" if username else "Following timeline"
     if not posts:
