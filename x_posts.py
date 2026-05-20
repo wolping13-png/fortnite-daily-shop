@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import random
 import re
 import time
 from io import BytesIO
@@ -16,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR / ".cache" / "x_posts"
 OUTPUT_PATH = BASE_DIR / "x_posts.jpg"
+X_TIMELINE_RECENT_PATH = CACHE_DIR / "timeline_recent.json"
 X_SEARCH_URL = "https://api.x.com/2/tweets/search/recent"
 X_TOKEN_URL = "https://api.x.com/2/oauth2/token"
 X_ME_URL = "https://api.x.com/2/users/me"
@@ -399,7 +401,7 @@ def download_image(url: str) -> Image.Image | None:
         return None
 
 
-def extract_posts(data: dict[str, Any], limit: int) -> list[dict[str, Any]]:
+def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) -> list[dict[str, Any]]:
     users = {str(item.get("id")): item for item in data.get("includes", {}).get("users", []) if isinstance(item, dict)}
     media = {
         str(item.get("media_key")): item
@@ -454,7 +456,7 @@ def extract_posts(data: dict[str, Any], limit: int) -> list[dict[str, Any]]:
         username = str(user.get("username") or "unknown")
         posts.append(
             {
-                "id": str(tweet.get("id") or ""),
+                "id": str(display_tweet.get("id") or tweet.get("id") or ""),
                 "text": clean_text(str(display_tweet.get("text") or "")),
                 "name": str(user.get("name") or username),
                 "username": username,
@@ -470,7 +472,8 @@ def extract_posts(data: dict[str, Any], limit: int) -> list[dict[str, Any]]:
             }
         )
 
-    posts.sort(key=lambda item: item.get("score", 0), reverse=True)
+    if sort_by_score:
+        posts.sort(key=lambda item: item.get("score", 0), reverse=True)
     return posts[:limit]
 
 
@@ -493,6 +496,49 @@ def compact_count(value: Any) -> str:
     if number >= 1000:
         return f"{number / 1000:.1f}K".rstrip("0").rstrip(".")
     return str(number)
+
+
+def load_recent_timeline_ids() -> list[str]:
+    if not X_TIMELINE_RECENT_PATH.exists():
+        return []
+    try:
+        data = json.loads(X_TIMELINE_RECENT_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    if isinstance(data, list):
+        return [str(item) for item in data if str(item).strip()]
+    if isinstance(data, dict) and isinstance(data.get("ids"), list):
+        return [str(item) for item in data["ids"] if str(item).strip()]
+    return []
+
+
+def save_recent_timeline_ids(ids: list[str]) -> None:
+    X_TIMELINE_RECENT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    unique: list[str] = []
+    for item in ids:
+        text = str(item).strip()
+        if text and text not in unique:
+            unique.append(text)
+    X_TIMELINE_RECENT_PATH.write_text(
+        json.dumps({"ids": unique[:80]}, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def choose_timeline_posts(posts: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    if not posts:
+        return []
+
+    count = max(1, min(limit, len(posts)))
+    recent_ids = load_recent_timeline_ids()
+    recent_set = set(recent_ids)
+    fresh = [post for post in posts if str(post.get("id") or "") not in recent_set]
+    pool = fresh if len(fresh) >= count else posts
+    selected = random.sample(pool, count) if len(pool) > count else list(pool)
+
+    selected_ids = [str(post.get("id") or "") for post in selected if str(post.get("id") or "")]
+    save_recent_timeline_ids(selected_ids + recent_ids)
+    return selected
 
 
 def post_layout(draw: ImageDraw.ImageDraw, post: dict[str, Any]) -> dict[str, Any]:
@@ -616,7 +662,12 @@ def build_x_timeline_update(
     fetch_limit: int = 10,
 ) -> tuple[str, Path, list[dict[str, Any]]]:
     data = fetch_x_home_timeline(config, config_path=config_path, fetch_limit=fetch_limit)
-    posts = extract_posts(data, limit=max(1, min(limit, 5)))
+    candidates = extract_posts(
+        data,
+        limit=max(1, min(fetch_limit, 100)),
+        sort_by_score=False,
+    )
+    posts = choose_timeline_posts(candidates, limit=max(1, min(limit, 5)))
     username = str(config.get("x_username") or "").strip()
     label = f"Following timeline @{username}" if username else "Following timeline"
     if not posts:

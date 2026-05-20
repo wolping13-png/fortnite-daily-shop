@@ -302,6 +302,11 @@ def append_group_history(config: dict[str, Any], group_id: int | str, role: str,
     save_chat_history(data)
 
 
+def remember_group_exchange(config: dict[str, Any], group_id: int | str, user_text: str, assistant_text: str) -> None:
+    append_group_history(config, group_id, "user", user_text)
+    append_group_history(config, group_id, "assistant", assistant_text)
+
+
 def clear_group_history(group_id: int | str) -> None:
     data = load_chat_history()
     data.pop(str(group_id), None)
@@ -524,7 +529,7 @@ def send_reddit_pet_update(config: dict[str, Any], group_id: int | str, topic: s
     )
 
 
-def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str = "") -> None:
+def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str = "") -> str:
     from x_posts import build_x_posts_update, build_x_timeline_update
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
@@ -553,10 +558,11 @@ def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str 
             limit=max(1, min(limit, 5)),
             fetch_limit=max(10, min(fetch_limit, 100)),
             fallback_query=fallback_query,
-        )
+    )
     if not posts:
-        send_group_text(config, group_id, "暂时没抓到合适的 X 图片帖子。可能是 X API 没额度、搜索条件太窄，或者稍后再试。")
-        return
+        message = "暂时没抓到合适的 X 图片帖子。可能是 X API 没额度、搜索条件太窄，或者稍后再试。"
+        send_group_text(config, group_id, message)
+        return message
 
     result = post_onebot(
         base_url=base_url,
@@ -577,9 +583,10 @@ def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str 
             access_token=access_token,
             timeout=120,
         )
+    return caption
 
 
-def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> None:
+def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> str:
     from game_deals import build_game_deals_update
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
@@ -609,9 +616,10 @@ def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> None:
             access_token=access_token,
             timeout=120,
         )
+    return caption
 
 
-def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: str) -> None:
+def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: str) -> str:
     from random_food import build_random_food_recommendation
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
@@ -637,9 +645,10 @@ def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: s
             access_token=access_token,
             timeout=120,
         )
+    return caption
 
 
-def send_random_wolf_update(config: dict[str, Any], group_id: int | str, caption: str = "狼狼来啦") -> None:
+def send_random_wolf_update(config: dict[str, Any], group_id: int | str, caption: str = "狼狼来啦") -> str:
     from random_wolf import build_random_wolf
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
@@ -666,6 +675,7 @@ def send_random_wolf_update(config: dict[str, Any], group_id: int | str, caption
             access_token=access_token,
             timeout=120,
         )
+    return text
 
 
 def is_pet_hot_request(text: str, configured_command: str) -> bool:
@@ -1522,7 +1532,8 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if mentioned and is_wolf_request(text, wolf_command):
         try:
-            send_random_wolf_update(config, group_id)
+            answer = send_random_wolf_update(config, group_id)
+            remember_group_exchange(config, group_id, text, answer)
         except Exception as exc:
             print(f"Random wolf update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "狼狼图片暂时找不到能发送的真实照片，稍后再试一下。")
@@ -1530,7 +1541,8 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if is_x_timeline_request(text, x_timeline_command) or is_x_posts_request(text, x_search_command):
         try:
-            send_x_posts_update(config, group_id, topic=text)
+            answer = send_x_posts_update(config, group_id, topic=text)
+            remember_group_exchange(config, group_id, text, answer)
         except ValueError:
             send_group_text(config, group_id, "X API 还没配置完整。关键词搜索需要 x_bearer_token；X日常需要先运行 authorize_x_account.sh 授权你的 X 账号。")
         except Exception as exc:
@@ -1541,7 +1553,8 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     food_kind = random_food_kind(text)
     if food_kind:
         try:
-            send_random_food_update(config, group_id, food_kind)
+            answer = send_random_food_update(config, group_id, food_kind)
+            remember_group_exchange(config, group_id, text, answer)
         except Exception as exc:
             print(f"Random food update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "随机推荐暂时找不到能发送的真实图片。请确认 tavily_api_key 已配置，或者稍后再试一下。")
@@ -1549,7 +1562,8 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if is_game_deals_request(text, game_deals_command):
         try:
-            send_game_deals_update(config, group_id)
+            answer = send_game_deals_update(config, group_id)
+            remember_group_exchange(config, group_id, text, answer)
         except Exception as exc:
             print(f"Game deals update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "游戏优惠日报暂时抓取失败，稍后再试一下。")
@@ -1575,6 +1589,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             answer = "联网搜索暂时失败了，稍后再试一下。"
             image_urls = []
         send_web_search_reply(config, group_id, answer, image_urls)
+        remember_group_exchange(config, group_id, text, answer)
         return
 
     if text.startswith(weather_command):
@@ -1585,6 +1600,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             print(f"Weather request failed: {exc}", file=sys.stderr)
             answer = "天气暂时查不到，稍后再试一下。"
         send_group_text(config, group_id, answer)
+        remember_group_exchange(config, group_id, text, answer)
         return
 
     if is_weather_question(text):
@@ -1594,6 +1610,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             print(f"Weather request failed: {exc}", file=sys.stderr)
             answer = "天气暂时查不到，稍后再试一下。"
         send_group_text(config, group_id, answer)
+        remember_group_exchange(config, group_id, text, answer)
         return
 
     if mentioned:
@@ -1625,6 +1642,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             print(f"Weather request failed: {exc}", file=sys.stderr)
             answer = "天气暂时查不到，稍后再试一下。"
         send_group_text(config, group_id, answer)
+        remember_group_exchange(config, group_id, question, answer)
         return
 
     image_urls: list[str] = []
@@ -1647,8 +1665,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     send_web_search_reply(config, group_id, answer, image_urls)
-    append_group_history(config, group_id, "user", question)
-    append_group_history(config, group_id, "assistant", answer)
+    remember_group_exchange(config, group_id, question, answer)
 
 
 class OneBotHandler(BaseHTTPRequestHandler):
