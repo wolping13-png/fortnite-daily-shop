@@ -721,21 +721,30 @@ def is_wolf_request(text: str, configured_command: str) -> bool:
 
 def is_x_posts_request(text: str, configured_command: str) -> bool:
     value = text.strip()
-    compact = re.sub(r"\s+", "", value)
+    compact = re.sub(r"\s+", "", value).lower()
     commands = {
-        configured_command.strip(),
+        configured_command.strip().lower(),
         "X搜索",
         "X搜",
         "X找",
         "X看",
+        "X查",
         "推特搜索",
         "推特搜",
         "推特找",
+        "推特查",
         "Twitter搜索",
         "Twitter搜",
+        "Twitter找",
     }
-    compact_commands = {re.sub(r"\s+", "", command) for command in commands if command}
-    return any(compact.startswith(command) and compact != command for command in compact_commands)
+    compact_commands = {re.sub(r"\s+", "", command).lower() for command in commands if command}
+    if any(compact.startswith(command) and compact != command for command in compact_commands):
+        return True
+
+    has_x_source = any(mark in compact for mark in ("x", "推特", "twitter"))
+    has_search_word = any(word in compact for word in ("搜索", "搜一下", "搜", "找一下", "找", "查一下", "查", "看看", "看"))
+    has_timeline_word = any(word in compact for word in ("日常", "关注", "时间线", "timeline", "following"))
+    return has_x_source and has_search_word and not has_timeline_word
 
 
 def is_x_timeline_request(text: str, configured_command: str) -> bool:
@@ -787,7 +796,7 @@ def command_help_text(config: dict[str, Any]) -> str:
         "- @我 指令：显示这份指令表\n"
         "- @我 清空上下文：清掉本群短期聊天记录\n"
         f"- @我 {wolf_command}：随机发一张狼图\n"
-        f"- @我 {x_search_command} 关键词：搜索 X 公开图片帖子并生成卡片\n"
+        f"- @我 {x_search_command} 关键词 / 帮我在 X 搜索 关键词：搜索 X 公开图片帖子并生成卡片\n"
         f"- @我 {x_timeline_command} / X关注：抓取你 X 账号关注时间线里的图片帖子\n"
         f"- @我 {web_search_command} 最近有什么游戏新闻：联网搜索，文字和图片尽量合在一条消息里\n"
         "- @我 今天几号 / 推荐几个游戏 / 你想问的问题：普通聊天\n"

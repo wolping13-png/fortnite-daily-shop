@@ -193,6 +193,17 @@ def topic_to_query(topic: str, fallback_query: str) -> str:
 
     value = topic.strip()
     value = re.sub(r"^(x|X|推特|twitter)\s*(搜索|搜|找|看)?\s*", "", value).strip()
+    value = re.sub(
+        r"^(帮我|请|麻烦你|能不能|可以)?\s*(用|在|去)?\s*(x|X|推特|twitter)\s*(上|里|上面)?\s*(搜索|搜一下|搜|找一下|找|查一下|查|看看|看)?\s*",
+        "",
+        value,
+    ).strip()
+    value = re.sub(
+        r"^(帮我|请|麻烦你|能不能|可以)?\s*(搜索|搜一下|搜|找一下|找|查一下|查|看看|看)\s*(x|X|推特|twitter)\s*(上|里|上面)?\s*",
+        "",
+        value,
+    ).strip()
+    value = value.lstrip(":：,，.。 ")
     if value:
         return f"({value}) has:media -is:retweet -nsfw -porn -18+"
     return fallback_query
