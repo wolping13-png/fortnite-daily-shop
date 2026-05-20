@@ -461,7 +461,7 @@ def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
     limit = int(config.get("x_search_limit") or 3)
-    fetch_limit = int(config.get("x_search_fetch_limit") or 30)
+    fetch_limit = int(config.get("x_search_fetch_limit") or 10)
     fallback_query = str(
         config.get("x_search_query")
         or "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet"
@@ -638,14 +638,21 @@ def is_x_posts_request(text: str, configured_command: str) -> bool:
         "x热点",
         "x帖子",
         "x狼狼",
+        "x福瑞",
+        "xfurry",
+        "x兽设",
+        "x兽人",
         "推特宠物",
         "推特热点",
         "推特帖子",
         "推特狼狼",
+        "推特福瑞",
+        "推特兽设",
         "twitter宠物",
         "twitter热点",
         "twitter帖子",
         "twitter狼狼",
+        "twitterfurry",
     }
     compact_commands = {re.sub(r"\s+", "", command) for command in commands if command}
     if compact in compact_commands:
@@ -682,7 +689,7 @@ def command_help_text(config: dict[str, Any]) -> str:
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
         f"- @我 {wolf_command}：随机发一张狼图\n"
-        f"- @我 {x_search_command} / X狼狼：抓取 X 公开图片帖子并生成卡片\n"
+        f"- @我 {x_search_command} / X狼狼 / X福瑞：抓取 X 公开图片帖子并生成卡片\n"
         f"- @我 {web_search_command} 最近有什么游戏新闻：联网搜索，文字和图片尽量合在一条消息里\n"
         "- @我 今天几号 / 推荐几个游戏 / 你想问的问题：普通聊天\n"
         f"- {ask_prefix} 你的问题：旧版前缀聊天，也还能用"

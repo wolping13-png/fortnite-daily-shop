@@ -136,6 +136,11 @@ def topic_to_query(topic: str, fallback_query: str) -> str:
         fallback_query = "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet"
 
     compact = re.sub(r"\s+", "", topic.strip().lower())
+    if any(keyword in compact for keyword in ("furry", "福瑞", "兽设", "兽人", "兽圈", "anthro", "kemono")):
+        return (
+            '("furry art" OR "furry artwork" OR "furry drawing" OR "anthro art" '
+            'OR kemono OR 福瑞 OR 兽设 OR 兽人) has:media -is:retweet -nsfw -porn -18+'
+        )
     if "狼" in compact or "wolf" in compact:
         return "(wolf OR wolves OR 狼 OR 狼狼) has:media -is:retweet"
     if "狐" in compact or "fox" in compact:
@@ -144,7 +149,7 @@ def topic_to_query(topic: str, fallback_query: str) -> str:
         return "(cat OR cats OR 猫 OR 猫猫) has:media -is:retweet"
     if "狗" in compact or "dog" in compact:
         return "(dog OR dogs OR puppy OR 狗 OR 狗狗) has:media -is:retweet"
-    if topic.strip() and not compact.startswith(("x宠物", "x热点", "x帖子")):
+    if topic.strip() and not compact.startswith(("x宠物", "x热点", "x帖子", "x福瑞", "xfurry", "x兽设")):
         value = topic.strip()
         value = re.sub(r"^(x|X|推特|twitter)\s*", "", value).strip()
         if value:
@@ -366,7 +371,7 @@ def main() -> int:
         bearer_token=token,
         topic=args.topic,
         limit=int(config.get("x_search_limit") or 3),
-        fetch_limit=int(config.get("x_search_fetch_limit") or 30),
+        fetch_limit=int(config.get("x_search_fetch_limit") or 10),
         fallback_query=str(config.get("x_search_query") or ""),
     )
     print(caption)

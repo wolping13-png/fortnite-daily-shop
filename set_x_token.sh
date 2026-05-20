@@ -39,7 +39,10 @@ data = json.loads(path.read_text(encoding="utf-8"))
 data["x_bearer_token"] = token
 data.setdefault("x_search_command", "X宠物")
 data.setdefault("x_search_limit", 3)
-data.setdefault("x_search_fetch_limit", 30)
+try:
+    data["x_search_fetch_limit"] = min(int(data.get("x_search_fetch_limit") or 10), 10)
+except Exception:
+    data["x_search_fetch_limit"] = 10
 data.setdefault(
     "x_search_query",
     "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet",
