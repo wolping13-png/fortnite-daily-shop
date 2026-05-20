@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import re
+import time
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,9 @@ BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR / ".cache" / "x_posts"
 OUTPUT_PATH = BASE_DIR / "x_posts.jpg"
 X_SEARCH_URL = "https://api.x.com/2/tweets/search/recent"
+X_TOKEN_URL = "https://api.x.com/2/oauth2/token"
+X_ME_URL = "https://api.x.com/2/users/me"
+X_TIMELINE_URL_TEMPLATE = "https://api.x.com/2/users/{user_id}/timelines/reverse_chronological"
 
 WIDTH = 900
 PADDING = 30
@@ -64,6 +68,12 @@ def load_config(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError(f"{path.name} must contain a JSON object.")
     return data
+
+
+def save_config(path: Path, data: dict[str, Any]) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
 
 
 def text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
@@ -250,6 +260,136 @@ def search_x_posts(
     return data
 
 
+def refresh_x_user_token(config: dict[str, Any], config_path: Path | None = None) -> str:
+    client_id = str(config.get("x_client_id") or "").strip()
+    refresh_token = str(config.get("x_user_refresh_token") or "").strip()
+    client_secret = str(config.get("x_client_secret") or "").strip()
+
+    if not client_id or not refresh_token:
+        raise ValueError("X account OAuth is not configured.")
+
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+    }
+    auth = None
+    if client_secret:
+        auth = (client_id, client_secret)
+    else:
+        data["client_id"] = client_id
+
+    response = requests.post(
+        X_TOKEN_URL,
+        data=data,
+        auth=auth,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=30,
+    )
+    if response.status_code in {400, 401, 403}:
+        raise RuntimeError(f"X OAuth refresh failed: {response.text[:500]}")
+    response.raise_for_status()
+    token_data = response.json()
+
+    access_token = str(token_data.get("access_token") or "").strip()
+    if not access_token:
+        raise RuntimeError(f"X OAuth refresh returned no access token: {token_data!r}")
+
+    config["x_user_access_token"] = access_token
+    if token_data.get("refresh_token"):
+        config["x_user_refresh_token"] = str(token_data["refresh_token"])
+    if token_data.get("expires_in"):
+        config["x_user_token_expires_at"] = int(time.time()) + int(token_data["expires_in"]) - 90
+
+    if config_path is not None:
+        save_config(config_path, config)
+
+    return access_token
+
+
+def x_user_get(
+    config: dict[str, Any],
+    config_path: Path | None,
+    url: str,
+    params: dict[str, str],
+) -> dict[str, Any]:
+    token = str(config.get("x_user_access_token") or "").strip()
+    expires_at = int(config.get("x_user_token_expires_at") or 0)
+    if not token or (expires_at and expires_at <= int(time.time())):
+        token = refresh_x_user_token(config, config_path)
+
+    def request(current_token: str) -> requests.Response:
+        return requests.get(
+            url,
+            headers={
+                "Authorization": f"Bearer {current_token}",
+                "User-Agent": "fortnite-daily-shop-qq-bot/1.0",
+            },
+            params=params,
+            timeout=30,
+        )
+
+    response = request(token)
+    if response.status_code == 401 and config.get("x_user_refresh_token"):
+        token = refresh_x_user_token(config, config_path)
+        response = request(token)
+
+    if response.status_code in {401, 403}:
+        raise RuntimeError(f"X account timeline has no access: {response.text[:500]}")
+    if response.status_code == 429:
+        raise RuntimeError("X account timeline rate limit or credits are exhausted.")
+    response.raise_for_status()
+
+    data = response.json()
+    if not isinstance(data, dict):
+        raise RuntimeError("X API returned an unexpected timeline response.")
+    return data
+
+
+def ensure_x_user_id(config: dict[str, Any], config_path: Path | None = None) -> str:
+    user_id = str(config.get("x_user_id") or "").strip()
+    if user_id:
+        return user_id
+
+    data = x_user_get(
+        config,
+        config_path,
+        X_ME_URL,
+        params={"user.fields": "username,name,profile_image_url"},
+    )
+    user = data.get("data") if isinstance(data.get("data"), dict) else {}
+    user_id = str(user.get("id") or "").strip()
+    if not user_id:
+        raise RuntimeError(f"Could not read X user id: {data!r}")
+
+    config["x_user_id"] = user_id
+    config["x_username"] = str(user.get("username") or "")
+    config["x_display_name"] = str(user.get("name") or "")
+    if config_path is not None:
+        save_config(config_path, config)
+    return user_id
+
+
+def fetch_x_home_timeline(
+    config: dict[str, Any],
+    config_path: Path | None = None,
+    fetch_limit: int = 10,
+) -> dict[str, Any]:
+    user_id = ensure_x_user_id(config, config_path)
+    params = {
+        "max_results": str(max(5, min(fetch_limit, 100))),
+        "tweet.fields": "created_at,public_metrics,author_id,possibly_sensitive,lang",
+        "expansions": "author_id,attachments.media_keys,referenced_tweets.id,referenced_tweets.id.author_id",
+        "media.fields": "media_key,type,url,preview_image_url,width,height",
+        "user.fields": "username,name,profile_image_url",
+    }
+    return x_user_get(
+        config,
+        config_path,
+        X_TIMELINE_URL_TEMPLATE.format(user_id=user_id),
+        params=params,
+    )
+
+
 def download_image(url: str) -> Image.Image | None:
     if not url:
         return None
@@ -281,24 +421,45 @@ def extract_posts(data: dict[str, Any], limit: int) -> list[dict[str, Any]]:
         for item in data.get("includes", {}).get("media", [])
         if isinstance(item, dict)
     }
+    included_tweets = {
+        str(item.get("id")): item
+        for item in data.get("includes", {}).get("tweets", [])
+        if isinstance(item, dict)
+    }
+
+    def media_url(tweet: dict[str, Any]) -> str:
+        keys = tweet.get("attachments", {}).get("media_keys", [])
+        for key in keys:
+            item = media.get(str(key)) or {}
+            url = str(item.get("url") or item.get("preview_image_url") or "")
+            if url:
+                return url
+        return ""
 
     posts: list[dict[str, Any]] = []
     for tweet in data.get("data", []) or []:
         if not isinstance(tweet, dict) or tweet.get("possibly_sensitive"):
             continue
 
-        keys = tweet.get("attachments", {}).get("media_keys", [])
-        image_url = ""
-        for key in keys:
-            item = media.get(str(key)) or {}
-            image_url = str(item.get("url") or item.get("preview_image_url") or "")
-            if image_url:
-                break
+        display_tweet = tweet
+        image_url = media_url(display_tweet)
+        if not image_url:
+            for reference in tweet.get("referenced_tweets", []) or []:
+                if not isinstance(reference, dict):
+                    continue
+                candidate = included_tweets.get(str(reference.get("id")))
+                if not candidate or candidate.get("possibly_sensitive"):
+                    continue
+                candidate_url = media_url(candidate)
+                if candidate_url:
+                    display_tweet = candidate
+                    image_url = candidate_url
+                    break
         if not image_url:
             continue
 
-        user = users.get(str(tweet.get("author_id"))) or {}
-        metrics = tweet.get("public_metrics") or {}
+        user = users.get(str(display_tweet.get("author_id"))) or {}
+        metrics = display_tweet.get("public_metrics") or tweet.get("public_metrics") or {}
         score = (
             int(metrics.get("like_count") or 0)
             + int(metrics.get("retweet_count") or 0) * 2
@@ -309,7 +470,7 @@ def extract_posts(data: dict[str, Any], limit: int) -> list[dict[str, Any]]:
         posts.append(
             {
                 "id": str(tweet.get("id") or ""),
-                "text": clean_text(str(tweet.get("text") or "")),
+                "text": clean_text(str(display_tweet.get("text") or "")),
                 "name": str(user.get("name") or username),
                 "username": username,
                 "avatar_url": str(user.get("profile_image_url") or ""),
@@ -319,8 +480,8 @@ def extract_posts(data: dict[str, Any], limit: int) -> list[dict[str, Any]]:
                 "retweets": int(metrics.get("retweet_count") or 0),
                 "replies": int(metrics.get("reply_count") or 0),
                 "quotes": int(metrics.get("quote_count") or 0),
-                "created_at": str(tweet.get("created_at") or ""),
-                "url": f"https://x.com/{username}/status/{tweet.get('id')}",
+                "created_at": str(display_tweet.get("created_at") or tweet.get("created_at") or ""),
+                "url": f"https://x.com/{username}/status/{display_tweet.get('id') or tweet.get('id')}",
             }
         )
 
@@ -463,21 +624,49 @@ def build_x_posts_update(
     return caption, path, posts
 
 
+def build_x_timeline_update(
+    config: dict[str, Any],
+    config_path: Path | None = None,
+    limit: int = 3,
+    fetch_limit: int = 10,
+) -> tuple[str, Path, list[dict[str, Any]]]:
+    data = fetch_x_home_timeline(config, config_path=config_path, fetch_limit=fetch_limit)
+    posts = extract_posts(data, limit=max(1, min(limit, 5)))
+    username = str(config.get("x_username") or "").strip()
+    label = f"Following timeline @{username}" if username else "Following timeline"
+    if not posts:
+        return "暂时没从你的 X 关注时间线里抓到带图片的帖子。", OUTPUT_PATH, []
+
+    path = render_x_posts_image(posts, query=label)
+    caption = f"X 日常关注时间线 · {len(posts)} 条"
+    return caption, path, posts
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch public X posts and render a QQ-friendly image.")
     parser.add_argument("--config", default=str(BASE_DIR / "gemini_bot_config.json"))
     parser.add_argument("--topic", default="X宠物")
+    parser.add_argument("--timeline", action="store_true", help="Fetch the authorized account's Following timeline.")
     args = parser.parse_args()
 
-    config = load_config(Path(args.config))
-    token = str(config.get("x_bearer_token") or "")
-    caption, path, posts = build_x_posts_update(
-        bearer_token=token,
-        topic=args.topic,
-        limit=int(config.get("x_search_limit") or 3),
-        fetch_limit=int(config.get("x_search_fetch_limit") or 10),
-        fallback_query=str(config.get("x_search_query") or ""),
-    )
+    config_path = Path(args.config)
+    config = load_config(config_path)
+    if args.timeline:
+        caption, path, posts = build_x_timeline_update(
+            config,
+            config_path=config_path,
+            limit=int(config.get("x_timeline_limit") or config.get("x_search_limit") or 3),
+            fetch_limit=int(config.get("x_timeline_fetch_limit") or 10),
+        )
+    else:
+        token = str(config.get("x_bearer_token") or "")
+        caption, path, posts = build_x_posts_update(
+            bearer_token=token,
+            topic=args.topic,
+            limit=int(config.get("x_search_limit") or 3),
+            fetch_limit=int(config.get("x_search_fetch_limit") or 10),
+            fallback_query=str(config.get("x_search_query") or ""),
+        )
     print(caption)
     print(path)
     print(f"posts={len(posts)}")
