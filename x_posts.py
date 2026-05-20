@@ -19,14 +19,14 @@ X_SEARCH_URL = "https://api.x.com/2/tweets/search/recent"
 
 WIDTH = 900
 PADDING = 30
-CARD_GAP = 22
-IMAGE_SIZE = 250
-BG_TOP = (6, 17, 38)
-BG_BOTTOM = (2, 8, 22)
-CARD_BG = (12, 31, 64)
-TEXT = (244, 248, 255)
-MUTED = (178, 199, 229)
-YELLOW = (255, 212, 56)
+CARD_GAP = 18
+AVATAR_SIZE = 56
+PAGE_BG = (0, 0, 0)
+CARD_BG = (0, 0, 0)
+BORDER = (47, 51, 54)
+TEXT = (231, 233, 234)
+MUTED = (113, 118, 123)
+LINK = (29, 155, 240)
 
 
 def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -49,10 +49,11 @@ def load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFo
     return ImageFont.load_default()
 
 
-FONT_TITLE = load_font(34, bold=True)
-FONT_NAME = load_font(23, bold=True)
-FONT_TEXT = load_font(21)
-FONT_META = load_font(17)
+FONT_TITLE = load_font(30, bold=True)
+FONT_NAME = load_font(22, bold=True)
+FONT_HANDLE = load_font(19)
+FONT_TEXT = load_font(22)
+FONT_META = load_font(18)
 FONT_SMALL = load_font(15)
 
 
@@ -89,16 +90,36 @@ def wrap_text(
 
     lines: list[str] = []
     current = ""
-    for char in value:
-        attempt = current + char
-        if text_size(draw, attempt, font)[0] <= max_width:
-            current = attempt
-            continue
-        if current:
-            lines.append(current)
-        current = char.strip()
-        if len(lines) >= max_lines:
-            break
+
+    if " " in value:
+        for word in [part for part in value.split(" ") if part]:
+            attempt = word if not current else f"{current} {word}"
+            if text_size(draw, attempt, font)[0] <= max_width:
+                current = attempt
+                continue
+            if current:
+                lines.append(current)
+            current = word
+            while current and text_size(draw, current, font)[0] > max_width:
+                piece = current
+                while piece and text_size(draw, piece, font)[0] > max_width:
+                    piece = piece[:-1]
+                if piece:
+                    lines.append(piece)
+                current = current[len(piece) :]
+            if len(lines) >= max_lines:
+                break
+    else:
+        for char in value:
+            attempt = current + char
+            if text_size(draw, attempt, font)[0] <= max_width:
+                current = attempt
+                continue
+            if current:
+                lines.append(current)
+            current = char
+            if len(lines) >= max_lines:
+                break
 
     if current and len(lines) < max_lines:
         lines.append(current)
@@ -129,6 +150,29 @@ def make_gradient(width: int, height: int) -> Image.Image:
         for x in range(width):
             pixels[x, y] = color
     return image
+
+
+def rounded_mask(size: tuple[int, int], radius: int) -> Image.Image:
+    mask = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, size[0], size[1]), radius=radius, fill=255)
+    return mask
+
+
+def paste_rounded(base: Image.Image, source: Image.Image, box: tuple[int, int, int, int], radius: int = 20) -> None:
+    width = box[2] - box[0]
+    height = box[3] - box[1]
+    image = crop_cover(source, width, height)
+    mask = rounded_mask((width, height), radius)
+    base.paste(image, box[:2], mask)
+
+
+def paste_circle(base: Image.Image, source: Image.Image, x: int, y: int, size: int) -> None:
+    image = crop_cover(source, size, size)
+    mask = Image.new("L", (size, size), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0, size - 1, size - 1), fill=255)
+    base.paste(image, (x, y), mask)
 
 
 def topic_to_query(topic: str, fallback_query: str) -> str:
@@ -268,10 +312,14 @@ def extract_posts(data: dict[str, Any], limit: int) -> list[dict[str, Any]]:
                 "text": clean_text(str(tweet.get("text") or "")),
                 "name": str(user.get("name") or username),
                 "username": username,
+                "avatar_url": str(user.get("profile_image_url") or ""),
                 "image_url": image_url,
                 "score": score,
                 "likes": int(metrics.get("like_count") or 0),
                 "retweets": int(metrics.get("retweet_count") or 0),
+                "replies": int(metrics.get("reply_count") or 0),
+                "quotes": int(metrics.get("quote_count") or 0),
+                "created_at": str(tweet.get("created_at") or ""),
                 "url": f"https://x.com/{username}/status/{tweet.get('id')}",
             }
         )
@@ -289,55 +337,111 @@ def crop_cover(source: Image.Image, width: int, height: int) -> Image.Image:
     return resized.crop((x, y, x + width, y + height))
 
 
+def compact_count(value: Any) -> str:
+    try:
+        number = int(value or 0)
+    except Exception:
+        number = 0
+    if number >= 10000:
+        return f"{number / 10000:.1f}万".rstrip("0").rstrip(".")
+    if number >= 1000:
+        return f"{number / 1000:.1f}K".rstrip("0").rstrip(".")
+    return str(number)
+
+
+def post_layout(draw: ImageDraw.ImageDraw, post: dict[str, Any]) -> dict[str, Any]:
+    card_width = WIDTH - PADDING * 2
+    content_x = PADDING + 24 + AVATAR_SIZE + 14
+    content_width = card_width - 24 - AVATAR_SIZE - 14 - 24
+    text_lines = wrap_text(draw, str(post.get("text") or ""), FONT_TEXT, content_width, 6)
+    image_height = 420
+    text_height = max(1, len(text_lines)) * 31
+    card_height = 24 + 34 + 10 + text_height + 18 + image_height + 44 + 22
+    return {
+        "card_width": card_width,
+        "content_x": content_x,
+        "content_width": content_width,
+        "text_lines": text_lines,
+        "image_height": image_height,
+        "card_height": card_height,
+    }
+
+
 def draw_post_card(base: Image.Image, draw: ImageDraw.ImageDraw, y: int, post: dict[str, Any]) -> int:
-    card_height = 330
+    layout = post_layout(draw, post)
     x = PADDING
-    width = WIDTH - PADDING * 2
-    draw.rounded_rectangle((x, y, x + width, y + card_height), radius=18, fill=CARD_BG, outline=(255, 255, 255, 34), width=1)
+    width = layout["card_width"]
+    height = layout["card_height"]
+    content_x = layout["content_x"]
+    content_width = layout["content_width"]
 
-    image = download_image(str(post.get("image_url") or ""))
-    image_box = (x + 22, y + 48, x + 22 + IMAGE_SIZE, y + 48 + IMAGE_SIZE)
-    if image is not None:
-        thumb = crop_cover(image, IMAGE_SIZE, IMAGE_SIZE)
-        base.paste(thumb, image_box[:2])
-        draw.rounded_rectangle(image_box, radius=14, outline=(255, 255, 255, 55), width=2)
+    draw.rounded_rectangle((x, y, x + width, y + height), radius=0, fill=CARD_BG, outline=BORDER, width=1)
 
-    text_x = image_box[2] + 24
-    text_right = x + width - 22
-    max_text_width = text_right - text_x
+    avatar = download_image(str(post.get("avatar_url") or ""))
+    avatar_x = x + 24
+    avatar_y = y + 24
+    if avatar is not None:
+        paste_circle(base, avatar, avatar_x, avatar_y, AVATAR_SIZE)
+    else:
+        draw.ellipse((avatar_x, avatar_y, avatar_x + AVATAR_SIZE, avatar_y + AVATAR_SIZE), fill=(32, 35, 39))
 
-    title = fit_text(draw, f'{post.get("name", "")}  @{post.get("username", "")}', FONT_NAME, max_text_width)
-    draw.text((text_x, y + 44), title, fill=TEXT, font=FONT_NAME)
-    meta = f'热度 {post.get("score", 0)}  赞 {post.get("likes", 0)}  转 {post.get("retweets", 0)}'
-    draw.text((text_x, y + 80), meta, fill=YELLOW, font=FONT_META)
+    header_y = y + 23
+    name = fit_text(draw, str(post.get("name") or ""), FONT_NAME, content_width - 170)
+    draw.text((content_x, header_y), name, fill=TEXT, font=FONT_NAME)
+    name_width, _ = text_size(draw, name, FONT_NAME)
+    handle = fit_text(draw, f' @{post.get("username", "")}', FONT_HANDLE, content_width - name_width - 8)
+    draw.text((content_x + name_width + 8, header_y + 2), handle, fill=MUTED, font=FONT_HANDLE)
 
-    for index, line in enumerate(wrap_text(draw, str(post.get("text") or ""), FONT_TEXT, max_text_width, 5)):
-        draw.text((text_x, y + 124 + index * 31), line, fill=TEXT, font=FONT_TEXT)
+    text_y = y + 70
+    for index, line in enumerate(layout["text_lines"]):
+        draw.text((content_x, text_y + index * 31), line, fill=TEXT, font=FONT_TEXT)
 
-    link = fit_text(draw, str(post.get("url") or ""), FONT_SMALL, max_text_width)
-    draw.text((text_x, y + card_height - 40), link, fill=MUTED, font=FONT_SMALL)
-    return y + card_height
+    image_y = text_y + max(1, len(layout["text_lines"])) * 31 + 18
+    image_box = (content_x, image_y, content_x + content_width, image_y + layout["image_height"])
+    media = download_image(str(post.get("image_url") or ""))
+    if media is not None:
+        paste_rounded(base, media, image_box, radius=18)
+    draw.rounded_rectangle(image_box, radius=18, outline=BORDER, width=1)
+
+    metrics_y = image_box[3] + 17
+    metrics = (
+        f"回复 {compact_count(post.get('replies'))}    "
+        f"转发 {compact_count(post.get('retweets'))}    "
+        f"喜欢 {compact_count(post.get('likes'))}    "
+        f"热度 {compact_count(post.get('score'))}"
+    )
+    draw.text((content_x, metrics_y), metrics, fill=MUTED, font=FONT_META)
+
+    link = fit_text(draw, str(post.get("url") or ""), FONT_SMALL, content_width)
+    draw.text((content_x, metrics_y + 27), link, fill=LINK, font=FONT_SMALL)
+    return y + height
 
 
 def render_x_posts_image(posts: list[dict[str, Any]], query: str, path: Path = OUTPUT_PATH) -> Path:
-    height = PADDING * 2 + 86 + len(posts) * 330 + max(0, len(posts) - 1) * CARD_GAP + 36
-    image = make_gradient(WIDTH, height).convert("RGB")
+    probe = Image.new("RGB", (WIDTH, 200), PAGE_BG)
+    probe_draw = ImageDraw.Draw(probe)
+    card_heights = [post_layout(probe_draw, post)["card_height"] for post in posts]
+    height = 96 + sum(card_heights) + max(0, len(posts) - 1) * CARD_GAP + 42
+
+    image = Image.new("RGB", (WIDTH, height), PAGE_BG)
     draw = ImageDraw.Draw(image)
 
-    draw.text((PADDING, 24), "X 热门公开帖子", fill=TEXT, font=FONT_TITLE)
-    subtitle = fit_text(draw, f"Query: {query}", FONT_META, WIDTH - PADDING * 2)
-    draw.text((PADDING, 68), subtitle, fill=MUTED, font=FONT_META)
+    draw.text((PADDING, 22), "X", fill=TEXT, font=FONT_TITLE)
+    draw.text((PADDING + 45, 28), "热门公开帖子", fill=TEXT, font=FONT_NAME)
+    subtitle = fit_text(draw, query, FONT_META, WIDTH - PADDING * 2)
+    draw.text((PADDING, 62), subtitle, fill=MUTED, font=FONT_META)
+    draw.line((0, 95, WIDTH, 95), fill=BORDER, width=1)
 
-    y = 112
+    y = 96
     for post in posts:
         y = draw_post_card(image, draw, y, post) + CARD_GAP
 
-    footer = "数据来自 X API，仅展示公开帖子和原帖链接"
+    footer = "Public posts via X API"
     fw, _ = text_size(draw, footer, FONT_SMALL)
-    draw.text(((WIDTH - fw) // 2, height - 34), footer, fill=(128, 154, 190), font=FONT_SMALL)
+    draw.text(((WIDTH - fw) // 2, height - 30), footer, fill=MUTED, font=FONT_SMALL)
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path, quality=84, optimize=True)
+    image.save(path, quality=88, optimize=True)
     return path
 
 
