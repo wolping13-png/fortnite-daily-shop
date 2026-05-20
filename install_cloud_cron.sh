@@ -8,10 +8,9 @@ LOG_FILE="$LOG_DIR/qq_daily.log"
 MARK_BEGIN="# BEGIN FortniteDailyShopQQ"
 MARK_END="# END FortniteDailyShopQQ"
 
-# Run at 08:15 in the server's local timezone.
-# Before installing, set the server timezone with:
-#   timedatectl set-timezone Asia/Shanghai
+# Run at 08:15 in China mainland time.
 CRON_TIME="${CRON_TIME:-15 8 * * *}"
+CRON_TZ_VALUE="${CRON_TZ_VALUE:-Asia/Shanghai}"
 
 mkdir -p "$LOG_DIR"
 chmod +x "$TASK_SCRIPT"
@@ -29,6 +28,7 @@ awk -v begin="$MARK_BEGIN" -v end="$MARK_END" '
 
 {
   echo "$MARK_BEGIN"
+  echo "CRON_TZ=$CRON_TZ_VALUE"
   echo "$CRON_TIME cd \"$ROOT\" && \"$TASK_SCRIPT\" >> \"$LOG_FILE\" 2>&1"
   echo "$MARK_END"
 } >> "$new_cron"
@@ -38,6 +38,6 @@ rm -f "$existing_cron" "$new_cron"
 
 echo "Installed cloud cron task."
 echo "Schedule: $CRON_TIME"
+echo "Cron timezone: $CRON_TZ_VALUE"
 echo "Log file: $LOG_FILE"
-echo "Recommended timezone: Asia/Shanghai"
 echo "Keep NapCatQQ running and logged in before the scheduled time."

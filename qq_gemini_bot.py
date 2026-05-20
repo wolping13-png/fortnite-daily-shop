@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 import threading
 from datetime import datetime, timedelta
@@ -238,6 +239,25 @@ def send_group_text(config: dict[str, Any], group_id: int | str, text: str) -> N
     )
 
 
+def regenerate_shop_assets(include_sections: bool = False) -> None:
+    commands = [
+        [sys.executable, str(BASE_DIR / "update_shop.py")],
+        [sys.executable, str(BASE_DIR / "generate_shop_image.py")],
+    ]
+    if include_sections:
+        commands.append([sys.executable, str(BASE_DIR / "generate_shop_sections.py")])
+
+    for command in commands:
+        subprocess.run(command, cwd=BASE_DIR, check=True, timeout=180)
+
+
+def ensure_shop_assets(include_sections: bool = False) -> None:
+    needs_image = not SHOP_IMAGE_PATH.exists() and not (BASE_DIR / "shop.png").exists()
+    needs_sections = include_sections and not SHOP_SECTIONS_MANIFEST.exists()
+    if needs_image or needs_sections:
+        regenerate_shop_assets(include_sections=include_sections)
+
+
 def load_shop_pages(limit: int | None = None) -> list[tuple[Path, str]]:
     if not SHOP_SECTIONS_MANIFEST.exists():
         return []
@@ -269,16 +289,32 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
     caption = str(config.get("shop_caption") or "Fortnite 每日商店")
+    ensure_shop_assets(include_sections=send_all)
     if not send_all:
         image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
         message = build_message(caption=f"{caption}\n官方分区总图", image_path=image_path)
-        post_onebot(
+        result = post_onebot(
             base_url=base_url,
             action="send_group_msg",
             payload={"group_id": group_id, "message": message},
             access_token=access_token,
             timeout=120,
         )
+        if result.get("_napcat_callback_timeout"):
+            safe_path = make_safe_image(image_path)
+            post_onebot(
+                base_url=base_url,
+                action="send_group_msg",
+                payload={
+                    "group_id": group_id,
+                    "message": build_message(
+                        caption=f"{caption}\n原图回执超时，已改发压缩版。",
+                        image_path=safe_path,
+                    ),
+                },
+                access_token=access_token,
+                timeout=120,
+            )
         return
 
     pages = load_shop_pages()
@@ -298,13 +334,28 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
 
     image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
     message = build_message(caption=f"{caption}\n官方分区总图", image_path=image_path)
-    post_onebot(
+    result = post_onebot(
         base_url=base_url,
         action="send_group_msg",
         payload={"group_id": group_id, "message": message},
         access_token=access_token,
         timeout=90,
     )
+    if result.get("_napcat_callback_timeout"):
+        safe_path = make_safe_image(image_path)
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={
+                "group_id": group_id,
+                "message": build_message(
+                    caption=f"{caption}\n原图回执超时，已改发压缩版。",
+                    image_path=safe_path,
+                ),
+            },
+            access_token=access_token,
+            timeout=120,
+        )
 
 
 def send_reddit_pet_update(config: dict[str, Any], group_id: int | str, topic: str = "") -> None:
@@ -1214,7 +1265,11 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     if text in {shop_command, shop_all_command}:
-        send_shop_image(config, group_id, send_all=text == shop_all_command)
+        try:
+            send_shop_image(config, group_id, send_all=text == shop_all_command)
+        except Exception as exc:
+            print(f"Shop image send failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "商店图片暂时发送失败了。我已经把错误写进后台日志，请稍后再试一下。")
         return
 
     if mentioned and is_wolf_request(text, wolf_command):
