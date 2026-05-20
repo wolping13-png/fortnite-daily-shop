@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from send_qq_shop import build_message, make_safe_image, post_onebot
+from send_qq_shop import build_message, choose_send_image, make_safe_image, post_onebot
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -292,7 +292,8 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
     ensure_shop_assets(include_sections=send_all)
     if not send_all:
         image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
-        message = build_message(caption=f"{caption}\n官方分区总图", image_path=image_path)
+        send_path = choose_send_image(image_path)
+        message = build_message(caption=f"{caption}\n官方分区总图", image_path=send_path)
         result = post_onebot(
             base_url=base_url,
             action="send_group_msg",
@@ -302,7 +303,7 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
         )
         if result.get("_napcat_callback_timeout"):
             safe_path = make_safe_image(image_path)
-            post_onebot(
+            retry = post_onebot(
                 base_url=base_url,
                 action="send_group_msg",
                 payload={
@@ -315,6 +316,15 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
                 access_token=access_token,
                 timeout=120,
             )
+            if retry.get("_napcat_callback_timeout"):
+                try:
+                    send_group_text(
+                        config,
+                        group_id,
+                        "商店图片发送被 QQ 回执卡住了。你可以发“商店全部”看分页版；如果 QQ 刚好抽风，稍后再试一下。",
+                    )
+                except Exception as exc:
+                    print(f"Shop timeout notice failed: {exc}", file=sys.stderr)
         return
 
     pages = load_shop_pages()

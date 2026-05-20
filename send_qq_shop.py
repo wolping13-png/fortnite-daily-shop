@@ -12,7 +12,7 @@ from urllib.parse import urljoin
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = BASE_DIR / "qq_bot_config.json"
 DEFAULT_IMAGE_PATH = BASE_DIR / "shop.png"
-SAFE_IMAGE_MAX_BYTES = 1_200_000
+SAFE_IMAGE_MAX_BYTES = 600_000
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -90,8 +90,8 @@ def make_safe_image(path: Path) -> Path:
         from PIL import Image
 
         image = Image.open(path).convert("RGB")
-        max_width = 640
-        max_height = 9000
+        max_width = 480
+        max_height = 7000
 
         if image.width > max_width:
             height = int(image.height * max_width / image.width)
@@ -101,7 +101,7 @@ def make_safe_image(path: Path) -> Path:
             width = int(image.width * max_height / image.height)
             image = image.resize((width, max_height), Image.Resampling.LANCZOS)
 
-        for quality in (68, 62, 56, 50, 44):
+        for quality in (62, 56, 50, 44, 38, 34):
             image.save(target, quality=quality, optimize=True)
             if target.stat().st_size <= SAFE_IMAGE_MAX_BYTES:
                 return target
@@ -109,6 +109,19 @@ def make_safe_image(path: Path) -> Path:
         return target
     except Exception:
         return path
+
+
+def choose_send_image(path: Path, image_url: str | None = None) -> Path:
+    if image_url:
+        return path
+
+    try:
+        if path.exists() and path.stat().st_size > SAFE_IMAGE_MAX_BYTES:
+            return make_safe_image(path)
+    except Exception:
+        return path
+
+    return path
 
 
 def is_napcat_callback_timeout_success(data: dict[str, Any]) -> bool:
@@ -162,7 +175,8 @@ def send_to_groups(
     access_token: str,
 ) -> None:
     for group_id in group_ids:
-        message = build_message(caption=caption, image_path=image_path, image_url=image_url)
+        prepared_image_path = choose_send_image(image_path, image_url=image_url)
+        message = build_message(caption=caption, image_path=prepared_image_path, image_url=image_url)
         result = post_onebot(
             base_url=base_url,
             action="send_group_msg",
@@ -187,23 +201,26 @@ def send_to_groups(
                 timeout=120,
             )
             if retry.get("_napcat_callback_timeout"):
-                post_onebot(
-                    base_url=base_url,
-                    action="send_group_msg",
-                    payload={
-                        "group_id": group_id,
-                        "message": [
-                            {
-                                "type": "text",
-                                "data": {
-                                    "text": "商店图片发送被 QQ 回执卡住了。请在群里发“商店全部”查看分页版，或稍后再试。"
-                                },
-                            }
-                        ],
-                    },
-                    access_token=access_token,
-                    timeout=60,
-                )
+                try:
+                    post_onebot(
+                        base_url=base_url,
+                        action="send_group_msg",
+                        payload={
+                            "group_id": group_id,
+                            "message": [
+                                {
+                                    "type": "text",
+                                    "data": {
+                                        "text": "商店图片发送被 QQ 回执卡住了。请在群里发“商店全部”查看分页版，或稍后再试。"
+                                    },
+                                }
+                            ],
+                        },
+                        access_token=access_token,
+                        timeout=60,
+                    )
+                except Exception as exc:
+                    print(f"Failed to send timeout notice to group {group_id}: {exc}", file=sys.stderr)
                 print(f"Safe image callback also timed out for group {group_id}.")
                 continue
             result = retry
