@@ -226,19 +226,172 @@ def download_item_image(item: dict[str, Any]) -> Image.Image | None:
     return None
 
 
-def group_items(items: list[dict[str, Any]]) -> list[tuple[str, list[dict[str, Any]]]]:
-    groups: dict[str, list[dict[str, Any]]] = {}
-    for item in items:
-        section = clean_section_name(item.get("section"))
-        groups.setdefault(section, []).append(item)
-    return list(groups.items())
-
-
 def clean_section_name(value: Any) -> str:
     section = str(value or "").strip()
     if not section or section.lower() == "unknown":
         return "Daily Shop"
     return section
+
+
+GENERIC_SECTION_NAMES = {
+    "daily shop",
+    "每日商店",
+    "shop",
+    "featured",
+    "unknown",
+}
+
+
+COLLECTION_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "Overwatch",
+        (
+            "overwatch",
+            "守望先锋",
+            "mercy",
+            "tracer",
+            "d.va",
+            "dva",
+            "genji",
+            "hanzo",
+            "mei",
+            "reaper",
+            "widowmaker",
+            "lucio",
+            "lúcio",
+            "zarya",
+            "天使",
+            "猎空",
+            "d.va",
+            "源氏",
+            "半藏",
+            "小美",
+            "死神",
+            "黑百合",
+            "卢西奥",
+            "查莉娅",
+            "龙一文字",
+            "竜一文字",
+            "脉冲炸弹",
+            "脉冲双刀",
+            "小兔机甲",
+            "女武神之翼",
+            "酷炫闪现",
+        ),
+    ),
+    ("Cyberpunk 2077", ("cyberpunk", "赛博朋克", "强尼", "银手", "夜之城", "johnny", "silverhand")),
+    ("Star Wars", ("star wars", "星球大战", "sith", "jedi", "rebel", "empire", "imperial", "tatooine", "kylo", "lightsaber", "stormtrooper", "西斯", "绝地", "义军", "帝国", "塔图因", "凯洛", "光剑")),
+    ("Regular Show", ("regular show", "mordecai", "rigby")),
+    ("Porsche", ("porsche", "保时捷", "cayenne", "卡宴")),
+    ("Jam Tracks", ("jam track", "jam tracks", "music", "song", "歌曲", "曲目", "音乐", "伴奏")),
+)
+
+
+ACTION_TYPE_TOKENS = (
+    "emote",
+    "emoji",
+    "spray",
+    "toy",
+    "表情",
+    "动作",
+    "喷漆",
+    "玩具",
+    "姿势",
+    "舞步",
+    "舞蹈",
+    "日日夜夜",
+    "跑起来",
+    "跳跳",
+    "石头剪子布",
+    "scouse",
+    "stepper",
+    "rhyme dust",
+    "静心茶",
+    "哦哦哦",
+)
+
+
+def lower_blob(item: dict[str, Any]) -> str:
+    parts = [
+        item.get("name"),
+        item.get("rarity"),
+        item.get("series"),
+        item.get("set"),
+        item.get("type"),
+        item.get("section"),
+        item.get("layoutName"),
+        item.get("layoutId"),
+    ]
+    return " ".join(str(part or "") for part in parts).lower()
+
+
+def is_generic_section(value: Any) -> bool:
+    return clean_section_name(value).strip().lower() in GENERIC_SECTION_NAMES
+
+
+def derived_group_name(item: dict[str, Any]) -> str:
+    section = clean_section_name(item.get("section"))
+    layout_name = clean_section_name(item.get("layoutName"))
+    blob = lower_blob(item)
+
+    if not is_generic_section(section):
+        return section
+    if not is_generic_section(layout_name):
+        return layout_name
+
+    for label, tokens in COLLECTION_PATTERNS:
+        if any(token in blob for token in tokens):
+            return label
+
+    item_type = str(item.get("type") or "").strip()
+    if any(token in blob for token in ACTION_TYPE_TOKENS):
+        return "动作 / 表情"
+
+    set_name = str(item.get("set") or "").strip()
+    if set_name:
+        return set_name
+
+    series = str(item.get("series") or "").strip()
+    if series and series.lower() not in {"unknown", "未知"}:
+        return series
+
+    return section
+
+
+def item_entry_index(item: dict[str, Any]) -> int:
+    try:
+        return int(item.get("entryIndex") or 0)
+    except Exception:
+        return 0
+
+
+def item_sort_key(item: dict[str, Any]) -> tuple[int, int, int]:
+    try:
+        section_rank = int(item.get("sectionRank") or item_entry_index(item))
+    except Exception:
+        section_rank = item_entry_index(item)
+    try:
+        sort_priority = int(item.get("sortPriority") or 0)
+    except Exception:
+        sort_priority = 0
+    return (section_rank, sort_priority, item_entry_index(item))
+
+
+def group_items(items: list[dict[str, Any]]) -> list[tuple[str, list[dict[str, Any]]]]:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    first_seen: dict[str, int] = {}
+    for index, item in enumerate(items):
+        section = derived_group_name(item)
+        groups.setdefault(section, []).append(item)
+        first_seen.setdefault(section, index)
+
+    result: list[tuple[str, list[dict[str, Any]]]] = []
+    for section, section_items in groups.items():
+        section_items.sort(key=item_sort_key)
+        result.append((section, section_items))
+
+    result.sort(key=lambda group: (min(item_sort_key(item)[0] for item in group[1]), first_seen[group[0]]))
+    return result
 
 
 def contains_any(value: str, tokens: tuple[str, ...]) -> bool:
@@ -599,7 +752,7 @@ def render_shop_image() -> None:
     title = "FORTNITE 每日商店"
     draw.text((PADDING, PADDING + 12), title, fill=TEXT, font=FONT_TITLE)
     draw.text((PADDING, PADDING + 66), f"更新时间：{parse_date(data.get('updatedAt') or data.get('date'))}", fill=MUTED, font=FONT_META)
-    draw.text((PADDING, PADDING + 91), "完整商店 · 按官方分区分组排列", fill=(123, 164, 213), font=FONT_SMALL)
+    draw.text((PADDING, PADDING + 91), "完整商店 · 按官方货架 / 系列 / 类型分组排列", fill=(123, 164, 213), font=FONT_SMALL)
 
     vbuck_icon = download_image(str(data.get("vbuckIcon") or ""))
 
@@ -626,7 +779,7 @@ def render_shop_image() -> None:
 
         y += section_height + SECTION_GAP
 
-    footer = "完整商城总图 · 分类标题按官方商店分区显示"
+    footer = "完整商城总图 · 优先按官方货架分组，缺失时按系列和类型归类"
     footer_width, _ = text_size(draw, footer, FONT_SMALL)
     draw.text(((WIDTH - footer_width) // 2, height - 44), footer, fill=(116, 150, 190), font=FONT_SMALL)
 

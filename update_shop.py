@@ -44,14 +44,31 @@ def deep_get(data: dict[str, Any] | None, *path: str) -> Any:
 
 def collect_offer_items(entry: dict[str, Any]) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    for value in entry.values():
+    ignored_keys = {
+        "displayAssets",
+        "newDisplayAsset",
+        "layout",
+        "section",
+        "bundle",
+        "categories",
+        "meta",
+        "banner",
+    }
+    for key, value in entry.items():
+        if key in ignored_keys:
+            continue
         if not isinstance(value, list):
             continue
 
         for candidate in value:
             if not isinstance(candidate, dict):
                 continue
-            if candidate.get("name") or candidate.get("images") or candidate.get("rarity"):
+            if candidate.get("name") and (
+                candidate.get("type")
+                or candidate.get("images")
+                or candidate.get("rarity")
+                or candidate.get("series")
+            ):
                 items.append(candidate)
 
     return items
@@ -214,6 +231,19 @@ def pick_sort_priority(entry: dict[str, Any], layout: dict[str, Any]) -> int:
     )
 
 
+def pick_section_rank(entry: dict[str, Any], layout: dict[str, Any], index: int) -> int:
+    section = entry.get("section") if isinstance(entry.get("section"), dict) else {}
+    return first_number(
+        deep_get(layout, "rank"),
+        deep_get(layout, "index"),
+        deep_get(layout, "sortPriority"),
+        deep_get(section, "rank"),
+        deep_get(section, "index"),
+        entry.get("sectionIndex"),
+        default=index,
+    )
+
+
 def pick_rarity(primary_item: dict[str, Any] | None, bundle: dict[str, Any] | None) -> str:
     candidates = []
     for source in (primary_item, bundle):
@@ -228,6 +258,41 @@ def pick_rarity(primary_item: dict[str, Any] | None, bundle: dict[str, Any] | No
             )
 
     return first_text(*candidates, default="Unknown")
+
+
+def pick_type(primary_item: dict[str, Any] | None) -> str:
+    if not isinstance(primary_item, dict):
+        return ""
+    return first_text(
+        deep_get(primary_item, "type", "displayValue"),
+        deep_get(primary_item, "type", "value"),
+        deep_get(primary_item, "type", "backendValue"),
+    )
+
+
+def pick_series(primary_item: dict[str, Any] | None, bundle: dict[str, Any] | None) -> str:
+    for source in (primary_item, bundle):
+        if isinstance(source, dict):
+            value = first_text(
+                deep_get(source, "series", "displayValue"),
+                deep_get(source, "series", "value"),
+            )
+            if value:
+                return value
+    return ""
+
+
+def pick_set_name(primary_item: dict[str, Any] | None, bundle: dict[str, Any] | None) -> str:
+    for source in (primary_item, bundle):
+        if isinstance(source, dict):
+            value = first_text(
+                deep_get(source, "set", "text"),
+                deep_get(source, "set", "value"),
+                deep_get(source, "set", "name"),
+            )
+            if value:
+                return value
+    return ""
 
 
 def pick_section(entry: dict[str, Any], layout: dict[str, Any]) -> str:
@@ -246,7 +311,7 @@ def pick_section(entry: dict[str, Any], layout: dict[str, Any]) -> str:
     return display_name
 
 
-def normalize_entry(entry: dict[str, Any]) -> dict[str, Any]:
+def normalize_entry(entry: dict[str, Any], index: int) -> dict[str, Any]:
     bundle = entry.get("bundle") if isinstance(entry.get("bundle"), dict) else None
     offer_items = collect_offer_items(entry)
     primary_item = offer_items[0] if offer_items else None
@@ -262,20 +327,36 @@ def normalize_entry(entry: dict[str, Any]) -> dict[str, Any]:
         primary_name = f"{primary_name} + {len(offer_items) - 1}"
 
     layout = entry.get("layout") if isinstance(entry.get("layout"), dict) else {}
+    section = entry.get("section") if isinstance(entry.get("section"), dict) else {}
     tile_images = collect_tile_images(entry)
     images = collect_offer_images(entry, primary_item)
+    section_name = pick_section(entry, layout)
 
     return {
         "id": first_text(entry.get("offerId"), deep_get(primary_item, "id"), default=primary_name),
         "name": primary_name,
         "rarity": pick_rarity(primary_item, bundle),
+        "series": pick_series(primary_item, bundle),
+        "set": pick_set_name(primary_item, bundle),
+        "type": pick_type(primary_item),
         "price": first_number(entry.get("finalPrice"), entry.get("regularPrice")),
         "image": (tile_images or images)[0] if (tile_images or images) else "",
         "tileImage": tile_images[0] if tile_images else "",
         "images": images,
-        "section": pick_section(entry, layout),
+        "section": section_name,
+        "sectionId": first_text(
+            deep_get(section, "id"),
+            deep_get(layout, "id"),
+            deep_get(layout, "layoutId"),
+            entry.get("sectionId"),
+            default=section_name,
+        ),
+        "sectionRank": pick_section_rank(entry, layout, index),
+        "layoutId": first_text(deep_get(layout, "id"), deep_get(layout, "layoutId"), default=""),
+        "layoutName": first_text(deep_get(layout, "name"), deep_get(layout, "displayName"), default=section_name),
         "tileSize": pick_tile_size(entry, layout),
         "sortPriority": pick_sort_priority(entry, layout),
+        "entryIndex": index,
     }
 
 
@@ -304,7 +385,7 @@ def build_shop_json(data: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(entries, list):
         entries = []
 
-    items = [normalize_entry(entry) for entry in entries if isinstance(entry, dict)]
+    items = [normalize_entry(entry, index) for index, entry in enumerate(entries) if isinstance(entry, dict)]
     items = [item for item in items if item["name"] and item["image"]]
 
     return {

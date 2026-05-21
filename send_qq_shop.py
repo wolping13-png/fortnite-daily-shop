@@ -4,7 +4,6 @@ import argparse
 import base64
 import json
 import sys
-import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -13,7 +12,6 @@ from urllib.parse import urljoin
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = BASE_DIR / "qq_bot_config.json"
 DEFAULT_IMAGE_PATH = BASE_DIR / "shop.png"
-SHOP_SECTIONS_MANIFEST = BASE_DIR / "shop_sections" / "manifest.json"
 SAFE_IMAGE_MAX_BYTES = 450_000
 
 
@@ -113,6 +111,41 @@ def make_safe_image(path: Path) -> Path:
         return path
 
 
+def split_image_vertically(path: Path, parts: int = 2) -> list[Path]:
+    if not path.exists():
+        return []
+
+    try:
+        from PIL import Image
+
+        image = Image.open(path).convert("RGB")
+    except Exception:
+        return []
+
+    count = max(2, min(parts, 2))
+    result: list[Path] = []
+    for index in range(count):
+        top = int(image.height * index / count)
+        bottom = int(image.height * (index + 1) / count)
+        if bottom <= top:
+            continue
+        crop = image.crop((0, top, image.width, bottom))
+        target = path.with_name(f"{path.stem}_part{index + 1}.jpg")
+
+        working = crop
+        max_width = 760
+        if working.width > max_width:
+            height = int(working.height * max_width / working.width)
+            working = working.resize((max_width, height), Image.Resampling.LANCZOS)
+
+        for quality in (76, 70, 64, 58, 52, 46):
+            working.save(target, quality=quality, optimize=True)
+            if target.stat().st_size <= SAFE_IMAGE_MAX_BYTES:
+                break
+        result.append(target)
+    return result
+
+
 def choose_send_image(path: Path, image_url: str | None = None) -> Path:
     if image_url:
         return path
@@ -124,103 +157,6 @@ def choose_send_image(path: Path, image_url: str | None = None) -> Path:
         return path
 
     return path
-
-
-def should_prefer_section_pages(path: Path) -> bool:
-    if not path.exists():
-        return False
-
-    try:
-        if path.stat().st_size > SAFE_IMAGE_MAX_BYTES * 2:
-            return True
-    except Exception:
-        return False
-
-    try:
-        from PIL import Image
-
-        with Image.open(path) as image:
-            return image.height > 5000
-    except Exception:
-        return False
-
-
-def load_section_pages(limit: int | None = None) -> list[tuple[Path, str]]:
-    if not SHOP_SECTIONS_MANIFEST.exists():
-        return []
-
-    try:
-        data = json.loads(SHOP_SECTIONS_MANIFEST.read_text(encoding="utf-8"))
-    except Exception:
-        return []
-
-    pages = data.get("pages")
-    if not isinstance(pages, list):
-        return []
-
-    result: list[tuple[Path, str]] = []
-    for page in pages:
-        if not isinstance(page, dict):
-            continue
-        path = BASE_DIR / str(page.get("path") or "")
-        if not path.exists():
-            continue
-        caption = str(page.get("caption") or "Fortnite 每日商店")
-        result.append((path, caption))
-        if limit is not None and len(result) >= limit:
-            break
-    return result
-
-
-def send_section_pages_fallback(
-    base_url: str,
-    group_id: int | str,
-    caption: str,
-    access_token: str,
-) -> int:
-    pages = load_section_pages()
-    if not pages:
-        return 0
-
-    sent = 0
-    try:
-        post_onebot(
-            base_url=base_url,
-            action="send_group_msg",
-            payload={
-                "group_id": group_id,
-                "message": [{"type": "text", "data": {"text": "总图被 QQ 回执卡住了，我自动改发分区小图。"}}],
-            },
-            access_token=access_token,
-            timeout=60,
-        )
-    except Exception as exc:
-        print(f"Failed to send section fallback notice to group {group_id}: {exc}", file=sys.stderr)
-
-    for image_path, page_caption in pages:
-        try:
-            result = post_onebot(
-                base_url=base_url,
-                action="send_group_msg",
-                payload={
-                    "group_id": group_id,
-                    "message": build_message(
-                        caption=f"{caption}\n{page_caption}",
-                        image_path=choose_send_image(image_path),
-                        image_url=None,
-                    ),
-                },
-                access_token=access_token,
-                timeout=90,
-            )
-            sent += 1
-            if result.get("_napcat_callback_timeout"):
-                print(f"Section image callback timed out for group {group_id}: {image_path.name}")
-            time.sleep(0.6)
-        except Exception as exc:
-            print(f"Failed to send section image {image_path.name} to group {group_id}: {exc}", file=sys.stderr)
-
-    return sent
 
 
 def is_napcat_callback_timeout_success(data: dict[str, Any]) -> bool:
@@ -274,19 +210,7 @@ def send_to_groups(
     access_token: str,
 ) -> None:
     for group_id in group_ids:
-        if not image_url and should_prefer_section_pages(image_path):
-            sent_sections = send_section_pages_fallback(
-                base_url=base_url,
-                group_id=group_id,
-                caption=caption,
-                access_token=access_token,
-            )
-            if sent_sections:
-                print(f"Shop image is too long; sent {sent_sections} section images to group {group_id}.")
-                continue
-
-        prepared_image_path = choose_send_image(image_path, image_url=image_url)
-        message = build_message(caption=caption, image_path=prepared_image_path, image_url=image_url)
+        message = build_message(caption=caption, image_path=image_path, image_url=image_url)
         result = post_onebot(
             base_url=base_url,
             action="send_group_msg",
@@ -296,31 +220,35 @@ def send_to_groups(
         )
 
         if result.get("_napcat_callback_timeout"):
-            print("NapCat callback timed out. Retrying with a smaller safe image.")
+            print("NapCat callback timed out. Splitting the shop image into two parts.")
+            split_paths = split_image_vertically(image_path, parts=2)
+            if split_paths:
+                for index, part_path in enumerate(split_paths, 1):
+                    part_caption = f"{caption}\n总图过长，已切成 2 张发送（{index}/2）"
+                    retry = post_onebot(
+                        base_url=base_url,
+                        action="send_group_msg",
+                        payload={"group_id": group_id, "message": build_message(part_caption, part_path, image_url=None)},
+                        access_token=access_token,
+                        timeout=120,
+                    )
+                    if retry.get("_napcat_callback_timeout"):
+                        print(f"Split shop image callback timed out for group {group_id}: {part_path.name}")
+                print(f"Sent split shop image to group {group_id}.")
+                continue
+
             safe_path = make_safe_image(image_path)
-            safe_message = build_message(
-                caption=f"{caption}\n原图回执超时，已改发压缩版。",
-                image_path=safe_path,
-                image_url=None,
-            )
             retry = post_onebot(
                 base_url=base_url,
                 action="send_group_msg",
-                payload={"group_id": group_id, "message": safe_message},
+                payload={
+                    "group_id": group_id,
+                    "message": build_message(f"{caption}\n原图发送失败，已改发压缩版。", safe_path, image_url=None),
+                },
                 access_token=access_token,
                 timeout=120,
             )
             if retry.get("_napcat_callback_timeout"):
-                sent_sections = send_section_pages_fallback(
-                    base_url=base_url,
-                    group_id=group_id,
-                    caption=caption,
-                    access_token=access_token,
-                )
-                if sent_sections:
-                    print(f"Sent {sent_sections} shop section images as fallback for group {group_id}.")
-                    continue
-
                 try:
                     post_onebot(
                         base_url=base_url,
@@ -331,7 +259,7 @@ def send_to_groups(
                                 {
                                     "type": "text",
                                     "data": {
-                                        "text": "商店图片发送被 QQ 回执卡住了。请在群里发“商店全部”查看分页版，或稍后再试。"
+                                        "text": "商店图片发送被 QQ 回执卡住了。已经尝试切成 2 张发送，还是失败的话请稍后再试。"
                                     },
                                 }
                             ],

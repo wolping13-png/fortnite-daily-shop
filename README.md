@@ -36,7 +36,6 @@ push-updates.bat
 pip install -r requirements.txt
 python update_shop.py
 python generate_shop_image.py
-python generate_shop_sections.py
 ```
 
 生成结果是：
@@ -119,7 +118,6 @@ bash install_cloud_cron.sh
 - `@机器人 你的问题`：调用 AI 回复，推荐用这个方式
 - `@机器人 指令`、`@机器人 帮助`、`@机器人 菜单`：查看完整指令表
 - `商店`：发送一张按官方商店分区排列的每日商店总图
-- `商店全部`：发送按分区拆开的分页图，适合总图发送失败时备用
 - `游戏优惠`、`Steam折扣榜`、`Epic喜加一`：发送 Steam 高销量折扣榜和 Epic 免费游戏日报
 - `吃什么`、`喝什么`：随机推荐一种食物或饮品，并发送真实实物图片；优先用 Wikimedia，失败后会用 Tavily 图片结果
 - `@机器人 狼狼`：随机发送一张可爱的真实狼图
@@ -232,7 +230,6 @@ bash install_gemini_bot_service.sh
 
 - `update_shop.py`：请求 Fortnite API，生成 `shop.json`
 - `generate_shop_image.py`：读取 `shop.json`，生成按官方分区排列的 `shop.png` 和 QQ 用 `shop_qq.jpg`
-- `generate_shop_sections.py`：生成分区分页图，作为 QQ 备用发送方案
 - `send_qq_shop.py`：通过 OneBot HTTP 发送 QQ 群图片
 - `game_deals.py`：抓取 Steam 高销量折扣榜和 Epic 喜加一，并生成 `game_deals.jpg`
 - `send_game_deals.py`：通过 OneBot HTTP 发送游戏优惠日报

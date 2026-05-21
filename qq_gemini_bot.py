@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from send_qq_shop import build_message, choose_send_image, make_safe_image, post_onebot, should_prefer_section_pages
+from send_qq_shop import build_message, choose_send_image, make_safe_image, post_onebot, split_image_vertically
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -23,8 +23,6 @@ CONFIG_PATH = BASE_DIR / "gemini_bot_config.json"
 CHAT_HISTORY_PATH = BASE_DIR / "bot_memory" / "chat_history.json"
 SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
-SHOP_SECTIONS_DIR = BASE_DIR / "shop_sections"
-SHOP_SECTIONS_MANIFEST = SHOP_SECTIONS_DIR / "manifest.json"
 SHOP_ASSET_MAX_AGE_SECONDS = 6 * 60 * 60
 WEATHER_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
@@ -319,13 +317,11 @@ def is_clear_history_request(text: str) -> bool:
     return compact in {"清空上下文", "清除上下文", "忘掉刚才", "忘记刚才", "重置对话", "清空记忆", "forget"}
 
 
-def regenerate_shop_assets(include_sections: bool = False) -> None:
+def regenerate_shop_assets() -> None:
     commands = [
         [sys.executable, str(BASE_DIR / "update_shop.py")],
         [sys.executable, str(BASE_DIR / "generate_shop_image.py")],
     ]
-    if include_sections:
-        commands.append([sys.executable, str(BASE_DIR / "generate_shop_sections.py")])
 
     for command in commands:
         subprocess.run(command, cwd=BASE_DIR, check=True, timeout=180)
@@ -374,170 +370,51 @@ def is_shop_json_stale() -> bool:
     return False
 
 
-def ensure_shop_assets(include_sections: bool = False) -> None:
+def ensure_shop_assets() -> None:
     main_image = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
     shop_json_stale = is_shop_json_stale()
     needs_image = shop_json_stale or is_file_stale(main_image)
-    needs_sections = include_sections and (
-        is_file_stale(SHOP_SECTIONS_MANIFEST) or shop_json_stale
-    )
-    if needs_image or needs_sections:
-        regenerate_shop_assets(include_sections=include_sections)
-
-
-def load_shop_pages(limit: int | None = None) -> list[tuple[Path, str]]:
-    if not SHOP_SECTIONS_MANIFEST.exists():
-        return []
-
-    try:
-        data = json.loads(SHOP_SECTIONS_MANIFEST.read_text(encoding="utf-8"))
-    except Exception:
-        return []
-
-    pages = data.get("pages")
-    if not isinstance(pages, list):
-        return []
-
-    result: list[tuple[Path, str]] = []
-    for page in pages:
-        if not isinstance(page, dict):
-            continue
-        path = BASE_DIR / str(page.get("path") or "")
-        if not path.exists():
-            continue
-        caption = str(page.get("caption") or "Fortnite 每日商店")
-        result.append((path, caption))
-        if limit is not None and len(result) >= limit:
-            break
-    return result
+    if needs_image:
+        regenerate_shop_assets()
 
 
 def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool = False) -> None:
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
     caption = str(config.get("shop_caption") or "Fortnite 每日商店")
-    ensure_shop_assets(include_sections=send_all)
-    if not send_all:
-        image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
-        if should_prefer_section_pages(image_path):
-            ensure_shop_assets(include_sections=True)
-            pages = load_shop_pages()
-            if pages:
-                try:
-                    send_group_text(config, group_id, "商店总图太长，我直接发分区小图。")
-                except Exception as exc:
-                    print(f"Shop section notice failed: {exc}", file=sys.stderr)
-
-                for page_path, page_caption in pages:
-                    try:
-                        post_onebot(
-                            base_url=base_url,
-                            action="send_group_msg",
-                            payload={
-                                "group_id": group_id,
-                                "message": build_message(
-                                    caption=f"{caption}\n{page_caption}",
-                                    image_path=choose_send_image(page_path),
-                                ),
-                            },
-                            access_token=access_token,
-                            timeout=90,
-                        )
-                    except Exception as exc:
-                        print(f"Shop section send failed for {page_path.name}: {exc}", file=sys.stderr)
-                    time.sleep(0.6)
-                return
-
-        send_path = choose_send_image(image_path)
-        message = build_message(caption=f"{caption}\n官方分区总图", image_path=send_path)
-        result = post_onebot(
-            base_url=base_url,
-            action="send_group_msg",
-            payload={"group_id": group_id, "message": message},
-            access_token=access_token,
-            timeout=120,
-        )
-        if result.get("_napcat_callback_timeout"):
-            safe_path = make_safe_image(image_path)
-            retry = post_onebot(
-                base_url=base_url,
-                action="send_group_msg",
-                payload={
-                    "group_id": group_id,
-                    "message": build_message(
-                        caption=f"{caption}\n原图回执超时，已改发压缩版。",
-                        image_path=safe_path,
-                    ),
-                },
-                access_token=access_token,
-                timeout=120,
-            )
-            if retry.get("_napcat_callback_timeout"):
-                ensure_shop_assets(include_sections=True)
-                pages = load_shop_pages()
-                if pages:
-                    try:
-                        send_group_text(config, group_id, "总图被 QQ 回执卡住了，我自动改发分区小图。")
-                    except Exception as exc:
-                        print(f"Shop fallback notice failed: {exc}", file=sys.stderr)
-
-                    for page_path, page_caption in pages:
-                        try:
-                            post_onebot(
-                                base_url=base_url,
-                                action="send_group_msg",
-                                payload={
-                                    "group_id": group_id,
-                                    "message": build_message(
-                                        caption=f"{caption}\n{page_caption}",
-                                        image_path=choose_send_image(page_path),
-                                    ),
-                                },
-                                access_token=access_token,
-                                timeout=90,
-                            )
-                        except Exception as exc:
-                            print(f"Shop section fallback failed for {page_path.name}: {exc}", file=sys.stderr)
-                        time.sleep(0.6)
-                    return
-
-                try:
-                    send_group_text(
-                        config,
-                        group_id,
-                        "商店图片发送被 QQ 回执卡住了。你可以发“商店全部”看分页版；如果 QQ 刚好抽风，稍后再试一下。",
-                    )
-                except Exception as exc:
-                    print(f"Shop timeout notice failed: {exc}", file=sys.stderr)
-        return
-
-    pages = load_shop_pages()
-
-    if pages:
-        for index, (image_path, page_caption) in enumerate(pages, 1):
-            text = f"{caption}\n{page_caption}"
-            message = build_message(caption=text, image_path=image_path)
-            post_onebot(
-                base_url=base_url,
-                action="send_group_msg",
-                payload={"group_id": group_id, "message": message},
-                access_token=access_token,
-                timeout=90,
-            )
-        return
-
+    ensure_shop_assets()
     image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
-    message = build_message(caption=f"{caption}\n官方分区总图", image_path=image_path)
+    message = build_message(caption=f"{caption}\n官方分组总图", image_path=image_path)
     result = post_onebot(
         base_url=base_url,
         action="send_group_msg",
         payload={"group_id": group_id, "message": message},
         access_token=access_token,
-        timeout=90,
+        timeout=120,
     )
     if result.get("_napcat_callback_timeout"):
+        split_paths = split_image_vertically(image_path, parts=2)
+        if split_paths:
+            for index, part_path in enumerate(split_paths, 1):
+                retry = post_onebot(
+                    base_url=base_url,
+                    action="send_group_msg",
+                    payload={
+                        "group_id": group_id,
+                        "message": build_message(
+                            caption=f"{caption}\n总图过长，已切成 2 张发送（{index}/2）",
+                            image_path=part_path,
+                        ),
+                    },
+                    access_token=access_token,
+                    timeout=120,
+                )
+                if retry.get("_napcat_callback_timeout"):
+                    print(f"Split shop image callback timed out for {part_path.name}", file=sys.stderr)
+            return
+
         safe_path = make_safe_image(image_path)
-        post_onebot(
+        retry = post_onebot(
             base_url=base_url,
             action="send_group_msg",
             payload={
@@ -550,6 +427,11 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
             access_token=access_token,
             timeout=120,
         )
+        if retry.get("_napcat_callback_timeout"):
+            try:
+                send_group_text(config, group_id, "商店图片发送被 QQ 回执卡住了。已经尝试切成 2 张发送，还是失败的话请稍后再试。")
+            except Exception as exc:
+                print(f"Shop timeout notice failed: {exc}", file=sys.stderr)
 
 
 def send_reddit_pet_update(config: dict[str, Any], group_id: int | str, topic: str = "") -> None:
@@ -823,7 +705,6 @@ def is_help_request(text: str) -> bool:
 def command_help_text(config: dict[str, Any]) -> str:
     ask_prefix = str(config.get("ask_prefix") or "温德尔")
     shop_command = str(config.get("shop_command") or "商店")
-    shop_all_command = str(config.get("shop_all_command") or "商店全部")
     weather_command = str(config.get("weather_command") or "天气")
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
@@ -836,7 +717,6 @@ def command_help_text(config: dict[str, Any]) -> str:
         "\n"
         "直接发：\n"
         f"- {shop_command}：发送 Fortnite 每日商店总图\n"
-        f"- {shop_all_command}：发送 Fortnite 商店分区图\n"
         f"- {game_deals_command} / Steam折扣榜 / Epic喜加一：发送游戏优惠日报\n"
         "- 吃什么：随机推荐食物并发实物图\n"
         "- 喝什么：随机推荐饮品并发实物图\n"
