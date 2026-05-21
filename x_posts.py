@@ -3,8 +3,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import time
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -244,11 +246,19 @@ def normalize_bearer_token(value: str) -> str:
     return token.strip().strip('"').strip("'")
 
 
+def utc_start_time(hours: int) -> str:
+    window = max(1, min(int(hours or 0), 168))
+    start = datetime.now(timezone.utc) - timedelta(hours=window)
+    return start.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
 def search_x_posts(
     bearer_token: str,
     query: str,
     fetch_limit: int = 30,
     pagination_token: str = "",
+    sort_order: str = "relevancy",
+    start_time: str = "",
     timeout: int = 25,
 ) -> dict[str, Any]:
     token = normalize_bearer_token(bearer_token)
@@ -258,12 +268,14 @@ def search_x_posts(
     params = {
         "query": query,
         "max_results": str(max(10, min(fetch_limit, 100))),
-        "sort_order": "recency",
+        "sort_order": sort_order if sort_order in {"recency", "relevancy"} else "relevancy",
         "tweet.fields": "created_at,public_metrics,author_id,possibly_sensitive,lang",
         "expansions": "author_id,attachments.media_keys",
         "media.fields": "media_key,type,url,preview_image_url,width,height",
         "user.fields": "username,name,profile_image_url",
     }
+    if start_time:
+        params["start_time"] = start_time
     if pagination_token:
         params["next_token"] = pagination_token
     headers = {
@@ -440,6 +452,34 @@ def download_image(url: str) -> Image.Image | None:
         return None
 
 
+def parse_x_datetime(value: str) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except Exception:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def x_top_like_score(post: dict[str, Any]) -> float:
+    raw_score = max(0, int(post.get("score") or 0))
+    api_rank = max(0, int(post.get("api_rank") or 0))
+    created = parse_x_datetime(str(post.get("created_at") or ""))
+    age_hours = 168.0
+    if created is not None:
+        age_hours = max(0.0, (datetime.now(timezone.utc) - created).total_seconds() / 3600)
+
+    relevance_bonus = max(0.0, 120.0 - api_rank * 3.0)
+    engagement_bonus = math.log10(raw_score + 1) * 95.0
+    recency_bonus = max(0.0, 72.0 - min(age_hours, 72.0)) * 1.4
+    stale_penalty = max(0.0, age_hours - 72.0) * 1.2
+    return relevance_bonus + engagement_bonus + recency_bonus - stale_penalty
+
+
 def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) -> list[dict[str, Any]]:
     users = {str(item.get("id")): item for item in data.get("includes", {}).get("users", []) if isinstance(item, dict)}
     media = {
@@ -463,7 +503,7 @@ def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) 
         return {}
 
     posts: list[dict[str, Any]] = []
-    for tweet in data.get("data", []) or []:
+    for api_rank, tweet in enumerate(data.get("data", []) or []):
         if not isinstance(tweet, dict) or tweet.get("possibly_sensitive"):
             continue
 
@@ -506,6 +546,7 @@ def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) 
                 "image_url": image_url,
                 "media_width": int(media_item.get("width") or 0),
                 "media_height": int(media_item.get("height") or 0),
+                "api_rank": api_rank,
                 "score": score,
                 "likes": int(metrics.get("like_count") or 0),
                 "retweets": int(metrics.get("retweet_count") or 0),
@@ -517,7 +558,7 @@ def extract_posts(data: dict[str, Any], limit: int, sort_by_score: bool = True) 
         )
 
     if sort_by_score:
-        posts.sort(key=lambda item: item.get("score", 0), reverse=True)
+        posts.sort(key=x_top_like_score, reverse=True)
     return posts[:limit]
 
 
@@ -612,13 +653,13 @@ def search_queue_path(query: str) -> Path:
 def load_search_queue_state(query: str) -> dict[str, Any]:
     path = search_queue_path(query)
     if not path.exists():
-        return {"query": query, "queue": [], "sent_ids": [], "next_token": ""}
+        return {"query": query, "queue": [], "sent_ids": [], "next_token": "", "mode": ""}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        return {"query": query, "queue": [], "sent_ids": [], "next_token": ""}
+        return {"query": query, "queue": [], "sent_ids": [], "next_token": "", "mode": ""}
     if not isinstance(data, dict):
-        return {"query": query, "queue": [], "sent_ids": [], "next_token": ""}
+        return {"query": query, "queue": [], "sent_ids": [], "next_token": "", "mode": ""}
 
     queue = data.get("queue") if isinstance(data.get("queue"), list) else []
     sent_ids = data.get("sent_ids") if isinstance(data.get("sent_ids"), list) else []
@@ -627,6 +668,7 @@ def load_search_queue_state(query: str) -> dict[str, Any]:
         "queue": [post for post in queue if isinstance(post, dict) and str(post.get("id") or "").strip()],
         "sent_ids": [str(item) for item in sent_ids if str(item).strip()],
         "next_token": str(data.get("next_token") or ""),
+        "mode": str(data.get("mode") or ""),
     }
 
 
@@ -639,6 +681,7 @@ def save_search_queue_state(query: str, state: dict[str, Any]) -> None:
         "queue": queue[:120],
         "sent_ids": [str(item) for item in sent_ids if str(item).strip()][:400],
         "next_token": str(state.get("next_token") or ""),
+        "mode": str(state.get("mode") or ""),
         "updated_at": int(time.time()),
     }
     search_queue_path(query).write_text(
@@ -662,13 +705,19 @@ def take_search_queue_posts(
     query: str,
     limit: int,
     fetch_limit: int,
+    recent_hours: int = 72,
 ) -> list[dict[str, Any]]:
     count = max(1, min(limit, 8))
     page_size = max(10, min(fetch_limit, 100))
     state = load_search_queue_state(query)
+    if state.get("mode") != "top_like_v2":
+        state = {"query": query, "queue": [], "sent_ids": [], "next_token": "", "mode": "top_like_v2"}
+    else:
+        state["mode"] = "top_like_v2"
     queue = state["queue"]
     sent_ids = [str(item) for item in state["sent_ids"] if str(item).strip()]
     sent_set = set(sent_ids)
+    start_time = utc_start_time(recent_hours) if recent_hours else ""
 
     attempts = 0
     while len(queue) < count and attempts < 5:
@@ -679,11 +728,17 @@ def take_search_queue_posts(
             query=query,
             fetch_limit=page_size,
             pagination_token=str(state.get("next_token") or ""),
+            sort_order="relevancy",
+            start_time=start_time,
         )
         state["next_token"] = str(data.get("meta", {}).get("next_token") or "")
         candidates = extract_posts(data, limit=page_size, sort_by_score=True)
         append_unique_timeline_posts(queue, candidates, sent_set)
 
+        if len(queue) < count and not state["next_token"] and start_time:
+            start_time = ""
+            state["next_token"] = ""
+            continue
         if len(queue) == before and not state["next_token"] and sent_ids:
             sent_ids = []
             sent_set = set()
@@ -850,6 +905,7 @@ def build_x_posts_update(
     topic: str = "",
     limit: int = 6,
     fetch_limit: int = 30,
+    recent_hours: int = 72,
     fallback_query: str = "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet",
 ) -> tuple[str, Path, list[dict[str, Any]]]:
     query = topic_to_query(topic, fallback_query)
@@ -858,6 +914,7 @@ def build_x_posts_update(
         query=query,
         limit=max(1, min(limit, 8)),
         fetch_limit=fetch_limit,
+        recent_hours=recent_hours,
     )
     if not posts:
         return "暂时没抓到合适的 X 图片帖子。", OUTPUT_PATH, []
@@ -912,6 +969,7 @@ def main() -> int:
             topic=args.topic,
             limit=int(config.get("x_search_limit") or 6),
             fetch_limit=int(config.get("x_search_fetch_limit") or 30),
+            recent_hours=int(config.get("x_search_recent_hours") or 72),
             fallback_query=str(config.get("x_search_query") or ""),
         )
     print(caption)

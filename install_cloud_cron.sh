@@ -8,8 +8,8 @@ LOG_FILE="$LOG_DIR/qq_daily.log"
 MARK_BEGIN="# BEGIN FortniteDailyShopQQ"
 MARK_END="# END FortniteDailyShopQQ"
 
-# Run at 08:15 in China mainland time.
-CRON_TIME="${CRON_TIME:-15 8 * * *}"
+# Run at 08:05 in China mainland time.
+CRON_TIME="${CRON_TIME:-5 8 * * *}"
 CRON_TZ_VALUE="${CRON_TZ_VALUE:-Asia/Shanghai}"
 
 mkdir -p "$LOG_DIR"

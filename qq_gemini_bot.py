@@ -7,7 +7,7 @@ import subprocess
 import sys
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -25,6 +25,7 @@ SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
 SHOP_SECTIONS_DIR = BASE_DIR / "shop_sections"
 SHOP_SECTIONS_MANIFEST = SHOP_SECTIONS_DIR / "manifest.json"
+SHOP_ASSET_MAX_AGE_SECONDS = 6 * 60 * 60
 WEATHER_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
@@ -330,9 +331,56 @@ def regenerate_shop_assets(include_sections: bool = False) -> None:
         subprocess.run(command, cwd=BASE_DIR, check=True, timeout=180)
 
 
+def is_file_stale(path: Path, max_age_seconds: int = SHOP_ASSET_MAX_AGE_SECONDS) -> bool:
+    if not path.exists():
+        return True
+    try:
+        return time.time() - path.stat().st_mtime > max_age_seconds
+    except OSError:
+        return True
+
+
+def parse_shop_time(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def is_shop_json_stale() -> bool:
+    if is_file_stale(SHOP_JSON_PATH):
+        return True
+    try:
+        data = json.loads(SHOP_JSON_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return True
+    if not isinstance(data, dict):
+        return True
+
+    updated_at = parse_shop_time(data.get("updatedAt"))
+    if not updated_at or datetime.now(timezone.utc) - updated_at.astimezone(timezone.utc) > timedelta(hours=6):
+        return True
+
+    shop_date = parse_shop_time(data.get("date"))
+    now_china = datetime.now(CHINA_TZ)
+    if shop_date and now_china.hour >= 8 and shop_date.astimezone(CHINA_TZ).date() < now_china.date():
+        return True
+    return False
+
+
 def ensure_shop_assets(include_sections: bool = False) -> None:
-    needs_image = not SHOP_IMAGE_PATH.exists() and not (BASE_DIR / "shop.png").exists()
-    needs_sections = include_sections and not SHOP_SECTIONS_MANIFEST.exists()
+    main_image = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
+    shop_json_stale = is_shop_json_stale()
+    needs_image = shop_json_stale or is_file_stale(main_image)
+    needs_sections = include_sections and (
+        is_file_stale(SHOP_SECTIONS_MANIFEST) or shop_json_stale
+    )
     if needs_image or needs_sections:
         regenerate_shop_assets(include_sections=include_sections)
 
@@ -536,6 +584,7 @@ def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str 
     access_token = str(config.get("access_token") or "")
     limit = int(config.get("x_search_limit") or 6)
     fetch_limit = int(config.get("x_search_fetch_limit") or 30)
+    recent_hours = int(config.get("x_search_recent_hours") or 72)
     fallback_query = str(
         config.get("x_search_query")
         or "(cat OR dog OR wolf OR fox OR 宠物 OR 猫 OR 狗 OR 狼 OR 狐狸) has:media -is:retweet"
@@ -557,6 +606,7 @@ def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str 
             topic=topic,
             limit=max(1, min(limit, 8)),
             fetch_limit=max(10, min(fetch_limit, 100)),
+            recent_hours=max(1, min(recent_hours, 168)),
             fallback_query=fallback_query,
     )
     if not posts:
