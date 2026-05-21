@@ -53,7 +53,83 @@ WEB_SEARCH_AUTO_KEYWORDS = (
     "最近",
     "近期",
     "现在的",
+    "现在",
+    "目前",
+    "当前",
+    "本周",
+    "这周",
+    "本月",
+    "今年",
+    "版本",
+    "更新",
+    "补丁",
+    "改动",
+    "上线",
+    "下架",
+    "发售",
+    "发布",
+    "延期",
+    "价格",
+    "多少钱",
+    "折扣",
+    "免费",
+    "喜加一",
+    "销量",
+    "排行",
+    "榜单",
+    "评分",
+    "评价",
+    "口碑",
+    "赛事",
+    "比赛",
+    "阵容",
+    "活动",
+    "赛季",
+    "爆料",
+    "泄露",
+    "什么时候",
+    "几号",
+    "几点",
     "资料",
+)
+
+WEB_SEARCH_GAME_SOURCES = (
+    "steam",
+    "epic",
+    "fortnite",
+    "堡垒之夜",
+    "deepseek",
+    "gemini",
+    "openai",
+    "xbox",
+    "playstation",
+    "ps5",
+    "switch",
+    "nintendo",
+    "任天堂",
+    "拳头",
+    "riot",
+    "暴雪",
+    "blizzard",
+    "育碧",
+    "ubisoft",
+)
+
+WEB_SEARCH_NEWS_TOPICS = (
+    "新闻",
+    "热点",
+    "热搜",
+    "最新",
+    "刚刚",
+    "今日",
+    "今天",
+    "现在",
+    "目前",
+    "赛事",
+    "比赛",
+    "更新",
+    "发售",
+    "发布",
 )
 
 WEATHER_CODES = {
@@ -1128,13 +1204,68 @@ def is_explicit_web_search_command(text: str, configured_command: str) -> bool:
     return any(value.startswith(prefix) for prefix in prefixes if prefix)
 
 
-def should_use_web_search(question: str, configured_command: str) -> bool:
+def should_use_web_search(question: str, configured_command: str, config: dict[str, Any] | None = None) -> bool:
     value = question.strip()
     if not value:
         return False
     if is_explicit_web_search_command(value, configured_command):
         return True
-    return any(keyword in value for keyword in WEB_SEARCH_AUTO_KEYWORDS)
+
+    if config is not None:
+        default_auto = bool(str(config.get("tavily_api_key") or "").strip())
+        if not config_bool(config.get("auto_web_search"), default_auto):
+            return False
+
+    lowered = value.lower()
+    compact = re.sub(r"\s+", "", lowered)
+    if any(keyword in value or keyword in compact for keyword in WEB_SEARCH_AUTO_KEYWORDS):
+        return True
+
+    has_game_or_platform = any(keyword in compact for keyword in WEB_SEARCH_GAME_SOURCES)
+    has_question_need_freshness = any(
+        keyword in value
+        for keyword in (
+            "怎么样",
+            "好玩吗",
+            "值得",
+            "强吗",
+            "能玩吗",
+            "能不能",
+            "推荐",
+            "买",
+            "入",
+            "配置",
+            "优化",
+            "服务器",
+            "维护",
+            "封禁",
+        )
+    )
+    if has_game_or_platform and has_question_need_freshness:
+        return True
+
+    current_year = datetime.now(CHINA_TZ).year
+    year_mentions = (str(current_year), str(current_year - 1), str(current_year + 1))
+    if any(year in value for year in year_mentions) and any(
+        keyword in value
+        for keyword in (
+            "游戏",
+            "电影",
+            "新作",
+            "推荐",
+            "值得",
+            "发售",
+            "发布",
+            "更新",
+            "赛事",
+            "榜单",
+            "排行",
+            "价格",
+        )
+    ):
+        return True
+
+    return False
 
 
 def strip_web_search_command(question: str, configured_command: str) -> str:
@@ -1160,7 +1291,7 @@ def tavily_search(config: dict[str, Any], query: str) -> dict[str, Any]:
 
     topic = str(config.get("web_search_topic") or "").strip().lower()
     if not topic:
-        topic = "news" if any(word in query for word in ("新闻", "热点", "热搜", "最新")) else "general"
+        topic = "news" if any(word in query for word in WEB_SEARCH_NEWS_TOPICS) else "general"
     if topic not in {"general", "news"}:
         topic = "general"
 
@@ -1586,7 +1717,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     image_urls: list[str] = []
     try:
-        if should_use_web_search(question, web_search_command):
+        if should_use_web_search(question, web_search_command, config):
             answer, image_urls = ask_model_with_web_search(config, question)
         else:
             history = get_group_history(group_id, chat_history_limit(config))

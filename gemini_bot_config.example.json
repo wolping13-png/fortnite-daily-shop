@@ -38,6 +38,7 @@
   "game_deals_epic_country": "CN",
   "wolf_command": "狼狼",
   "web_search_command": "联网查",
+  "auto_web_search": true,
   "web_search_depth": "basic",
   "web_search_max_results": 5,
   "web_search_include_answer": false,
