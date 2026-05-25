@@ -25,7 +25,7 @@
   "x_timeline_fetch_limit": 10,
   "model": "deepseek-v4-flash",
   "temperature": 0.7,
-  "max_output_tokens": 700,
+  "max_output_tokens": 180,
   "chat_history_limit": 12,
   "ask_prefix": "温德尔",
   "shop_command": "商店",
@@ -39,12 +39,24 @@
   "wolf_command": "狼狼",
   "web_search_command": "联网查",
   "auto_web_search": true,
-  "web_search_depth": "basic",
-  "web_search_max_results": 5,
+  "web_search_depth": "advanced",
+  "web_search_max_results": 8,
+  "web_search_min_score": 0.45,
+  "web_search_trusted_first": true,
+  "web_search_include_domains": [],
+  "web_search_exclude_domains": [
+    "baijiahao.baidu.com",
+    "zhidao.baidu.com",
+    "tieba.baidu.com",
+    "sohu.com",
+    "163.com",
+    "toutiao.com",
+    "csdn.net"
+  ],
   "web_search_include_answer": false,
   "web_search_include_images": true,
   "web_search_image_limit": 2,
   "max_shop_images_per_command": 4,
   "shop_caption": "Fortnite 每日商店",
-  "system_prompt": "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店，不是普通电商；如果上下文不清楚，可以简短确认。回答用简体中文，像朋友聊天一样自然、有趣、实用，不要只围着堡垒之夜转。涉及最新消息、版本更新、赛事和热搜时，如果已经配置 Tavily，可以优先联网搜索；不确定就直接说不确定，不要编造。"
+  "system_prompt": "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店，不是普通电商；如果上下文不清楚，可以简短确认。默认回答控制在 40-50 个中文字左右，最多 2-3 句；只有用户明确说详细、展开、具体、分析一下时，才更详细。回答用简体中文，像朋友聊天一样自然、有趣、实用；涉及最新消息、版本更新、赛事和热搜时，如果已经配置 Tavily，可以优先联网搜索；不确定就直接说不确定，不要编造。"
 }

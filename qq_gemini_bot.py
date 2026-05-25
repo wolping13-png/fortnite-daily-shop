@@ -29,6 +29,22 @@ WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 CHINA_TZ = ZoneInfo("Asia/Shanghai")
 WEEKDAYS_ZH = ("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
+BRIEF_REPLY_MAX_TOKENS = 180
+DETAILED_REPLY_MAX_TOKENS = 900
+DEEPSEEK_EMPTY_RETRY_TOKENS = 1200
+DETAILED_REPLY_KEYWORDS = (
+    "详细",
+    "展开",
+    "多说",
+    "讲细",
+    "具体",
+    "完整",
+    "长一点",
+    "详细说",
+    "详细讲",
+    "分析一下",
+    "解释一下",
+)
 
 WEB_SEARCH_EXPLICIT_PREFIXES = (
     "联网查",
@@ -130,6 +146,29 @@ WEB_SEARCH_NEWS_TOPICS = (
     "更新",
     "发售",
     "发布",
+)
+
+WEB_SEARCH_NOISE_DOMAINS = (
+    "baijiahao.baidu.com",
+    "zhidao.baidu.com",
+    "tieba.baidu.com",
+    "sohu.com",
+    "163.com",
+    "toutiao.com",
+    "csdn.net",
+)
+
+WEB_SEARCH_TRUSTED_DOMAINS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
+    (("fortnite", "堡垒之夜"), ("fortnite.com", "epicgames.com")),
+    (("epic", "喜加一"), ("store.epicgames.com", "epicgames.com")),
+    (("steam",), ("store.steampowered.com", "steamcommunity.com", "steamdb.info")),
+    (("deepseek",), ("deepseek.com", "api-docs.deepseek.com", "status.deepseek.com")),
+    (("openai", "chatgpt"), ("openai.com", "help.openai.com", "status.openai.com")),
+    (("xbox",), ("xbox.com", "news.xbox.com")),
+    (("playstation", "ps5"), ("playstation.com", "blog.playstation.com")),
+    (("nintendo", "任天堂", "switch"), ("nintendo.com", "nintendo.co.jp")),
+    (("riot", "拳头", "英雄联盟", "valorant"), ("riotgames.com", "leagueoflegends.com", "playvalorant.com")),
+    (("blizzard", "暴雪", "守望先锋", "overwatch"), ("blizzard.com", "overwatch.blizzard.com")),
 )
 
 WEATHER_CODES = {
@@ -1193,8 +1232,30 @@ def add_time_context_to_system(system_prompt: str) -> str:
     return (
         f"{system_prompt.rstrip()}\n\n"
         f"{current_time_context()}\n"
-        "如果用户询问当前日期或相对日期，直接给出具体日期，不要猜。"
+        "如果用户询问当前日期或相对日期，直接给出具体日期，不要猜。\n"
+        "默认回复控制在 40-50 个中文字左右，最多 2-3 句；不要主动长篇解释。"
+        "只有用户明确说“详细、展开、具体、分析一下、长一点”等要求时，才可以更详细。"
     )
+
+
+def wants_detailed_reply(question: str) -> bool:
+    return any(keyword in question for keyword in DETAILED_REPLY_KEYWORDS)
+
+
+def reply_intent_text(question: str) -> str:
+    marker = "用户问题："
+    if marker in question:
+        value = question.split(marker, 1)[1].splitlines()[0].strip()
+        if value:
+            return value
+    return question
+
+
+def model_token_limit(config: dict[str, Any], question: str) -> int:
+    configured = int(config.get("max_output_tokens") or BRIEF_REPLY_MAX_TOKENS)
+    if wants_detailed_reply(reply_intent_text(question)):
+        return max(configured, DETAILED_REPLY_MAX_TOKENS)
+    return min(configured, BRIEF_REPLY_MAX_TOKENS)
 
 
 def is_explicit_web_search_command(text: str, configured_command: str) -> bool:
@@ -1278,16 +1339,51 @@ def strip_web_search_command(question: str, configured_command: str) -> str:
     return value
 
 
-def tavily_search(config: dict[str, Any], query: str) -> dict[str, Any]:
+def web_search_time_range(query: str) -> str:
+    if any(word in query for word in ("今天", "今晚", "刚刚", "实时", "现在", "当前")):
+        return "day"
+    if any(word in query for word in ("本周", "这周", "最近", "最新", "近期", "新闻", "热点", "热搜", "版本", "更新", "补丁")):
+        return "week"
+    if any(word in query for word in ("本月", "这个月", "发售", "发布", "活动", "赛季")):
+        return "month"
+    return ""
+
+
+def trusted_domains_for_query(query: str) -> list[str]:
+    compact = re.sub(r"\s+", "", query.lower())
+    domains: list[str] = []
+    for tokens, candidates in WEB_SEARCH_TRUSTED_DOMAINS:
+        if any(token in compact for token in tokens):
+            for domain in candidates:
+                if domain not in domains:
+                    domains.append(domain)
+    return domains
+
+
+def config_domain_list(config: dict[str, Any], key: str) -> list[str]:
+    value = config.get(key)
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    if isinstance(value, str):
+        return [part.strip() for part in re.split(r"[,，\s]+", value) if part.strip()]
+    return []
+
+
+def tavily_search_once(
+    config: dict[str, Any],
+    query: str,
+    include_domains: list[str] | None = None,
+    time_range: str = "",
+) -> dict[str, Any]:
     api_key = str(config.get("tavily_api_key") or "").strip()
     if not api_key:
         raise ValueError("Tavily API key is missing.")
 
     max_results = int(config.get("web_search_max_results") or 5)
     max_results = max(1, min(max_results, 10))
-    search_depth = str(config.get("web_search_depth") or "basic").lower()
+    search_depth = str(config.get("web_search_depth") or "advanced").lower()
     if search_depth not in {"basic", "advanced"}:
-        search_depth = "basic"
+        search_depth = "advanced"
 
     topic = str(config.get("web_search_topic") or "").strip().lower()
     if not topic:
@@ -1295,21 +1391,35 @@ def tavily_search(config: dict[str, Any], query: str) -> dict[str, Any]:
     if topic not in {"general", "news"}:
         topic = "general"
 
+    exclude_domains = config_domain_list(config, "web_search_exclude_domains")
+    for domain in WEB_SEARCH_NOISE_DOMAINS:
+        if domain not in exclude_domains:
+            exclude_domains.append(domain)
+
+    payload: dict[str, Any] = {
+        "query": query,
+        "topic": topic,
+        "search_depth": search_depth,
+        "max_results": max_results,
+        "include_answer": bool(config.get("web_search_include_answer", False)),
+        "include_raw_content": False,
+        "include_images": bool(config.get("web_search_include_images", True)),
+        "exclude_domains": exclude_domains,
+    }
+    if include_domains:
+        payload["include_domains"] = include_domains
+    if time_range:
+        payload["time_range"] = time_range
+    if topic == "news":
+        payload["days"] = int(config.get("web_search_news_days") or 7)
+
     response = requests.post(
         TAVILY_SEARCH_URL,
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         },
-        json={
-            "query": query,
-            "topic": topic,
-            "search_depth": search_depth,
-            "max_results": max_results,
-            "include_answer": bool(config.get("web_search_include_answer", False)),
-            "include_raw_content": False,
-            "include_images": bool(config.get("web_search_include_images", True)),
-        },
+        json=payload,
         timeout=40,
     )
     response.raise_for_status()
@@ -1317,6 +1427,82 @@ def tavily_search(config: dict[str, Any], query: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("Tavily returned an unexpected response.")
     return data
+
+
+def normalize_result_url(result: dict[str, Any]) -> str:
+    return str(result.get("url") or "").strip().split("#", 1)[0].rstrip("/")
+
+
+def search_results(data: dict[str, Any]) -> list[dict[str, Any]]:
+    results = data.get("results")
+    return [item for item in results if isinstance(item, dict)] if isinstance(results, list) else []
+
+
+def filter_search_results(config: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    min_score = float(config.get("web_search_min_score") or 0.45)
+    filtered: list[dict[str, Any]] = []
+    for result in search_results(data):
+        score = result.get("score")
+        if isinstance(score, (int, float)) and score < min_score:
+            continue
+        title = str(result.get("title") or "").strip()
+        content = str(result.get("content") or "").strip()
+        url = normalize_result_url(result)
+        if not title or not url or len(content) < 20:
+            continue
+        filtered.append(result)
+
+    copied = dict(data)
+    copied["results"] = filtered
+    return copied
+
+
+def merge_search_data(primary: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(primary)
+    seen: set[str] = set()
+    results: list[dict[str, Any]] = []
+    for data in (primary, fallback):
+        for result in search_results(data):
+            url = normalize_result_url(result)
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            results.append(result)
+    merged["results"] = results
+
+    images: list[Any] = []
+    seen_images: set[str] = set()
+    for data in (primary, fallback):
+        current = data.get("images")
+        if isinstance(current, list):
+            for image in current:
+                marker = json.dumps(image, ensure_ascii=False, sort_keys=True) if isinstance(image, dict) else str(image)
+                if marker not in seen_images:
+                    seen_images.add(marker)
+                    images.append(image)
+    merged["images"] = images
+    return merged
+
+
+def tavily_search(config: dict[str, Any], query: str) -> dict[str, Any]:
+    time_range = str(config.get("web_search_time_range") or "").strip().lower()
+    if time_range not in {"day", "week", "month", "year", "d", "w", "m", "y"}:
+        time_range = web_search_time_range(query)
+
+    manual_domains = config_domain_list(config, "web_search_include_domains")
+    trusted_domains = manual_domains or trusted_domains_for_query(query)
+    if trusted_domains and config_bool(config.get("web_search_trusted_first"), True):
+        trusted = filter_search_results(
+            config,
+            tavily_search_once(config, query, include_domains=trusted_domains, time_range=time_range),
+        )
+        if len(search_results(trusted)) >= 2:
+            return trusted
+
+        fallback = filter_search_results(config, tavily_search_once(config, query, time_range=time_range))
+        return merge_search_data(trusted, fallback)
+
+    return filter_search_results(config, tavily_search_once(config, query, time_range=time_range))
 
 
 def format_web_search_context(data: dict[str, Any]) -> str:
@@ -1442,10 +1628,13 @@ def ask_model_with_web_search(config: dict[str, Any], question: str) -> tuple[st
     prompt = (
         f"{current_time_context()}\n\n"
         f"用户问题：{search_query}\n\n"
-        "下面是 Tavily 联网搜索结果。请只基于这些结果和你已有的通用知识回答；"
-        "如果搜索结果不足或互相矛盾，要直接说明不确定。用简体中文，语气自然，尽量简洁。"
+        "下面是 Tavily 联网搜索结果。请优先使用官方、开发商、平台商、主流媒体或高相关来源；"
+        "不要把低相关、广告页、论坛猜测当成事实。"
+        "如果搜索结果不足、互相矛盾、时间不匹配，必须直接说明不确定，并给出你能确认的部分。"
+        "用简体中文，语气自然。默认回答控制在 40-50 个中文字左右，最多 2-3 句；"
+        "只有用户明确要求详细时才展开。"
         "涉及今天、昨天、明天、最近、最新、今晚、明早时，必须结合上面的北京时间判断。"
-        "最后用“参考：”列出最多 3 个来源标题或链接。\n\n"
+        "最后用“参考：”列出最多 3 个最可靠来源标题或链接；不要列明显低质量来源。\n\n"
         f"{context}"
     )
     return ask_model(config, prompt), image_urls
@@ -1483,7 +1672,7 @@ def ask_gemini(config: dict[str, Any], question: str, history: list[dict[str, st
             "contents": contents,
             "generationConfig": {
                 "temperature": float(config.get("temperature", 0.7)),
-                "maxOutputTokens": int(config.get("max_output_tokens", 700)),
+                "maxOutputTokens": model_token_limit(config, question),
             },
         },
         timeout=60,
@@ -1499,6 +1688,31 @@ def ask_gemini(config: dict[str, Any], question: str, history: list[dict[str, st
     texts = [str(part.get("text") or "") for part in parts if isinstance(part, dict)]
     answer = "\n".join(text for text in texts if text.strip()).strip()
     return answer or "Gemini 没有返回文字内容。"
+
+
+def extract_deepseek_answer(message: dict[str, Any]) -> str:
+    content = message.get("content")
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                text = item.get("text") or item.get("content")
+                if isinstance(text, str):
+                    parts.append(text)
+        return "\n".join(part.strip() for part in parts if part.strip()).strip()
+    return ""
+
+
+def deepseek_empty_detail(data: dict[str, Any]) -> str:
+    choices = data.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices else {}
+    if not isinstance(choice, dict):
+        return "no choice"
+    return f"finish_reason={choice.get('finish_reason')}, usage={data.get('usage')}"
 
 
 def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, str]] | None = None) -> str:
@@ -1520,23 +1734,29 @@ def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, 
             messages.append({"role": role, "content": content})
     messages.append({"role": "user", "content": user_question})
 
-    response = requests.post(
-        f"{base_url}/chat/completions",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {config['deepseek_api_key']}",
-        },
-        json={
-            "model": model,
-            "messages": messages,
-            "temperature": float(config.get("temperature", 0.7)),
-            "max_tokens": int(config.get("max_output_tokens", 700)),
-            "stream": False,
-        },
-        timeout=60,
-    )
-    response.raise_for_status()
-    data = response.json()
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config['deepseek_api_key']}",
+    }
+
+    def request_completion(request_messages: list[dict[str, str]], max_tokens: int) -> dict[str, Any]:
+        response = requests.post(
+            f"{base_url}/chat/completions",
+            headers=headers,
+            json={
+                "model": model,
+                "messages": request_messages,
+                "temperature": float(config.get("temperature", 0.7)),
+                "max_tokens": max_tokens,
+                "stream": False,
+            },
+            timeout=60,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    max_tokens = model_token_limit(config, question)
+    data = request_completion(messages, max_tokens)
     choices = data.get("choices")
     if not isinstance(choices, list) or not choices:
         return "DeepSeek 没有返回内容。"
@@ -1544,7 +1764,25 @@ def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, 
     message = choices[0].get("message") if isinstance(choices[0], dict) else {}
     if not isinstance(message, dict):
         return "DeepSeek 没有返回文字内容。"
-    answer = str(message.get("content") or "").strip()
+    answer = extract_deepseek_answer(message)
+    if not answer and wants_detailed_reply(reply_intent_text(question)):
+        print(f"DeepSeek returned empty content, retrying: {deepseek_empty_detail(data)}", file=sys.stderr)
+        retry_messages = list(messages)
+        retry_messages[-1] = {
+            "role": "user",
+            "content": f"{user_question}\n\n请直接给出最终回答，控制在 300-500 个中文字，不要空回复。",
+        }
+        data = request_completion(retry_messages, max(max_tokens, DEEPSEEK_EMPTY_RETRY_TOKENS))
+        retry_choices = data.get("choices")
+        retry_message = (
+            retry_choices[0].get("message")
+            if isinstance(retry_choices, list) and retry_choices and isinstance(retry_choices[0], dict)
+            else {}
+        )
+        if isinstance(retry_message, dict):
+            answer = extract_deepseek_answer(retry_message)
+        if not answer:
+            print(f"DeepSeek retry also returned empty content: {deepseek_empty_detail(data)}", file=sys.stderr)
     return answer or "DeepSeek 没有返回文字内容。"
 
 
