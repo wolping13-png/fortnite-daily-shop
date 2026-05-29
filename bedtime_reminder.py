@@ -229,38 +229,112 @@ def game_deal_reminders(now: datetime, threshold_hours: int = 36) -> list[str]:
     return notes
 
 
-def build_bedtime_message(now: datetime | None = None) -> str:
-    now = now.astimezone(CHINA_TZ) if now else datetime.now(CHINA_TZ)
+def bedtime_facts(now: datetime, config: dict[str, Any]) -> dict[str, Any]:
     tomorrow = (now + timedelta(days=1)).date()
-    bot_config = load_bot_config()
     festivals, lunar_text = festivals_for(tomorrow)
+    weather = tomorrow_weather_line(config)
+    deal_notes = game_deal_reminders(now)
+    return {
+        "now": now,
+        "tomorrow": tomorrow,
+        "weekday": WEEKDAYS[tomorrow.weekday()],
+        "lunar_text": lunar_text,
+        "festivals": festivals,
+        "weather": weather,
+        "deal_notes": deal_notes,
+    }
 
+
+def build_static_bedtime_message(facts: dict[str, Any]) -> str:
+    tomorrow: date = facts["tomorrow"]
+    festivals = facts["festivals"]
     lines = [
-        "睡觉提醒：已经 23:30 啦，今天先收工，别再开下一把了。",
-        f"明天：{tomorrow:%Y年%m月%d日}，{WEEKDAYS[tomorrow.weekday()]}。",
+        "嗷，已经 23:30 啦，今天先收工，别再开下一把了。",
+        f"明天：{tomorrow:%Y年%m月%d日}，{facts['weekday']}。",
     ]
+
+    lunar_text = str(facts.get("lunar_text") or "")
     if lunar_text:
         lines.append(lunar_text)
+
     lines.append("节日：" + ("、".join(festivals) if festivals else "明天没有特别节日，适合普通但稳定地变强。"))
 
-    weather = tomorrow_weather_line(bot_config)
+    weather = str(facts.get("weather") or "")
     if weather:
         lines.append(weather)
 
-    festival_message = ask_festival_message(bot_config, festivals, tomorrow)
-    if festival_message:
-        lines.append("")
-        lines.append(festival_message)
-
-    deal_notes = game_deal_reminders(now)
-    if deal_notes:
+    deal_notes = facts.get("deal_notes")
+    if isinstance(deal_notes, list) and deal_notes:
         lines.append("")
         lines.append("游戏优惠提醒：")
         lines.extend(f"- {note}" for note in deal_notes)
 
     lines.append("")
-    lines.append("晚安，明天再继续上分。")
+    lines.append("晚安，队友，背包放好，明天本狼再陪你继续冒险。")
     return "\n".join(lines)
+
+
+def format_bedtime_facts(facts: dict[str, Any]) -> str:
+    tomorrow: date = facts["tomorrow"]
+    festivals = facts["festivals"]
+    deal_notes = facts.get("deal_notes") if isinstance(facts.get("deal_notes"), list) else []
+    lines = [
+        f"发送时间：中国内地北京时间 {facts['now']:%Y-%m-%d %H:%M}",
+        f"明天日期：{tomorrow:%Y-%m-%d}，{facts['weekday']}",
+        f"农历：{facts.get('lunar_text') or '未获取到农历信息'}",
+        f"节日/纪念日：{'、'.join(festivals) if festivals else '无特别节日'}",
+        f"明天天气：{facts.get('weather') or '未获取到天气信息'}",
+        "游戏优惠/免费游戏提醒：",
+    ]
+    if deal_notes:
+        lines.extend(f"- {note}" for note in deal_notes)
+    else:
+        lines.append("- 无特别提醒")
+    return "\n".join(lines)
+
+
+def ask_bedtime_message(config: dict[str, Any], facts: dict[str, Any]) -> str:
+    if not config.get("deepseek_api_key") and not config.get("gemini_api_key"):
+        return ""
+
+    try:
+        from qq_gemini_bot import ask_model
+
+        copied = dict(config)
+        copied["temperature"] = max(float(copied.get("temperature") or 0.7), 0.9)
+        copied["max_output_tokens"] = max(int(copied.get("max_output_tokens") or 180), 500)
+        prompt = (
+            "请详细参考下面事实，写一条每天晚上 23:30 发到 QQ 群的晚安提醒。"
+            "你必须按温德尔的人设说话：可爱、呆萌、毛茸茸的小狼伙伴，亲近但别过度卖萌。"
+            "要求：\n"
+            "1. 必须提醒大家该睡觉了，不要再开下一把。\n"
+            "2. 必须包含明天日期和星期。\n"
+            "3. 如果有节日/纪念日，要根据节日特点自然发挥几句；没有节日就不要硬编。\n"
+            "4. 如果有 Epic 免费游戏快结束或 Steam 折扣信息，要简短提醒；没有就轻轻带过。\n"
+            "5. 可以提到天气，但不要吓人或夸张。\n"
+            "6. 只能使用事实里的信息，不能编造游戏、价格、活动或节日。\n"
+            "7. 不要说自己是机器人、AI、助手、系统或程序。\n"
+            "8. 语句每次要有一点新鲜感，不要像固定模板。\n"
+            "9. 控制在 180-320 个中文字，最多 6 行，只输出消息正文。\n\n"
+            f"{format_bedtime_facts(facts)}"
+        )
+        answer = ask_model(copied, prompt).strip()
+        if not answer or "没有返回" in answer:
+            return ""
+        return answer
+    except Exception as exc:
+        print(f"Dynamic bedtime message failed: {exc}")
+        return ""
+
+
+def build_bedtime_message(now: datetime | None = None) -> str:
+    now = now.astimezone(CHINA_TZ) if now else datetime.now(CHINA_TZ)
+    bot_config = load_bot_config()
+    facts = bedtime_facts(now, bot_config)
+    dynamic_message = ask_bedtime_message(bot_config, facts)
+    if dynamic_message:
+        return dynamic_message
+    return build_static_bedtime_message(facts)
 
 
 def send_group_text(base_url: str, access_token: str, group_id: int | str, text: str) -> None:
