@@ -29,9 +29,10 @@ WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 CHINA_TZ = ZoneInfo("Asia/Shanghai")
 WEEKDAYS_ZH = ("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")
-BRIEF_REPLY_MAX_TOKENS = 180
-DETAILED_REPLY_MAX_TOKENS = 900
-DEEPSEEK_EMPTY_RETRY_TOKENS = 1200
+BRIEF_REPLY_MAX_TOKENS = 320
+BRIEF_REPLY_TOKEN_CEILING = 420
+DETAILED_REPLY_MAX_TOKENS = 1400
+DEEPSEEK_EMPTY_RETRY_TOKENS = 1800
 DETAILED_REPLY_KEYWORDS = (
     "详细",
     "展开",
@@ -44,6 +45,19 @@ DETAILED_REPLY_KEYWORDS = (
     "详细讲",
     "分析一下",
     "解释一下",
+    "仔细",
+    "认真",
+    "深入",
+    "区别",
+    "差别",
+    "不同",
+    "对比",
+    "比较",
+    "找找",
+    "讲讲",
+    "说说",
+    "优缺点",
+    "为什么",
 )
 
 WEB_SEARCH_EXPLICIT_PREFIXES = (
@@ -1234,7 +1248,7 @@ def add_time_context_to_system(system_prompt: str) -> str:
         f"{current_time_context()}\n"
         "如果用户询问当前日期或相对日期，直接给出具体日期，不要猜。\n"
         "默认回复控制在 40-50 个中文字左右，最多 2-3 句；不要主动长篇解释。"
-        "只有用户明确说“详细、展开、具体、分析一下、长一点”等要求时，才可以更详细。"
+        "只有用户明确说“详细、仔细、展开、对比、区别、具体、分析一下、长一点”等要求时，才可以更详细。"
     )
 
 
@@ -1255,7 +1269,7 @@ def model_token_limit(config: dict[str, Any], question: str) -> int:
     configured = int(config.get("max_output_tokens") or BRIEF_REPLY_MAX_TOKENS)
     if wants_detailed_reply(reply_intent_text(question)):
         return max(configured, DETAILED_REPLY_MAX_TOKENS)
-    return min(configured, BRIEF_REPLY_MAX_TOKENS)
+    return min(max(configured, BRIEF_REPLY_MAX_TOKENS), BRIEF_REPLY_TOKEN_CEILING)
 
 
 def is_explicit_web_search_command(text: str, configured_command: str) -> bool:
@@ -1715,6 +1729,37 @@ def deepseek_empty_detail(data: dict[str, Any]) -> str:
     return f"finish_reason={choice.get('finish_reason')}, usage={data.get('usage')}"
 
 
+def deepseek_finish_reason(data: dict[str, Any]) -> str:
+    choices = data.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices else {}
+    if not isinstance(choice, dict):
+        return ""
+    return str(choice.get("finish_reason") or "").strip().lower()
+
+
+def answer_looks_cut_off(answer: str) -> bool:
+    stripped = answer.strip()
+    if len(stripped) < 80:
+        return False
+    if stripped.endswith(("。", "！", "？", "!", "?", ".", "…", "）", "】", "」", "』", "”", "’")):
+        return False
+    return True
+
+
+def deepseek_retry_prompt(user_question: str, question: str, answer: str) -> str:
+    if wants_detailed_reply(reply_intent_text(question)):
+        length_hint = "300-700 个中文字"
+    else:
+        length_hint = "60-120 个中文字"
+
+    reason = "上一次没有生成正文" if not answer.strip() else "上一次回答像是被截断了"
+    return (
+        f"{user_question}\n\n"
+        f"{reason}。请重新给出完整最终回答，控制在 {length_hint}，"
+        "结尾必须是完整句子，不要空回复，不要写思考过程。"
+    )
+
+
 def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, str]] | None = None) -> str:
     base_url = str(config.get("deepseek_base_url") or "https://api.deepseek.com").rstrip("/")
     model = str(config.get("model") or "deepseek-v4-flash")
@@ -1765,12 +1810,14 @@ def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, 
     if not isinstance(message, dict):
         return "DeepSeek 没有返回文字内容。"
     answer = extract_deepseek_answer(message)
-    if not answer and wants_detailed_reply(reply_intent_text(question)):
-        print(f"DeepSeek returned empty content, retrying: {deepseek_empty_detail(data)}", file=sys.stderr)
+    finish_reason = deepseek_finish_reason(data)
+    should_retry = not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
+    if should_retry:
+        print(f"DeepSeek answer retry triggered: {deepseek_empty_detail(data)}", file=sys.stderr)
         retry_messages = list(messages)
         retry_messages[-1] = {
             "role": "user",
-            "content": f"{user_question}\n\n请直接给出最终回答，控制在 300-500 个中文字，不要空回复。",
+            "content": deepseek_retry_prompt(user_question, question, answer),
         }
         data = request_completion(retry_messages, max(max_tokens, DEEPSEEK_EMPTY_RETRY_TOKENS))
         retry_choices = data.get("choices")
@@ -1780,7 +1827,9 @@ def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, 
             else {}
         )
         if isinstance(retry_message, dict):
-            answer = extract_deepseek_answer(retry_message)
+            retry_answer = extract_deepseek_answer(retry_message)
+            if retry_answer:
+                answer = retry_answer
         if not answer:
             print(f"DeepSeek retry also returned empty content: {deepseek_empty_detail(data)}", file=sys.stderr)
     return answer or "DeepSeek 没有返回文字内容。"
