@@ -1238,8 +1238,23 @@ def current_time_context() -> str:
     )
 
 
+def reply_style_instruction(question: str) -> str:
+    if wants_detailed_reply(reply_intent_text(question)):
+        return (
+            "回答长度要求：用户要求详细，请完整回答；先给结论，再补关键理由。"
+            "可以分点，但不要写成论文，控制在 300-700 个中文字内。"
+            "表达方式要求：不要写神态描写、动作描写、括号旁白或小剧场。"
+        )
+    return (
+        "回答长度要求：普通聊天请短答，优先 1-2 句，约 30-60 个中文字。"
+        "不要主动展开、不要列清单、不要补充无关背景。"
+        "如果必须说明关键条件，可以用第 2 句，但结尾一定要完整。"
+        "表达方式要求：不要写神态描写、动作描写、括号旁白或小剧场；最多保留一个自然口癖。"
+    )
+
+
 def add_time_context_to_prompt(question: str) -> str:
-    return f"{current_time_context()}\n\n用户问题：{question}"
+    return f"{current_time_context()}\n\n用户问题：{question}\n\n{reply_style_instruction(question)}"
 
 
 def add_time_context_to_system(system_prompt: str) -> str:
@@ -1248,7 +1263,9 @@ def add_time_context_to_system(system_prompt: str) -> str:
         f"{current_time_context()}\n"
         "如果用户询问当前日期或相对日期，直接给出具体日期，不要猜。\n"
         "普通闲聊默认只回 1-2 句，约 30-60 个中文字；能一句说清就不要补充第二句。"
-        "不要主动列长清单、写长段解释或扩展话题。"
+        "不要主动列清单、写长段解释或扩展话题。"
+        "不要写神态描写、动作描写、括号旁白、小剧场或舞台提示，例如不要写“竖起耳朵”“晃尾巴”“抱着背包”。"
+        "可以偶尔用一个简短口癖，但不要每句都卖萌。"
         "如果问题需要步骤、风险提醒、准确数据或关键条件，可以多写一点，但必须完整收尾，不要半句截断。"
         "只有用户明确说“详细、仔细、展开、对比、区别、具体、分析一下、长一点”等要求时，才可以更详细。"
     )
@@ -1648,7 +1665,7 @@ def ask_model_with_web_search(config: dict[str, Any], question: str) -> tuple[st
         "不要把低相关、广告页、论坛猜测当成事实。"
         "如果搜索结果不足、互相矛盾、时间不匹配，必须直接说明不确定，并给出你能确认的部分。"
         "用简体中文，语气自然。默认回答控制在 1-2 句、30-70 个中文字；"
-        "只说最关键结论和必要来源，不要主动长篇展开。只有用户明确要求详细时才展开。"
+        "只说最关键结论和必要来源，不要主动长篇展开。不要写神态描写、动作旁白或小剧场。只有用户明确要求详细时才展开。"
         "涉及今天、昨天、明天、最近、最新、今晚、明早时，必须结合上面的北京时间判断。"
         "最后用“参考：”列出最多 3 个最可靠来源标题或链接；不要列明显低质量来源。\n\n"
         f"{context}"
@@ -1758,7 +1775,7 @@ def deepseek_retry_prompt(user_question: str, question: str, answer: str) -> str
     return (
         f"{user_question}\n\n"
         f"{reason}。请重新给出完整最终回答，控制在 {length_hint}，"
-        "结尾必须是完整句子，不要空回复，不要写思考过程。"
+        "结尾必须是完整句子，不要空回复，不要写思考过程，也不要写神态或动作旁白。"
     )
 
 
