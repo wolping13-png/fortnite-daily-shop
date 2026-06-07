@@ -162,6 +162,59 @@ WEB_SEARCH_NEWS_TOPICS = (
     "发布",
 )
 
+WEB_SEARCH_MODES = {"off", "smart", "aggressive", "always"}
+
+WEB_SEARCH_CASUAL_PATTERNS = (
+    "在吗",
+    "你在吗",
+    "在不在",
+    "你好",
+    "hello",
+    "hi",
+    "嗨",
+    "早",
+    "早安",
+    "晚安",
+    "你是谁",
+    "你叫啥",
+    "你叫什么",
+    "你在干嘛",
+    "你会什么",
+    "你能做什么",
+    "谢谢",
+    "感谢",
+)
+
+WEB_SEARCH_SUBSTANTIVE_HINTS = (
+    "什么",
+    "怎么",
+    "怎样",
+    "为什么",
+    "哪里",
+    "哪个",
+    "哪些",
+    "多少",
+    "多久",
+    "是否",
+    "有没有",
+    "能不能",
+    "可以吗",
+    "区别",
+    "差别",
+    "对比",
+    "比较",
+    "推荐",
+    "值得",
+    "原因",
+    "规则",
+    "教程",
+    "方法",
+    "攻略",
+    "配置",
+    "报错",
+    "问题",
+)
+
 WEB_SEARCH_NOISE_DOMAINS = (
     "baijiahao.baidu.com",
     "zhidao.baidu.com",
@@ -1298,6 +1351,42 @@ def is_explicit_web_search_command(text: str, configured_command: str) -> bool:
     return any(value.startswith(prefix) for prefix in prefixes if prefix)
 
 
+def web_search_mode(config: dict[str, Any] | None) -> str:
+    if config is None:
+        return "smart"
+    mode = str(config.get("web_search_mode") or "").strip().lower()
+    if not mode:
+        mode = "smart"
+    return mode if mode in WEB_SEARCH_MODES else "smart"
+
+
+def is_casual_no_search_question(text: str) -> bool:
+    compact = re.sub(r"[\s，。！？!?~～、,.]+", "", text.strip().lower())
+    if not compact:
+        return True
+    if compact in WEB_SEARCH_CASUAL_PATTERNS:
+        return True
+    if len(compact) <= 3 and not any(char in compact for char in ("?", "？")):
+        return True
+    return False
+
+
+def looks_substantive_question(text: str) -> bool:
+    value = text.strip()
+    compact = re.sub(r"\s+", "", value.lower())
+    if is_casual_no_search_question(value):
+        return False
+    if any(mark in value for mark in ("?", "？")):
+        return True
+    if any(keyword in value or keyword in compact for keyword in WEB_SEARCH_SUBSTANTIVE_HINTS):
+        return True
+    if len(compact) >= 8 and any(keyword in value or keyword in compact for keyword in WEB_SEARCH_GAME_SOURCES):
+        return True
+    if len(compact) >= 12 and not compact.startswith(("我想", "我觉得", "我喜欢", "你觉得我")):
+        return True
+    return False
+
+
 def should_use_web_search(question: str, configured_command: str, config: dict[str, Any] | None = None) -> bool:
     value = question.strip()
     if not value:
@@ -1309,6 +1398,13 @@ def should_use_web_search(question: str, configured_command: str, config: dict[s
         default_auto = bool(str(config.get("tavily_api_key") or "").strip())
         if not config_bool(config.get("auto_web_search"), default_auto):
             return False
+        mode = web_search_mode(config)
+        if mode == "off":
+            return False
+        if mode == "always":
+            return not is_casual_no_search_question(value)
+        if mode == "aggressive" and looks_substantive_question(value):
+            return True
 
     lowered = value.lower()
     compact = re.sub(r"\s+", "", lowered)
@@ -1370,6 +1466,43 @@ def strip_web_search_command(question: str, configured_command: str) -> str:
         if prefix and value.startswith(prefix):
             return value[len(prefix) :].strip().lstrip("：:，, ")
     return value
+
+
+def build_web_search_query(question: str) -> str:
+    query = re.sub(r"\s+", " ", question.strip())
+    now = datetime.now(CHINA_TZ)
+    compact = query.lower()
+
+    needs_date = any(
+        word in query
+        for word in ("今天", "今晚", "现在", "当前", "目前", "最近", "最新", "本周", "这周", "本月", "今年")
+    )
+    if needs_date and str(now.year) not in query:
+        query = f"{query} {now:%Y-%m-%d}"
+
+    needs_official = any(
+        word in query or word in compact
+        for word in (
+            "价格",
+            "多少钱",
+            "免费",
+            "喜加一",
+            "版本",
+            "更新",
+            "补丁",
+            "维护",
+            "服务器",
+            "发售",
+            "发布日期",
+            "返场",
+            "商城",
+            "活动",
+        )
+    )
+    if needs_official and "官方" not in query and "official" not in compact:
+        query = f"{query} 官方 最新"
+
+    return query
 
 
 def web_search_time_range(query: str) -> str:
@@ -1650,20 +1783,24 @@ def send_web_search_reply(config: dict[str, Any], group_id: int | str, answer: s
 
 
 def ask_model_with_web_search(config: dict[str, Any], question: str) -> tuple[str, list[str]]:
-    search_query = strip_web_search_command(question, str(config.get("web_search_command") or "联网查"))
-    if not search_query:
-        search_query = question
+    user_question = strip_web_search_command(question, str(config.get("web_search_command") or "联网查"))
+    if not user_question:
+        user_question = question
+    search_query = build_web_search_query(user_question)
 
     search_data = tavily_search(config, search_query)
     image_limit = int(config.get("web_search_image_limit") or 2)
     image_urls = web_search_image_urls(search_data, limit=max(0, min(image_limit, 4)))
     context = format_web_search_context(search_data)
+    result_count = len(search_results(search_data))
     prompt = (
         f"{current_time_context()}\n\n"
-        f"用户问题：{search_query}\n\n"
+        f"用户问题：{user_question}\n"
+        f"实际搜索词：{search_query}\n"
+        f"可靠搜索结果数量：{result_count}\n\n"
         "下面是 Tavily 联网搜索结果。请优先使用官方、开发商、平台商、主流媒体或高相关来源；"
         "不要把低相关、广告页、论坛猜测当成事实。"
-        "如果搜索结果不足、互相矛盾、时间不匹配，必须直接说明不确定，并给出你能确认的部分。"
+        "如果可靠搜索结果数量为 0，或结果不足、互相矛盾、时间不匹配，必须直接说明没有搜到可靠结论，不要硬答。"
         "用简体中文，语气自然。默认回答控制在 1-2 句、30-70 个中文字；"
         "只说最关键结论和必要来源，不要主动长篇展开。不要写神态描写、动作旁白或小剧场。只有用户明确要求详细时才展开。"
         "涉及今天、昨天、明天、最近、最新、今晚、明早时，必须结合上面的北京时间判断。"

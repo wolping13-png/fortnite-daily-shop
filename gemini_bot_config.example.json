@@ -39,9 +39,10 @@
   "wolf_command": "狼狼",
   "web_search_command": "联网查",
   "auto_web_search": true,
+  "web_search_mode": "aggressive",
   "web_search_depth": "advanced",
-  "web_search_max_results": 8,
-  "web_search_min_score": 0.45,
+  "web_search_max_results": 10,
+  "web_search_min_score": 0.5,
   "web_search_trusted_first": true,
   "web_search_include_domains": [],
   "web_search_exclude_domains": [
