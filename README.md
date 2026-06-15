@@ -122,7 +122,31 @@ bash install_cloud_cron.sh
 - `吃什么`、`喝什么`：随机推荐一种食物或饮品，并发送真实实物图片；优先用 Wikimedia，失败后会用 Tavily 图片结果
 - `@机器人 狼狼`：随机发送一张可爱的真实狼图
 - `温德尔 北京天气`、`天气 北京`、`今天武汉洪山区天气怎么样`：查询实时天气和今日/明日预报
-- `@机器人 联网查 今天有什么 AI 新闻`、`@机器人 最新 Fortnite 更新是什么`：用 Tavily 搜索后再让 DeepSeek 总结；如果搜索结果带图片，会在同一条消息里附带 1-2 张相关图片
+- `@机器人 联网查 今天有什么 AI 新闻`：用 Tavily 搜索后再让 DeepSeek 总结；如果搜索结果带图片，会在同一条消息里附带 1-2 张相关图片。普通聊天不会自动联网。
+
+### 主动发起话题
+
+机器人可以根据北京时间、当前天气、日期、节日和最近聊天内容，偶尔在群里主动抛一个轻松话题。如果连续没人回复，它会自动降低主动说话频率。
+
+默认关闭。要开启，在服务器的 `gemini_bot_config.json` 里加入或修改：
+
+```json
+"proactive_topic_enabled": true,
+"proactive_topic_min_interval_minutes": 120,
+"proactive_topic_max_interval_minutes": 480,
+"proactive_topic_idle_minutes": 45,
+"proactive_topic_daily_limit": 4,
+"proactive_topic_active_start_hour": 9,
+"proactive_topic_active_end_hour": 23
+```
+
+含义：群里安静 45 分钟后才可能开口；基础间隔 120 分钟；如果没人理，会逐步降到最多 480 分钟一次；每天最多主动说 4 次；只在 9:00-23:00 之间主动说话。
+
+也可以直接在服务器运行：
+
+```bash
+bash enable_proactive_topics.sh
+```
 
 服务器上也可以手动发一次 Steam / Epic 游戏优惠日报：
 

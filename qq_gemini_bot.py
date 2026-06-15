@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
 import subprocess
 import sys
@@ -21,6 +22,7 @@ from send_qq_shop import build_message, choose_send_image, make_safe_image, post
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "gemini_bot_config.json"
 CHAT_HISTORY_PATH = BASE_DIR / "bot_memory" / "chat_history.json"
+PROACTIVE_STATE_PATH = BASE_DIR / "bot_memory" / "proactive_topics.json"
 SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
 SHOP_ASSET_MAX_AGE_SECONDS = 6 * 60 * 60
@@ -33,6 +35,7 @@ BRIEF_REPLY_MAX_TOKENS = 320
 BRIEF_REPLY_TOKEN_CEILING = 420
 DETAILED_REPLY_MAX_TOKENS = 1400
 DEEPSEEK_EMPTY_RETRY_TOKENS = 1800
+PROACTIVE_STATE_LOCK = threading.RLock()
 DETAILED_REPLY_KEYWORDS = (
     "详细",
     "展开",
@@ -594,6 +597,83 @@ def clear_group_history(group_id: int | str) -> None:
     data = load_chat_history()
     data.pop(str(group_id), None)
     save_chat_history(data)
+
+
+def timestamp_now() -> float:
+    return time.time()
+
+
+def load_proactive_state() -> dict[str, Any]:
+    if not PROACTIVE_STATE_PATH.exists():
+        return {"groups": {}}
+    try:
+        data = json.loads(PROACTIVE_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"groups": {}}
+    if not isinstance(data, dict):
+        return {"groups": {}}
+    groups = data.get("groups")
+    if not isinstance(groups, dict):
+        data["groups"] = {}
+    return data
+
+
+def save_proactive_state(data: dict[str, Any]) -> None:
+    PROACTIVE_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = PROACTIVE_STATE_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(PROACTIVE_STATE_PATH)
+
+
+def proactive_group_state(data: dict[str, Any], group_id: int | str, now_ts: float | None = None) -> dict[str, Any]:
+    groups = data.setdefault("groups", {})
+    if not isinstance(groups, dict):
+        groups = {}
+        data["groups"] = groups
+    key = str(group_id)
+    group = groups.get(key)
+    if not isinstance(group, dict):
+        group = {"created_at": now_ts or timestamp_now()}
+        groups[key] = group
+    return group
+
+
+def event_sender_id(event: dict[str, Any]) -> str:
+    sender = event.get("sender")
+    values: list[Any] = [event.get("user_id")]
+    if isinstance(sender, dict):
+        values.append(sender.get("user_id"))
+    for value in values:
+        text = str(value or "").strip()
+        if text and text.lower() not in {"none", "null", "0"}:
+            return text
+    return ""
+
+
+def is_bot_message_event(config: dict[str, Any], event: dict[str, Any]) -> bool:
+    sender_id = event_sender_id(event)
+    return bool(sender_id and sender_id in bot_qq_ids(config, event))
+
+
+def record_group_human_activity(config: dict[str, Any], group_id: int | str, event: dict[str, Any], text: str) -> None:
+    if is_bot_message_event(config, event):
+        return
+
+    now_ts = timestamp_now()
+    with PROACTIVE_STATE_LOCK:
+        data = load_proactive_state()
+        group = proactive_group_state(data, group_id, now_ts)
+        group["last_human_message_at"] = now_ts
+        if text.strip():
+            group["last_human_text"] = text.strip()[:300]
+
+        last_proactive_at = float(group.get("last_proactive_at") or 0)
+        if last_proactive_at and now_ts > last_proactive_at:
+            group["unanswered_count"] = 0
+            group["last_unanswered_counted_at"] = last_proactive_at
+            group["last_human_after_proactive_at"] = now_ts
+
+        save_proactive_state(data)
 
 
 def is_clear_history_request(text: str) -> bool:
@@ -2048,6 +2128,264 @@ def ask_model(config: dict[str, Any], question: str, history: list[dict[str, str
     return ask_gemini(config, question, history=history)
 
 
+def proactive_topics_enabled(config: dict[str, Any]) -> bool:
+    return config_bool(config.get("proactive_topic_enabled"), False)
+
+
+def proactive_active_hours(config: dict[str, Any]) -> tuple[int, int]:
+    start = max(0, min(int(config.get("proactive_topic_active_start_hour") or 9), 23))
+    end = max(0, min(int(config.get("proactive_topic_active_end_hour") or 23), 23))
+    return start, end
+
+
+def is_within_proactive_hours(config: dict[str, Any], now: datetime) -> bool:
+    start, end = proactive_active_hours(config)
+    if start == end:
+        return True
+    if start < end:
+        return start <= now.hour < end
+    return now.hour >= start or now.hour < end
+
+
+def proactive_base_interval_minutes(config: dict[str, Any]) -> int:
+    return max(30, int(config.get("proactive_topic_min_interval_minutes") or 120))
+
+
+def proactive_max_interval_minutes(config: dict[str, Any]) -> int:
+    base = proactive_base_interval_minutes(config)
+    return max(base, int(config.get("proactive_topic_max_interval_minutes") or 480))
+
+
+def proactive_idle_minutes(config: dict[str, Any]) -> int:
+    return max(10, int(config.get("proactive_topic_idle_minutes") or 45))
+
+
+def proactive_daily_limit(config: dict[str, Any]) -> int:
+    return max(0, int(config.get("proactive_topic_daily_limit") or 4))
+
+
+def proactive_effective_unanswered_count(group: dict[str, Any]) -> int:
+    unanswered = max(0, int(group.get("unanswered_count") or 0))
+    last_human_at = float(group.get("last_human_message_at") or 0)
+    last_proactive_at = float(group.get("last_proactive_at") or 0)
+    last_counted_at = float(group.get("last_unanswered_counted_at") or 0)
+    if last_proactive_at and last_human_at <= last_proactive_at and last_counted_at != last_proactive_at:
+        unanswered += 1
+    return unanswered
+
+
+def proactive_interval_for_group(config: dict[str, Any], group: dict[str, Any]) -> int:
+    unanswered = proactive_effective_unanswered_count(group)
+    multiplier = 2 ** min(unanswered, 3)
+    return min(proactive_max_interval_minutes(config), proactive_base_interval_minutes(config) * multiplier)
+
+
+def reset_proactive_daily_count(group: dict[str, Any], now: datetime) -> None:
+    date_key = now.strftime("%Y-%m-%d")
+    if group.get("daily_date") != date_key:
+        group["daily_date"] = date_key
+        group["daily_count"] = 0
+
+
+def should_send_proactive_topic(config: dict[str, Any], group_id: int | str, now: datetime) -> bool:
+    if not proactive_topics_enabled(config):
+        return False
+    if not is_within_proactive_hours(config, now):
+        return False
+
+    now_ts = now.timestamp()
+    with PROACTIVE_STATE_LOCK:
+        data = load_proactive_state()
+        group = proactive_group_state(data, group_id, now_ts)
+        reset_proactive_daily_count(group, now)
+        save_proactive_state(data)
+
+        if proactive_daily_limit(config) and int(group.get("daily_count") or 0) >= proactive_daily_limit(config):
+            return False
+
+        last_human_at = float(group.get("last_human_message_at") or 0)
+        last_proactive_at = float(group.get("last_proactive_at") or 0)
+        created_at = float(group.get("created_at") or now_ts)
+        interval_seconds = proactive_interval_for_group(config, group) * 60
+
+        if last_human_at and now_ts - last_human_at < proactive_idle_minutes(config) * 60:
+            return False
+        if last_proactive_at and now_ts - last_proactive_at < interval_seconds:
+            return False
+        if not last_human_at and not last_proactive_at and now_ts - created_at < interval_seconds:
+            return False
+
+    return True
+
+
+def mark_proactive_topic_sent(config: dict[str, Any], group_id: int | str, message: str, now: datetime) -> None:
+    now_ts = now.timestamp()
+    with PROACTIVE_STATE_LOCK:
+        data = load_proactive_state()
+        group = proactive_group_state(data, group_id, now_ts)
+        reset_proactive_daily_count(group, now)
+
+        last_human_at = float(group.get("last_human_message_at") or 0)
+        last_proactive_at = float(group.get("last_proactive_at") or 0)
+        last_counted_at = float(group.get("last_unanswered_counted_at") or 0)
+        unanswered = max(0, int(group.get("unanswered_count") or 0))
+        if last_proactive_at and last_human_at <= last_proactive_at:
+            if last_counted_at != last_proactive_at:
+                unanswered += 1
+            group["unanswered_count"] = unanswered
+            group["last_unanswered_counted_at"] = last_proactive_at
+        else:
+            group["unanswered_count"] = 0
+            group["last_unanswered_counted_at"] = 0
+        group["last_proactive_at"] = now_ts
+        group["last_proactive_text"] = message[:500]
+        group["daily_count"] = int(group.get("daily_count") or 0) + 1
+        save_proactive_state(data)
+
+
+def proactive_time_period(now: datetime) -> str:
+    if 5 <= now.hour < 9:
+        return "早上"
+    if 9 <= now.hour < 12:
+        return "上午"
+    if 12 <= now.hour < 14:
+        return "中午"
+    if 14 <= now.hour < 18:
+        return "下午"
+    if 18 <= now.hour < 22:
+        return "晚上"
+    return "夜里"
+
+
+def proactive_festival_text(now: datetime) -> str:
+    try:
+        from bedtime_reminder import festivals_for
+
+        today_festivals, lunar_text = festivals_for(now.date())
+        tomorrow_festivals, _ = festivals_for((now + timedelta(days=1)).date())
+    except Exception:
+        today_festivals, tomorrow_festivals, lunar_text = [], [], ""
+
+    parts: list[str] = []
+    if lunar_text:
+        parts.append(lunar_text)
+    if today_festivals:
+        parts.append("今天是" + "、".join(today_festivals))
+    if tomorrow_festivals:
+        parts.append("明天是" + "、".join(tomorrow_festivals))
+    return "；".join(parts)
+
+
+def proactive_weather_text(config: dict[str, Any]) -> str:
+    if not config_bool(config.get("proactive_topic_weather_enabled"), True):
+        return ""
+    location = str(config.get("default_weather_location") or "").strip()
+    if not location:
+        return ""
+    try:
+        weather = ask_weather(config, f"{location}天气怎么样")
+    except Exception as exc:
+        print(f"Proactive weather request failed: {exc}", file=sys.stderr)
+        return ""
+    lines = [line.strip() for line in weather.splitlines() if line.strip()]
+    return "；".join(lines[:3])
+
+
+def sanitize_proactive_topic(text: str) -> str:
+    value = re.sub(r"\s+", " ", text.strip())
+    value = value.replace("@全体成员", "").replace("@全体", "").strip()
+    if len(value) > 160:
+        value = value[:157].rstrip("，。！？,.! ") + "。"
+    return value
+
+
+def fallback_proactive_topic(config: dict[str, Any], now: datetime, weather: str, festival: str) -> str:
+    period = proactive_time_period(now)
+    weather_hint = ""
+    if "雨" in weather:
+        weather_hint = "外面像是有雨，补给包里别忘了塞伞。"
+    elif "热" in weather or "高温" in weather:
+        weather_hint = "今天有点热，记得补水。"
+    elif "冷" in weather or "低温" in weather:
+        weather_hint = "天气偏冷，别把自己冻成小冰块。"
+    elif weather:
+        weather_hint = "我刚看了眼天气，今天还挺适合慢慢安排。"
+
+    festival_hint = f"{festival}，" if festival else ""
+    templates = [
+        f"嗷，{festival_hint}{period}了。{weather_hint}队友们现在想聊点游戏，还是先摸一会儿鱼？",
+        f"本狼路过大厅看一眼，{period}的气氛还不错。今天有没有什么想玩的、想看的，或者想吐槽的？",
+        f"诶嘿，{period}的小话题来了：如果现在开一局，你们会选稳一点的跳点，还是直接去最热闹的地方？",
+    ]
+    return sanitize_proactive_topic(random.choice(templates))
+
+
+def build_proactive_topic(config: dict[str, Any], group_id: int | str, now: datetime) -> str:
+    weather = proactive_weather_text(config)
+    festival = proactive_festival_text(now)
+    history = get_group_history(group_id, min(chat_history_limit(config), 6))
+    history_text = "\n".join(f"{item.get('role')}: {item.get('content')}" for item in history[-6:])
+
+    prompt = (
+        "请你以温德尔的人设，主动给 QQ 群发起一个轻松自然的话题。\n"
+        "要求：1-2 句，35-90 个中文字；像朋友随口开话题，不要像公告；不要@全体；不要说定时任务、系统、后台。"
+        "如果群里没人回，也不要催促或抱怨；最好用一个容易接的话题问题结尾。\n\n"
+        f"当前北京时间：{now:%Y-%m-%d %H:%M}，{WEEKDAYS_ZH[now.weekday()]}，{proactive_time_period(now)}。\n"
+        f"日期/节日信息：{festival or '无特别节日信息'}。\n"
+        f"天气信息：{weather or '未获取到天气'}。\n"
+        f"最近群聊上下文：\n{history_text or '暂无可用上下文'}"
+    )
+
+    copied = dict(config)
+    copied["max_output_tokens"] = min(max(int(copied.get("max_output_tokens") or 220), 180), 260)
+    try:
+        answer = ask_model(copied, prompt, history=history)
+        answer = sanitize_proactive_topic(answer)
+        if answer:
+            return answer
+    except Exception as exc:
+        print(f"Proactive topic generation failed: {exc}", file=sys.stderr)
+
+    return fallback_proactive_topic(config, now, weather, festival)
+
+
+def run_proactive_topic_tick(config: dict[str, Any]) -> None:
+    if not proactive_topics_enabled(config):
+        return
+    groups = sorted(allowed_groups(config))
+    if not groups:
+        return
+
+    now = datetime.now(CHINA_TZ)
+    for group_id in groups:
+        if not should_send_proactive_topic(config, group_id, now):
+            continue
+        topic = build_proactive_topic(config, group_id, now)
+        if not topic:
+            continue
+        send_group_text(config, group_id, topic)
+        mark_proactive_topic_sent(config, group_id, topic, now)
+        append_group_history(config, group_id, "assistant", topic)
+        print(f"Sent proactive topic to group {group_id}.")
+
+
+def proactive_topic_loop(initial_config: dict[str, Any]) -> None:
+    initial_delay = max(10, int(initial_config.get("proactive_topic_initial_delay_seconds") or 180))
+    check_seconds = max(60, int(initial_config.get("proactive_topic_check_seconds") or 300))
+    time.sleep(initial_delay)
+
+    while True:
+        try:
+            try:
+                config = load_config()
+            except Exception:
+                config = initial_config
+            run_proactive_topic_tick(config)
+        except Exception as exc:
+            print(f"Proactive topic loop failed: {exc}", file=sys.stderr)
+        time.sleep(check_seconds)
+
+
 def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     if event.get("post_type") != "message":
         return
@@ -2063,6 +2401,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     text, mentioned = extract_text_and_mention(event, config)
+    record_group_human_activity(config, group_id, event, text)
     if not text:
         if mentioned:
             send_group_text(config, group_id, "我在，直接问我就行。比如：@我 今天武汉天气怎么样")
@@ -2287,6 +2626,10 @@ def main() -> int:
     host = str(config.get("listen_host") or "127.0.0.1")
     port = int(config.get("listen_port") or 8080)
     OneBotHandler.config = config
+
+    if proactive_topics_enabled(config):
+        threading.Thread(target=proactive_topic_loop, args=(config,), daemon=True).start()
+        print("Proactive topic loop enabled.")
 
     server = ThreadingHTTPServer((host, port), OneBotHandler)
     print(f"Gemini QQ bot listening on http://{host}:{port}/onebot")
