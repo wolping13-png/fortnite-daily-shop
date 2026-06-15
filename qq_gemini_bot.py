@@ -1892,15 +1892,19 @@ def send_web_search_reply(config: dict[str, Any], group_id: int | str, answer: s
             print(f"Web search image send failed: {image_url} {exc}", file=sys.stderr)
 
 
-def ask_model_with_web_search(config: dict[str, Any], question: str) -> tuple[str, list[str]]:
+def ask_model_with_web_search(
+    config: dict[str, Any],
+    question: str,
+    include_images: bool = False,
+) -> tuple[str, list[str]]:
     user_question = strip_web_search_command(question, str(config.get("web_search_command") or "联网查"))
     if not user_question:
         user_question = question
     search_query = build_web_search_query(user_question)
 
     search_data = tavily_search(config, search_query)
-    image_limit = int(config.get("web_search_image_limit") or 2)
-    image_urls = web_search_image_urls(search_data, limit=max(0, min(image_limit, 4)))
+    image_limit = int(config.get("web_search_image_limit") or 2) if include_images else 0
+    image_urls = web_search_image_urls(search_data, limit=max(0, min(image_limit, 4))) if include_images else []
     context = format_web_search_context(search_data)
     result_count = len(search_results(search_data))
     prompt = (
@@ -2202,7 +2206,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if is_explicit_web_search_command(text, web_search_command):
         try:
-            answer, image_urls = ask_model_with_web_search(config, text)
+            answer, image_urls = ask_model_with_web_search(config, text, include_images=True)
         except ValueError as exc:
             print(f"Web search request failed: {exc}", file=sys.stderr)
             answer = "联网搜索还没配置 Tavily API Key。把 tavily_api_key 填进 gemini_bot_config.json 后重启我就能搜了。"
@@ -2271,7 +2275,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     image_urls: list[str] = []
     try:
         if should_use_web_search(question, web_search_command, config):
-            answer, image_urls = ask_model_with_web_search(config, question)
+            answer, image_urls = ask_model_with_web_search(config, question, include_images=False)
         else:
             history = get_group_history(group_id, chat_history_limit(config))
             answer = ask_model(config, question, history=history)
