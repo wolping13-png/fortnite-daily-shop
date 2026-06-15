@@ -1501,71 +1501,7 @@ def should_use_web_search(question: str, configured_command: str, config: dict[s
     value = question.strip()
     if not value:
         return False
-    if is_explicit_web_search_command(value, configured_command):
-        return True
-
-    if config is not None:
-        default_auto = bool(str(config.get("tavily_api_key") or "").strip())
-        if not config_bool(config.get("auto_web_search"), default_auto):
-            return False
-        mode = web_search_mode(config)
-        if mode == "off":
-            return False
-        if mode == "always":
-            return not is_casual_no_search_question(value)
-        if mode == "aggressive" and looks_substantive_question(value):
-            return True
-
-    lowered = value.lower()
-    compact = re.sub(r"\s+", "", lowered)
-    if any(keyword in value or keyword in compact for keyword in WEB_SEARCH_AUTO_KEYWORDS):
-        return True
-
-    has_game_or_platform = any(keyword in compact for keyword in WEB_SEARCH_GAME_SOURCES)
-    has_question_need_freshness = any(
-        keyword in value
-        for keyword in (
-            "怎么样",
-            "好玩吗",
-            "值得",
-            "强吗",
-            "能玩吗",
-            "能不能",
-            "推荐",
-            "买",
-            "入",
-            "配置",
-            "优化",
-            "服务器",
-            "维护",
-            "封禁",
-        )
-    )
-    if has_game_or_platform and has_question_need_freshness:
-        return True
-
-    current_year = datetime.now(CHINA_TZ).year
-    year_mentions = (str(current_year), str(current_year - 1), str(current_year + 1))
-    if any(year in value for year in year_mentions) and any(
-        keyword in value
-        for keyword in (
-            "游戏",
-            "电影",
-            "新作",
-            "推荐",
-            "值得",
-            "发售",
-            "发布",
-            "更新",
-            "赛事",
-            "榜单",
-            "排行",
-            "价格",
-        )
-    ):
-        return True
-
-    return False
+    return is_explicit_web_search_command(value, configured_command)
 
 
 def strip_web_search_command(question: str, configured_command: str) -> str:

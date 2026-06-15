@@ -94,9 +94,9 @@ fi
 
 log "NapCat looks offline. Restarting container '$CONTAINER_NAME'..."
 if [[ -n "$BOT_QQ" ]]; then
-  log "Expected quick-login QQ: $BOT_QQ. Make sure this container was created with '-q $BOT_QQ'."
+  log "Expected quick-login QQ: $BOT_QQ. Make sure this container was created with ACCOUNT=$BOT_QQ."
 else
-  log "NAPCAT_QQ is not set. Restart will only quick-login if the container already has -q in its command."
+  log "NAPCAT_QQ is not set. Restart will only quick-login if the container already has ACCOUNT in its environment."
 fi
 
 docker restart "$CONTAINER_NAME" >/dev/null
