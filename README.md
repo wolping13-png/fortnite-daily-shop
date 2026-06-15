@@ -148,6 +148,48 @@ bash install_cloud_cron.sh
 bash enable_proactive_topics.sh
 ```
 
+### 语境表情包
+
+机器人支持在普通聊天和主动话题里，根据语境附带一张表情包。比如开心、疑惑、思考、安慰、睡觉、吃喝、游戏、狼狼相关语境会优先从对应文件夹里挑图。
+
+表情包放在：
+
+```text
+memes/
+```
+
+分类目录：
+
+```text
+memes/default
+memes/happy
+memes/confused
+memes/thinking
+memes/comfort
+memes/sleep
+memes/food
+memes/game
+memes/wolf
+```
+
+支持 `.jpg`、`.jpeg`、`.png`、`.webp`。把图片放进去后，推送到服务器并重启机器人即可。默认有冷却和每小时上限，不会每句话都发表情包。
+
+服务器上一键开启：
+
+```bash
+bash enable_memes.sh
+```
+
+可调配置在 `gemini_bot_config.json`：
+
+```json
+"meme_enabled": true,
+"meme_chance": 0.28,
+"meme_cooldown_seconds": 240,
+"meme_max_per_hour": 8,
+"meme_max_text_length": 180
+```
+
 服务器上也可以手动发一次 Steam / Epic 游戏优惠日报：
 
 ```bash

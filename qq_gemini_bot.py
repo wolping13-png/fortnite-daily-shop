@@ -23,6 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "gemini_bot_config.json"
 CHAT_HISTORY_PATH = BASE_DIR / "bot_memory" / "chat_history.json"
 PROACTIVE_STATE_PATH = BASE_DIR / "bot_memory" / "proactive_topics.json"
+MEME_STATE_PATH = BASE_DIR / "bot_memory" / "meme_state.json"
 SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
 SHOP_ASSET_MAX_AGE_SECONDS = 6 * 60 * 60
@@ -36,6 +37,7 @@ BRIEF_REPLY_TOKEN_CEILING = 420
 DETAILED_REPLY_MAX_TOKENS = 1400
 DEEPSEEK_EMPTY_RETRY_TOKENS = 1800
 PROACTIVE_STATE_LOCK = threading.RLock()
+MEME_STATE_LOCK = threading.RLock()
 DETAILED_REPLY_KEYWORDS = (
     "详细",
     "展开",
@@ -343,6 +345,18 @@ WEB_SEARCH_TRUSTED_DOMAINS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] 
     (("blizzard", "暴雪", "守望先锋", "overwatch"), ("blizzard.com", "overwatch.blizzard.com")),
 )
 
+MEME_IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
+MEME_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("sleep", ("睡", "晚安", "困", "休息", "熬夜", "该睡", "睡觉")),
+    ("food", ("吃什么", "喝什么", "好吃", "饮料", "饮品", "饭", "奶茶", "咖啡")),
+    ("happy", ("哈哈", "好耶", "太好了", "成功", "不错", "可爱", "喜欢", "开心", "诶嘿", "嗷")),
+    ("confused", ("不知道", "不确定", "没找到", "暂时", "失败", "报错", "奇怪", "唔", "啊这")),
+    ("comfort", ("别急", "没关系", "不慌", "慢慢", "陪你", "先别慌")),
+    ("thinking", ("我看看", "让我看看", "可能", "大概", "建议", "考虑", "分析", "查一下", "找找")),
+    ("game", ("商店", "商城", "皮肤", "游戏", "fortnite", "堡垒之夜", "steam", "epic", "v币")),
+    ("wolf", ("狼", "本狼", "温德尔", "毛茸茸")),
+)
+
 WEATHER_CODES = {
     0: "晴",
     1: "大部晴朗",
@@ -525,6 +539,174 @@ def send_group_text(config: dict[str, Any], group_id: int | str, text: str) -> N
         access_token=access_token,
         timeout=60,
     )
+
+
+def meme_enabled(config: dict[str, Any]) -> bool:
+    return config_bool(config.get("meme_enabled"), True)
+
+
+def meme_root(config: dict[str, Any]) -> Path:
+    configured = str(config.get("meme_dir") or "memes").strip()
+    path = Path(configured)
+    if not path.is_absolute():
+        path = BASE_DIR / path
+    return path
+
+
+def load_meme_state() -> dict[str, Any]:
+    if not MEME_STATE_PATH.exists():
+        return {"groups": {}}
+    try:
+        data = json.loads(MEME_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"groups": {}}
+    if not isinstance(data, dict):
+        return {"groups": {}}
+    if not isinstance(data.get("groups"), dict):
+        data["groups"] = {}
+    return data
+
+
+def save_meme_state(data: dict[str, Any]) -> None:
+    MEME_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = MEME_STATE_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(MEME_STATE_PATH)
+
+
+def meme_group_state(data: dict[str, Any], group_id: int | str) -> dict[str, Any]:
+    groups = data.setdefault("groups", {})
+    if not isinstance(groups, dict):
+        groups = {}
+        data["groups"] = groups
+    key = str(group_id)
+    group = groups.get(key)
+    if not isinstance(group, dict):
+        group = {}
+        groups[key] = group
+    return group
+
+
+def meme_categories_for_context(context: str) -> list[str]:
+    value = context.lower()
+    categories: list[str] = []
+    for category, keywords in MEME_RULES:
+        if any(keyword.lower() in value for keyword in keywords):
+            categories.append(category)
+    categories.append("default")
+    return categories
+
+
+def meme_images_for_category(root: Path, category: str) -> list[Path]:
+    directory = root / category
+    if not directory.exists() or not directory.is_dir():
+        return []
+    return sorted(
+        path
+        for path in directory.iterdir()
+        if path.is_file() and path.suffix.lower() in MEME_IMAGE_EXTENSIONS
+    )
+
+
+def choose_meme_path(config: dict[str, Any], context: str) -> Path | None:
+    root = meme_root(config)
+    if not root.exists():
+        return None
+
+    candidates: list[Path] = []
+    for category in meme_categories_for_context(context):
+        images = meme_images_for_category(root, category)
+        if images:
+            candidates.extend(images)
+            break
+
+    if not candidates:
+        return None
+    return random.choice(candidates)
+
+
+def meme_rate_allowed(config: dict[str, Any], group_id: int | str) -> bool:
+    cooldown = max(0, int(config.get("meme_cooldown_seconds") or 240))
+    hourly_limit = max(0, int(config.get("meme_max_per_hour") or 8))
+    now_ts = timestamp_now()
+
+    with MEME_STATE_LOCK:
+        data = load_meme_state()
+        group = meme_group_state(data, group_id)
+        last_sent_at = float(group.get("last_sent_at") or 0)
+        if cooldown and now_ts - last_sent_at < cooldown:
+            return False
+
+        recent = [
+            float(value)
+            for value in group.get("recent_sent_at", [])
+            if isinstance(value, (int, float)) and now_ts - float(value) < 3600
+        ]
+        if hourly_limit and len(recent) >= hourly_limit:
+            return False
+        return True
+
+
+def mark_meme_sent(config: dict[str, Any], group_id: int | str, path: Path) -> None:
+    now_ts = timestamp_now()
+    with MEME_STATE_LOCK:
+        data = load_meme_state()
+        group = meme_group_state(data, group_id)
+        recent = [
+            float(value)
+            for value in group.get("recent_sent_at", [])
+            if isinstance(value, (int, float)) and now_ts - float(value) < 3600
+        ]
+        recent.append(now_ts)
+        group["last_sent_at"] = now_ts
+        group["last_meme"] = str(path)
+        group["recent_sent_at"] = recent[-20:]
+        save_meme_state(data)
+
+
+def should_attach_meme(config: dict[str, Any], group_id: int | str, text: str, context: str) -> bool:
+    if not meme_enabled(config):
+        return False
+    max_text_length = max(40, int(config.get("meme_max_text_length") or 180))
+    if len(text.strip()) > max_text_length:
+        return False
+    probability = float(config.get("meme_chance") or 0.28)
+    probability = max(0.0, min(probability, 1.0))
+    if probability <= 0 or random.random() > probability:
+        return False
+    if not meme_rate_allowed(config, group_id):
+        return False
+    return choose_meme_path(config, context) is not None
+
+
+def send_group_text_with_optional_meme(
+    config: dict[str, Any],
+    group_id: int | str,
+    text: str,
+    context: str = "",
+) -> None:
+    context_text = f"{context}\n{text}".strip()
+    meme_path = choose_meme_path(config, context_text) if should_attach_meme(config, group_id, text, context_text) else None
+    if not meme_path:
+        for chunk in split_reply(text):
+            send_group_text(config, group_id, chunk)
+        return
+
+    try:
+        image_path = choose_send_image(meme_path)
+        message = build_message(caption=text, image_path=image_path)
+        post_onebot(
+            base_url=normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000")),
+            action="send_group_msg",
+            payload={"group_id": group_id, "message": message},
+            access_token=str(config.get("access_token") or ""),
+            timeout=90,
+        )
+        mark_meme_sent(config, group_id, meme_path)
+    except Exception as exc:
+        print(f"Meme rich message send failed: {exc}", file=sys.stderr)
+        for chunk in split_reply(text):
+            send_group_text(config, group_id, chunk)
 
 
 def chat_history_limit(config: dict[str, Any]) -> int:
@@ -2363,7 +2545,7 @@ def run_proactive_topic_tick(config: dict[str, Any]) -> None:
         topic = build_proactive_topic(config, group_id, now)
         if not topic:
             continue
-        send_group_text(config, group_id, topic)
+        send_group_text_with_optional_meme(config, group_id, topic, context=topic)
         mark_proactive_topic_sent(config, group_id, topic, now)
         append_group_history(config, group_id, "assistant", topic)
         print(f"Sent proactive topic to group {group_id}.")
@@ -2566,7 +2748,10 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_group_text(config, group_id, "AI 暂时没有回复成功，稍后再试一下。")
         return
 
-    send_web_search_reply(config, group_id, answer, image_urls)
+    if image_urls:
+        send_web_search_reply(config, group_id, answer, image_urls)
+    else:
+        send_group_text_with_optional_meme(config, group_id, answer, context=question)
     remember_group_exchange(config, group_id, question, answer)
 
 
