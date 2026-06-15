@@ -23,6 +23,7 @@ data.update(
         "proactive_topic_max_interval_minutes": 480,
         "proactive_topic_idle_minutes": 45,
         "proactive_topic_daily_limit": 4,
+        "proactive_topic_recent_limit": 10,
         "proactive_topic_active_start_hour": 9,
         "proactive_topic_active_end_hour": 23,
         "proactive_topic_check_seconds": 300,

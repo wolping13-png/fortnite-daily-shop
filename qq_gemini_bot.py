@@ -357,6 +357,19 @@ MEME_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("wolf", ("狼", "本狼", "温德尔", "毛茸茸")),
 )
 
+PROACTIVE_TOPIC_SEEDS: tuple[tuple[str, str], ...] = (
+    ("daily_mood", "日常心情：根据现在的时间、天气或节日，问一个轻松生活小问题，比如今天状态、想喝什么、适合做什么小事。"),
+    ("game_mood", "游戏闲聊：问最近想玩什么、想补哪个游戏、喜欢什么玩法，避免总聊跳点和开局。"),
+    ("fortnite_locker", "Fortnite 储物柜：聊皮肤风格、背饰搭配、表情动作、今日想用什么风格，不要编造商城内容。"),
+    ("tiny_choice", "轻松二选一：抛一个好回答的二选一问题，主题可以是游戏、吃喝、休息、音乐或周末。"),
+    ("cozy_plan", "陪伴式小计划：问大家今晚/今天想轻松做点什么，像朋友在群里随口问。"),
+    ("curious_question", "小好奇：问一个有趣但不幼稚的问题，比如最近最满意的一件小事、想拥有的游戏道具能力。"),
+    ("weather_hint", "天气联想：只把天气当背景，延伸到出门、饮料、休息或游戏安排，不要像天气播报。"),
+    ("festival_hint", "节日联想：如果有节日或纪念日，围绕节日气氛发一句自然话题；没有节日就改聊日常。"),
+    ("recommend_prompt", "轻推荐：邀请大家互相推荐一个游戏、歌、视频、零食、饮料或皮肤搭配。"),
+    ("memory_prompt", "回忆向：问一个轻松回忆问题，比如第一次玩某个游戏、印象深的皮肤、最近笑出来的瞬间。"),
+)
+
 WEATHER_CODES = {
     0: "晴",
     1: "大部晴朗",
@@ -2346,6 +2359,10 @@ def proactive_daily_limit(config: dict[str, Any]) -> int:
     return max(0, int(config.get("proactive_topic_daily_limit") or 4))
 
 
+def proactive_recent_topic_limit(config: dict[str, Any]) -> int:
+    return max(3, min(int(config.get("proactive_topic_recent_limit") or 10), 30))
+
+
 def proactive_effective_unanswered_count(group: dict[str, Any]) -> int:
     unanswered = max(0, int(group.get("unanswered_count") or 0))
     last_human_at = float(group.get("last_human_message_at") or 0)
@@ -2360,6 +2377,40 @@ def proactive_interval_for_group(config: dict[str, Any], group: dict[str, Any]) 
     unanswered = proactive_effective_unanswered_count(group)
     multiplier = 2 ** min(unanswered, 3)
     return min(proactive_max_interval_minutes(config), proactive_base_interval_minutes(config) * multiplier)
+
+
+def recent_proactive_topics(config: dict[str, Any], group_id: int | str) -> list[dict[str, Any]]:
+    with PROACTIVE_STATE_LOCK:
+        data = load_proactive_state()
+        group = proactive_group_state(data, group_id)
+        entries = group.get("recent_proactive_topics")
+        if not isinstance(entries, list):
+            return []
+
+        cleaned: list[dict[str, Any]] = []
+        for item in entries[-proactive_recent_topic_limit(config) :]:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text") or "").strip()
+            kind = str(item.get("kind") or "").strip()
+            if text or kind:
+                cleaned.append({"text": text[:220], "kind": kind})
+        return cleaned
+
+
+def choose_proactive_topic_seed(config: dict[str, Any], recent_topics: list[dict[str, Any]]) -> tuple[str, str]:
+    recent_kinds = [str(item.get("kind") or "") for item in recent_topics[-4:]]
+    candidates = [seed for seed in PROACTIVE_TOPIC_SEEDS if seed[0] not in recent_kinds]
+    if not candidates:
+        candidates = list(PROACTIVE_TOPIC_SEEDS)
+
+    preferred = str(config.get("proactive_topic_preferred_kind") or "").strip()
+    if preferred:
+        preferred_candidates = [seed for seed in candidates if seed[0] == preferred]
+        if preferred_candidates:
+            return preferred_candidates[0]
+
+    return random.choice(candidates)
 
 
 def reset_proactive_daily_count(group: dict[str, Any], now: datetime) -> None:
@@ -2400,7 +2451,13 @@ def should_send_proactive_topic(config: dict[str, Any], group_id: int | str, now
     return True
 
 
-def mark_proactive_topic_sent(config: dict[str, Any], group_id: int | str, message: str, now: datetime) -> None:
+def mark_proactive_topic_sent(
+    config: dict[str, Any],
+    group_id: int | str,
+    message: str,
+    now: datetime,
+    topic_kind: str = "",
+) -> None:
     now_ts = now.timestamp()
     with PROACTIVE_STATE_LOCK:
         data = load_proactive_state()
@@ -2421,7 +2478,20 @@ def mark_proactive_topic_sent(config: dict[str, Any], group_id: int | str, messa
             group["last_unanswered_counted_at"] = 0
         group["last_proactive_at"] = now_ts
         group["last_proactive_text"] = message[:500]
+        group["last_proactive_kind"] = topic_kind
         group["daily_count"] = int(group.get("daily_count") or 0) + 1
+
+        recent = group.get("recent_proactive_topics")
+        if not isinstance(recent, list):
+            recent = []
+        recent.append(
+            {
+                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "kind": topic_kind,
+                "text": message[:220],
+            }
+        )
+        group["recent_proactive_topics"] = recent[-proactive_recent_topic_limit(config) :]
         save_proactive_state(data)
 
 
@@ -2481,7 +2551,13 @@ def sanitize_proactive_topic(text: str) -> str:
     return value
 
 
-def fallback_proactive_topic(config: dict[str, Any], now: datetime, weather: str, festival: str) -> str:
+def fallback_proactive_topic(
+    config: dict[str, Any],
+    now: datetime,
+    weather: str,
+    festival: str,
+    seed_kind: str,
+) -> str:
     period = proactive_time_period(now)
     weather_hint = ""
     if "雨" in weather:
@@ -2494,27 +2570,73 @@ def fallback_proactive_topic(config: dict[str, Any], now: datetime, weather: str
         weather_hint = "我刚看了眼天气，今天还挺适合慢慢安排。"
 
     festival_hint = f"{festival}，" if festival else ""
-    templates = [
-        f"嗷，{festival_hint}{period}了。{weather_hint}队友们现在想聊点游戏，还是先摸一会儿鱼？",
-        f"本狼路过大厅看一眼，{period}的气氛还不错。今天有没有什么想玩的、想看的，或者想吐槽的？",
-        f"诶嘿，{period}的小话题来了：如果现在开一局，你们会选稳一点的跳点，还是直接去最热闹的地方？",
-    ]
+    templates_by_kind = {
+        "daily_mood": [
+            f"嗷，{festival_hint}{period}了。{weather_hint}队友们今天状态怎么样，电量还够不够？",
+            f"本狼来丢个小问题：今天有没有一件还算顺利的小事？没有也行，先摸摸背包。",
+        ],
+        "game_mood": [
+            "最近你们有没有突然想捡起来玩的老游戏？本狼有点想听听队友们的库存。",
+            "如果今晚只能玩一局游戏，你们会选轻松摸鱼的，还是选那种容易上头的？",
+        ],
+        "fortnite_locker": [
+            "今天储物柜小投票：你们更喜欢可爱系皮肤，还是那种一眼就很酷的战术风？",
+            "如果现在给一套皮肤配背饰，你们会优先选同色系，还是故意混搭得显眼一点？",
+        ],
+        "tiny_choice": [
+            "小小二选一：今晚是喝点热的慢慢玩，还是冰饮加速开局？",
+            "队友们选一个：安静刷任务，还是随便开一局看会发生什么奇怪事情？",
+        ],
+        "cozy_plan": [
+            f"{period}适合安排一点轻松东西。你们今晚想玩游戏、看视频，还是直接摆烂充电？",
+            "本狼巡逻到群里啦。今天有没有什么想做但一直没开始的小计划？",
+        ],
+        "curious_question": [
+            "突然好奇：如果背包里只能放一个现实道具进游戏，你们会塞什么？",
+            "如果一个游戏道具能带到现实里用一天，你们会选什么？本狼先不乱选，怕太离谱。",
+        ],
+        "weather_hint": [
+            f"{weather_hint or '天气信息本狼看了一眼。'}这种时候你们更想出门走走，还是窝着打游戏？",
+            f"{period}的天气当背景板刚好。今天适合整点什么饮料陪自己放松一下？",
+        ],
+        "festival_hint": [
+            f"{festival_hint or '今天没什么大节日，'}本狼想问问：你们会不会给节日留一点小仪式感？",
+            f"{festival_hint or '普通的一天也算小冒险，'}今天有没有什么值得记一下的小瞬间？",
+        ],
+        "recommend_prompt": [
+            "来个队友推荐环节：最近有没有一个游戏、歌、视频或者零食，觉得还挺值得丢进补给箱？",
+            "本狼想收集一点补给情报：你们最近有什么东西想安利给别人吗？",
+        ],
+        "memory_prompt": [
+            "突然想问：你们第一次被某个游戏惊到，是哪一幕？本狼想听点回忆。",
+            "有没有哪套皮肤、角色或者游戏场景，你现在想起来还觉得挺有感觉？",
+        ],
+    }
+    templates = templates_by_kind.get(seed_kind) or [item for values in templates_by_kind.values() for item in values]
     return sanitize_proactive_topic(random.choice(templates))
 
 
-def build_proactive_topic(config: dict[str, Any], group_id: int | str, now: datetime) -> str:
+def build_proactive_topic(config: dict[str, Any], group_id: int | str, now: datetime) -> tuple[str, str]:
     weather = proactive_weather_text(config)
     festival = proactive_festival_text(now)
     history = get_group_history(group_id, min(chat_history_limit(config), 6))
     history_text = "\n".join(f"{item.get('role')}: {item.get('content')}" for item in history[-6:])
+    recent_topics = recent_proactive_topics(config, group_id)
+    seed_kind, seed_instruction = choose_proactive_topic_seed(config, recent_topics)
+    recent_topic_text = "\n".join(
+        f"- {item.get('kind') or 'unknown'}：{item.get('text')}" for item in recent_topics[-8:]
+    )
 
     prompt = (
         "请你以温德尔的人设，主动给 QQ 群发起一个轻松自然的话题。\n"
         "要求：1-2 句，35-90 个中文字；像朋友随口开话题，不要像公告；不要@全体；不要说定时任务、系统、后台。"
-        "如果群里没人回，也不要催促或抱怨；最好用一个容易接的话题问题结尾。\n\n"
+        "如果群里没人回，也不要催促或抱怨；最好用一个容易接的话题问题结尾。"
+        "必须避免重复最近主动说过的话题、问题结构和关键词；不要总聊开局、跳点、天气或“想玩什么”。\n\n"
+        f"本次话题方向：{seed_kind}。{seed_instruction}\n"
         f"当前北京时间：{now:%Y-%m-%d %H:%M}，{WEEKDAYS_ZH[now.weekday()]}，{proactive_time_period(now)}。\n"
         f"日期/节日信息：{festival or '无特别节日信息'}。\n"
         f"天气信息：{weather or '未获取到天气'}。\n"
+        f"最近主动话题，必须避开：\n{recent_topic_text or '暂无'}\n"
         f"最近群聊上下文：\n{history_text or '暂无可用上下文'}"
     )
 
@@ -2524,11 +2646,11 @@ def build_proactive_topic(config: dict[str, Any], group_id: int | str, now: date
         answer = ask_model(copied, prompt, history=history)
         answer = sanitize_proactive_topic(answer)
         if answer:
-            return answer
+            return answer, seed_kind
     except Exception as exc:
         print(f"Proactive topic generation failed: {exc}", file=sys.stderr)
 
-    return fallback_proactive_topic(config, now, weather, festival)
+    return fallback_proactive_topic(config, now, weather, festival, seed_kind), seed_kind
 
 
 def run_proactive_topic_tick(config: dict[str, Any]) -> None:
@@ -2542,11 +2664,11 @@ def run_proactive_topic_tick(config: dict[str, Any]) -> None:
     for group_id in groups:
         if not should_send_proactive_topic(config, group_id, now):
             continue
-        topic = build_proactive_topic(config, group_id, now)
+        topic, topic_kind = build_proactive_topic(config, group_id, now)
         if not topic:
             continue
         send_group_text_with_optional_meme(config, group_id, topic, context=topic)
-        mark_proactive_topic_sent(config, group_id, topic, now)
+        mark_proactive_topic_sent(config, group_id, topic, now, topic_kind=topic_kind)
         append_group_history(config, group_id, "assistant", topic)
         print(f"Sent proactive topic to group {group_id}.")
 

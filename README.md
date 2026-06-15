@@ -136,11 +136,12 @@ bash install_cloud_cron.sh
 "proactive_topic_max_interval_minutes": 480,
 "proactive_topic_idle_minutes": 45,
 "proactive_topic_daily_limit": 4,
+"proactive_topic_recent_limit": 10,
 "proactive_topic_active_start_hour": 9,
 "proactive_topic_active_end_hour": 23
 ```
 
-含义：群里安静 45 分钟后才可能开口；基础间隔 120 分钟；如果没人理，会逐步降到最多 480 分钟一次；每天最多主动说 4 次；只在 9:00-23:00 之间主动说话。
+含义：群里安静 45 分钟后才可能开口；基础间隔 120 分钟；如果没人理，会逐步降到最多 480 分钟一次；每天最多主动说 4 次；只在 9:00-23:00 之间主动说话。机器人会记住最近 10 条主动话题，尽量避开重复主题和重复问法。
 
 也可以直接在服务器运行：
 
