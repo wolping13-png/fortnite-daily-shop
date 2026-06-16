@@ -10,7 +10,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -473,6 +473,28 @@ def draw_badge(
     draw.text((x + 11, y + 7), label, fill=TEXT, font=font)
 
 
+def remove_white_matte(image: Image.Image) -> Image.Image:
+    """Reduce white halos on transparent Fortnite item renders."""
+    rgba = image.copy().convert("RGBA")
+    alpha = rgba.getchannel("A")
+    if alpha.getextrema()[0] == 255:
+        return rgba
+
+    fixed: list[tuple[int, int, int, int]] = []
+    for red, green, blue, opacity in rgba.getdata():
+        if 0 < opacity < 255:
+            def unmatte(channel: int) -> int:
+                value = (channel * 255 - 255 * (255 - opacity)) / opacity
+                return max(0, min(255, int(round(value))))
+
+            fixed.append((unmatte(red), unmatte(green), unmatte(blue), opacity))
+        else:
+            fixed.append((red, green, blue, opacity))
+
+    rgba.putdata(fixed)
+    return rgba
+
+
 def paste_contained(
     base: Image.Image,
     image: Image.Image,
@@ -481,6 +503,7 @@ def paste_contained(
     left, top, right, bottom = box
     max_width = right - left
     max_height = bottom - top
+    image = remove_white_matte(image)
     image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
     x = left + (max_width - image.width) // 2
     y = top + (max_height - image.height) // 2
@@ -504,9 +527,12 @@ def paste_cover(
     )
     x = max(0, (resized.width - width) // 2)
     y = max(0, (resized.height - height) // 2)
-    cropped = resized.crop((x, y, x + width, y + height))
-    mask = rounded_mask((width, height), radius)
-    base.paste(cropped, (left, top), mask)
+    cropped = remove_white_matte(resized.crop((x, y, x + width, y + height)))
+    corner_mask = rounded_mask((width, height), radius)
+    alpha_mask = cropped.getchannel("A")
+    combined_mask = ImageChops.multiply(alpha_mask, corner_mask)
+    cropped.putalpha(combined_mask)
+    base.alpha_composite(cropped, (left, top))
 
 
 def paste_rounded_gradient(

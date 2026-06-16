@@ -189,9 +189,30 @@ def download_item_image(item: dict[str, Any]) -> Image.Image | None:
     return None
 
 
+def remove_white_matte(image: Image.Image) -> Image.Image:
+    rgba = image.copy().convert("RGBA")
+    alpha = rgba.getchannel("A")
+    if alpha.getextrema()[0] == 255:
+        return rgba
+
+    fixed: list[tuple[int, int, int, int]] = []
+    for red, green, blue, opacity in rgba.getdata():
+        if 0 < opacity < 255:
+            def unmatte(channel: int) -> int:
+                value = (channel * 255 - 255 * (255 - opacity)) / opacity
+                return max(0, min(255, int(round(value))))
+
+            fixed.append((unmatte(red), unmatte(green), unmatte(blue), opacity))
+        else:
+            fixed.append((red, green, blue, opacity))
+
+    rgba.putdata(fixed)
+    return rgba
+
+
 def paste_contained(base: Image.Image, image: Image.Image, box: tuple[int, int, int, int]) -> None:
     left, top, right, bottom = box
-    image = image.copy()
+    image = remove_white_matte(image)
     image.thumbnail((right - left, bottom - top), Image.Resampling.LANCZOS)
     x = left + (right - left - image.width) // 2
     y = top + (bottom - top - image.height) // 2
