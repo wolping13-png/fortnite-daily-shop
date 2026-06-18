@@ -609,6 +609,28 @@ def send_group_text(config: dict[str, Any], group_id: int | str, text: str) -> N
     )
 
 
+def send_private_text(config: dict[str, Any], user_id: int | str, text: str) -> None:
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    post_onebot(
+        base_url=base_url,
+        action="send_private_msg",
+        payload={
+            "user_id": user_id,
+            "message": [{"type": "text", "data": {"text": text}}],
+        },
+        access_token=access_token,
+        timeout=60,
+    )
+
+
+def send_target_text(config: dict[str, Any], target_id: int | str, text: str, private: bool = False) -> None:
+    if private:
+        send_private_text(config, target_id, text)
+    else:
+        send_group_text(config, target_id, text)
+
+
 def normalize_memory_value(value: str) -> str:
     value = str(value or "").strip()
     value = value.strip(" ：:，,。.!！?？\"'“”‘’")
@@ -1336,14 +1358,16 @@ def is_valorant_watch_request(text: str) -> bool:
     return value == "瓦监控" or value.startswith("瓦监控 ")
 
 
-def send_valorant_qr(config: dict[str, Any], group_id: int | str, image_path: Path) -> None:
+def send_valorant_qr(config: dict[str, Any], target_id: int | str, image_path: Path, private: bool = False) -> None:
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
+    action = "send_private_msg" if private else "send_group_msg"
+    id_key = "user_id" if private else "group_id"
     post_onebot(
         base_url=base_url,
-        action="send_group_msg",
+        action=action,
         payload={
-            "group_id": group_id,
+            id_key: target_id,
             "message": build_message(
                 caption="请用 QQ 扫码绑定无畏契约账号，二维码短时间内有效。",
                 image_path=image_path,
@@ -1354,7 +1378,13 @@ def send_valorant_qr(config: dict[str, Any], group_id: int | str, image_path: Pa
     )
 
 
-def handle_valorant_bind_command(config: dict[str, Any], group_id: int | str, sender_id: str, text: str) -> str:
+def handle_valorant_bind_command(
+    config: dict[str, Any],
+    target_id: int | str,
+    sender_id: str,
+    text: str,
+    private: bool = False,
+) -> str:
     from valorant_shop import ValorantShopError, bind_qq_account_flow, clear_valorant_user_config
 
     value = normalize_simple_command(text)
@@ -1369,10 +1399,10 @@ def handle_valorant_bind_command(config: dict[str, Any], group_id: int | str, se
     if arg and arg_lower not in {"qq", "q"}:
         return "用法：瓦 或 瓦 qq 绑定账号；瓦 清除 解绑。"
 
-    send_group_text(config, group_id, "嗷，我检查一下无畏契约绑定状态，等一下下。")
+    send_target_text(config, target_id, "嗷，我检查一下无畏契约绑定状态，等一下下。", private=private)
 
     def send_qr(image_path: Path) -> None:
-        send_valorant_qr(config, group_id, image_path)
+        send_valorant_qr(config, target_id, image_path, private=private)
 
     try:
         return asyncio.run(bind_qq_account_flow(sender_id, config, send_qr))
@@ -1380,26 +1410,33 @@ def handle_valorant_bind_command(config: dict[str, Any], group_id: int | str, se
         return str(exc)
 
 
-def send_valorant_shop_update(config: dict[str, Any], group_id: int | str, sender_id: str) -> str:
+def send_valorant_shop_update(
+    config: dict[str, Any],
+    target_id: int | str,
+    sender_id: str,
+    private: bool = False,
+) -> str:
     from valorant_shop import ValorantAuthExpired, ValorantNotBound, build_valorant_shop_image
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
+    action = "send_private_msg" if private else "send_group_msg"
+    id_key = "user_id" if private else "group_id"
     try:
         caption, image_path = asyncio.run(build_valorant_shop_image(sender_id, config))
     except ValorantNotBound:
         message = "你还没绑定无畏契约账号。先发：瓦"
-        send_group_text(config, group_id, message)
+        send_target_text(config, target_id, message, private=private)
         return message
     except ValorantAuthExpired:
         message = "无畏契约登录过期了。重新发：瓦"
-        send_group_text(config, group_id, message)
+        send_target_text(config, target_id, message, private=private)
         return message
 
     result = post_onebot(
         base_url=base_url,
-        action="send_group_msg",
-        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=choose_send_image(image_path))},
+        action=action,
+        payload={id_key: target_id, "message": build_message(caption=caption, image_path=choose_send_image(image_path))},
         access_token=access_token,
         timeout=120,
     )
@@ -1407,9 +1444,9 @@ def send_valorant_shop_update(config: dict[str, Any], group_id: int | str, sende
         safe_path = make_safe_image(image_path)
         post_onebot(
             base_url=base_url,
-            action="send_group_msg",
+            action=action,
             payload={
-                "group_id": group_id,
+                id_key: target_id,
                 "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
             },
             access_token=access_token,
@@ -1418,7 +1455,13 @@ def send_valorant_shop_update(config: dict[str, Any], group_id: int | str, sende
     return caption
 
 
-def handle_valorant_watch_command(config: dict[str, Any], group_id: int | str, sender_id: str, text: str) -> str:
+def handle_valorant_watch_command(
+    config: dict[str, Any],
+    target_id: int | str,
+    sender_id: str,
+    text: str,
+    private: bool = False,
+) -> str:
     from valorant_shop import (
         ValorantAuthExpired,
         ValorantNotBound,
@@ -1432,7 +1475,7 @@ def handle_valorant_watch_command(config: dict[str, Any], group_id: int | str, s
     parts = value.split(maxsplit=2)
     if len(parts) < 2:
         message = "瓦监控用法：添加 皮肤名 / 删除 皮肤名 / 列表 / 查询"
-        send_group_text(config, group_id, message)
+        send_target_text(config, target_id, message, private=private)
         return message
 
     sub_command = parts[1].strip()
@@ -1444,7 +1487,7 @@ def handle_valorant_watch_command(config: dict[str, Any], group_id: int | str, s
         else:
             added = add_valorant_watch_item(sender_id, item_name)
             message = f"已添加监控：{item_name}" if added else f"监控里已经有：{item_name}"
-        send_group_text(config, group_id, message)
+        send_target_text(config, target_id, message, private=private)
         return message
 
     if sub_command == "删除":
@@ -1453,13 +1496,13 @@ def handle_valorant_watch_command(config: dict[str, Any], group_id: int | str, s
         else:
             removed = remove_valorant_watch_item(sender_id, item_name)
             message = f"已删除监控：{item_name}" if removed else f"监控里没找到：{item_name}"
-        send_group_text(config, group_id, message)
+        send_target_text(config, target_id, message, private=private)
         return message
 
     if sub_command == "列表":
         items = get_valorant_watchlist(sender_id)
         message = "你的瓦监控列表是空的。" if not items else "你的瓦监控列表：\n" + "\n".join(f"- {item}" for item in items)
-        send_group_text(config, group_id, message)
+        send_target_text(config, target_id, message, private=private)
         return message
 
     if sub_command == "查询":
@@ -1469,11 +1512,11 @@ def handle_valorant_watch_command(config: dict[str, Any], group_id: int | str, s
             message = "你还没绑定无畏契约账号。先发：瓦"
         except ValorantAuthExpired:
             message = "无畏契约登录过期了。重新发：瓦"
-        send_group_text(config, group_id, message)
+        send_target_text(config, target_id, message, private=private)
         return message
 
     message = "瓦监控用法：添加 皮肤名 / 删除 皮肤名 / 列表 / 查询"
-    send_group_text(config, group_id, message)
+    send_target_text(config, target_id, message, private=private)
     return message
 
 
@@ -1745,9 +1788,10 @@ def command_help_text(config: dict[str, Any]) -> str:
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
         "- @我 清空上下文：清掉本群短期聊天记录\n"
-        f"- @我 {valorant_shop_command} / 瓦店 / 每日商店：发送你的无畏契约每日商店图\n"
-        f"- @我 {valorant_bind_command} / {valorant_bind_command} 清除：绑定或解绑无畏契约账号\n"
-        "- @我 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询：管理无畏商店监控\n"
+        f"- @我 {valorant_shop_command} / 瓦店 / 每日商店：私发你的无畏契约每日商店图\n"
+        f"- @我 {valorant_bind_command} / {valorant_bind_command} 清除：私聊绑定或解绑无畏契约账号\n"
+        "- @我 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询：私聊管理无畏商店监控\n"
+        "- 私聊我也可以直接发：瓦 / 无畏商店 / 瓦监控 列表\n"
         f"- @我 {wolf_command}：随机发一张狼图\n"
         f"- @我 {x_search_command} 关键词 / 帮我在 X 搜索 关键词：搜索 X 公开图片帖子并生成卡片\n"
         f"- @我 {x_timeline_command} / X关注：抓取你 X 账号关注时间线里的图片帖子\n"
@@ -3246,10 +3290,79 @@ def proactive_topic_loop(initial_config: dict[str, Any]) -> None:
         time.sleep(check_seconds)
 
 
+def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
+    if is_bot_message_event(config, event):
+        return
+
+    sender_id = event_sender_id(event)
+    if not sender_id:
+        return
+
+    text, _mentioned = extract_text_and_mention(event, config)
+    if not text:
+        return
+
+    valorant_bind_command = str(config.get("valorant_bind_command") or "瓦")
+    valorant_shop_command = str(config.get("valorant_shop_command") or "无畏商店")
+
+    if is_help_request(text):
+        help_text = (
+            "私聊里可以直接发：\n"
+            "- 瓦：绑定无畏契约账号\n"
+            "- 瓦 清除：解绑\n"
+            "- 无畏商店 / 瓦店 / 每日商店：查无畏每日商店\n"
+            "- 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询"
+        )
+        for chunk in split_reply(help_text, limit=850):
+            send_private_text(config, sender_id, chunk)
+        return
+
+    if is_valorant_bind_request(text, valorant_bind_command):
+        try:
+            answer = handle_valorant_bind_command(config, sender_id, sender_id, text, private=True)
+            send_private_text(config, sender_id, answer)
+        except ModuleNotFoundError as exc:
+            print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
+            send_private_text(config, sender_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
+        except Exception as exc:
+            print(f"Private valorant bind failed: {exc}", file=sys.stderr)
+            send_private_text(config, sender_id, "无畏契约绑定暂时失败了，稍后再试一下。")
+        return
+
+    if is_valorant_shop_request(text, valorant_shop_command):
+        try:
+            send_valorant_shop_update(config, sender_id, sender_id, private=True)
+        except ModuleNotFoundError as exc:
+            print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
+            send_private_text(config, sender_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
+        except Exception as exc:
+            print(f"Private valorant shop failed: {exc}", file=sys.stderr)
+            send_private_text(config, sender_id, "无畏商店暂时查询失败了，可能是登录过期或接口波动。")
+        return
+
+    if is_valorant_watch_request(text):
+        try:
+            handle_valorant_watch_command(config, sender_id, sender_id, text, private=True)
+        except ModuleNotFoundError as exc:
+            print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
+            send_private_text(config, sender_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
+        except Exception as exc:
+            print(f"Private valorant watch failed: {exc}", file=sys.stderr)
+            send_private_text(config, sender_id, "瓦监控暂时处理失败了，稍后再试一下。")
+        return
+
+    send_private_text(config, sender_id, "私聊里我现在主要处理无畏账号绑定和商店：发“瓦”或“无畏商店”就行。")
+
+
 def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     if event.get("post_type") != "message":
         return
-    if event.get("message_type") != "group":
+
+    message_type = event.get("message_type")
+    if message_type == "private":
+        handle_private_event(config, event)
+        return
+    if message_type != "group":
         return
 
     group_id = event.get("group_id")
@@ -3324,15 +3437,16 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能绑定无畏契约账号。")
             return
         try:
-            answer = handle_valorant_bind_command(config, group_id, sender_id, text)
-            send_group_text(config, group_id, answer)
+            send_group_text(config, group_id, "我去私聊里处理绑定流程。")
+            answer = handle_valorant_bind_command(config, sender_id, sender_id, text, private=True)
+            send_private_text(config, sender_id, answer)
             remember_group_exchange(config, group_id, text, answer)
         except ModuleNotFoundError as exc:
             print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
         except Exception as exc:
             print(f"Valorant bind failed: {exc}", file=sys.stderr)
-            send_group_text(config, group_id, "无畏契约绑定暂时失败了，稍后再试一下。")
+            send_group_text(config, group_id, "我私发失败了。你可能需要先加我好友，或者允许 QQ 临时会话。")
         return
 
     if mentioned and is_valorant_shop_request(text, valorant_shop_command):
@@ -3340,14 +3454,15 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能查询你的无畏商店。")
             return
         try:
-            answer = send_valorant_shop_update(config, group_id, sender_id)
+            send_group_text(config, group_id, "我去私聊里处理无畏商店。")
+            answer = send_valorant_shop_update(config, sender_id, sender_id, private=True)
             remember_group_exchange(config, group_id, text, answer)
         except ModuleNotFoundError as exc:
             print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
         except Exception as exc:
             print(f"Valorant shop failed: {exc}", file=sys.stderr)
-            send_group_text(config, group_id, "无畏商店暂时查询失败了，可能是登录过期或接口波动。")
+            send_group_text(config, group_id, "我私发失败了。你可能需要先加我好友，或者允许 QQ 临时会话。")
         return
 
     if mentioned and is_valorant_watch_request(text):
@@ -3355,14 +3470,15 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能使用瓦监控。")
             return
         try:
-            answer = handle_valorant_watch_command(config, group_id, sender_id, text)
+            send_group_text(config, group_id, "我去私聊里处理瓦监控。")
+            answer = handle_valorant_watch_command(config, sender_id, sender_id, text, private=True)
             remember_group_exchange(config, group_id, text, answer)
         except ModuleNotFoundError as exc:
             print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
         except Exception as exc:
             print(f"Valorant watch failed: {exc}", file=sys.stderr)
-            send_group_text(config, group_id, "瓦监控暂时处理失败了，稍后再试一下。")
+            send_group_text(config, group_id, "我私发失败了。你可能需要先加我好友，或者允许 QQ 临时会话。")
         return
 
     if text in {shop_command, shop_all_command}:
