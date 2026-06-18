@@ -8,7 +8,7 @@ import time
 from io import BytesIO
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 
 import requests
 from PIL import Image
@@ -141,6 +141,30 @@ BAD_IMAGE_TERMS = (
     "brand",
 )
 
+BAD_IMAGE_URL_TERMS = (
+    "logo",
+    "icon",
+    "sprite",
+    "favicon",
+    "placeholder",
+    "avatar",
+    "brand",
+    "watermark",
+    "trip.com",
+    "tripcdn",
+    "ctrip",
+)
+
+BAD_SOURCE_DOMAINS = (
+    "trip.com",
+    "tripcdn.com",
+    "ctrip.com",
+    "booking.com",
+    "expedia.com",
+    "agoda.com",
+    "hotels.com",
+)
+
 
 def make_session() -> requests.Session:
     session = requests.Session()
@@ -246,14 +270,38 @@ def item_terms(item: dict[str, Any]) -> tuple[str, ...]:
 
 def candidate_text(candidate: dict[str, Any]) -> str:
     values: list[str] = []
-    for key in ("title", "description", "source_title", "source_content", "url"):
+    for key in ("title", "description", "source_title", "source_content", "source_url", "url"):
         value = candidate.get(key)
         if value:
             values.append(str(value))
     return normalize_match_text(" ".join(values))
 
 
+def is_bad_url_value(value: str) -> bool:
+    raw = unquote(str(value or "")).lower()
+    if not raw:
+        return False
+    normalized = normalize_match_text(raw)
+    parsed = urlparse(raw)
+    host = parsed.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if any(host == domain or host.endswith(f".{domain}") for domain in BAD_SOURCE_DOMAINS):
+        return True
+    return any(term in raw or normalize_match_text(term) in normalized for term in BAD_IMAGE_URL_TERMS)
+
+
+def candidate_has_bad_image_reference(candidate: dict[str, Any]) -> bool:
+    for key in ("url", "source_url"):
+        value = str(candidate.get(key) or "").strip()
+        if value and is_bad_url_value(value):
+            return True
+    return False
+
+
 def candidate_match_score(candidate: dict[str, Any], item: dict[str, Any]) -> int:
+    if candidate_has_bad_image_reference(candidate):
+        return 0
     if candidate.get("trusted_match"):
         return 100
 
@@ -303,7 +351,7 @@ def dedupe_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     unique: list[dict[str, Any]] = []
     for candidate in candidates:
         url = str(candidate.get("url") or "").strip()
-        if not url or url in seen:
+        if not url or url in seen or candidate_has_bad_image_reference(candidate):
             continue
         seen.add(url)
         unique.append(candidate)
@@ -464,6 +512,7 @@ def tavily_image_candidates(session: requests.Session, api_key: str, item: dict[
                 base = {
                     "source_title": str(result.get("title") or ""),
                     "source_content": str(result.get("content") or ""),
+                    "source_url": str(result.get("url") or ""),
                     "source": "tavily-result",
                 }
                 if isinstance(image, str):
@@ -484,6 +533,9 @@ def tavily_image_candidates(session: requests.Session, api_key: str, item: dict[
 
 
 def save_real_photo(session: requests.Session, url: str, output_path: Path) -> Path:
+    if is_bad_url_value(url):
+        raise ValueError("Blocked logo/travel-site image URL.")
+
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     cache_path = CACHE_DIR / f"{hashlib.sha1(url.encode('utf-8')).hexdigest()}.img"
