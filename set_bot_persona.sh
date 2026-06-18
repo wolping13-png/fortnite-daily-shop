@@ -3,6 +3,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+if [ ! -f wendell_persona.txt ]; then
+  echo "Missing wendell_persona.txt"
+  exit 1
+fi
+
 if [ ! -f gemini_bot_config.json ]; then
   cp gemini_bot_config.example.json gemini_bot_config.json
 fi
@@ -11,16 +16,12 @@ python3 - <<'PY'
 import json
 from pathlib import Path
 
-path = Path("gemini_bot_config.json")
-data = json.loads(path.read_text(encoding="utf-8"))
-data["system_prompt"] = (
-    "你叫温德尔，是一个友好的 QQ 群游戏助手。"
-    "你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。"
-    "用户说“商店”时，默认指 Fortnite 每日商店，不是普通电商；如果上下文不清楚，可以简短确认。"
-    "回答用简体中文，像朋友聊天一样自然、有趣、实用，不要只围着堡垒之夜转。"
-    "涉及最新消息、版本更新、赛事和热搜时，如果已经配置 Tavily，可以优先联网搜索；不确定就直接说不确定，不要编造。"
-)
-path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+config_path = Path("gemini_bot_config.json")
+persona_path = Path("wendell_persona.txt")
+
+data = json.loads(config_path.read_text(encoding="utf-8"))
+data["system_prompt"] = persona_path.read_text(encoding="utf-8").strip()
+config_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 
 pkill -f qq_gemini_bot.py 2>/dev/null || true
@@ -28,4 +29,4 @@ nohup bash run_qq_gemini_bot.sh > gemini_bot.log 2>&1 &
 
 sleep 3
 tail -n 30 gemini_bot.log
-echo "Bot persona updated. Try: @机器人 推荐几个适合和朋友玩的游戏"
+echo "Bot persona updated from wendell_persona.txt."

@@ -2137,13 +2137,13 @@ def reply_style_instruction(question: str) -> str:
         return (
             "回答长度要求：用户要求详细，请完整回答；先给结论，再补关键理由。"
             "可以分点，但不要写成论文，控制在 300-700 个中文字内。"
-            "表达方式要求：不要写神态描写、动作描写、括号旁白或小剧场。"
+            "表达方式要求：少写动作描写，不要写括号旁白或小剧场；只有情绪特别合适时才轻轻带一下。"
         )
     return (
         "回答长度要求：普通聊天请短答，优先 1-2 句，约 30-60 个中文字。"
         "不要主动展开、不要列清单、不要补充无关背景。"
         "如果必须说明关键条件，可以用第 2 句，但结尾一定要完整。"
-        "表达方式要求：不要写神态描写、动作描写、括号旁白或小剧场；最多保留一个自然口癖。"
+        "表达方式要求：少写动作描写，不要写括号旁白或小剧场；最多保留一个自然口癖。"
     )
 
 
@@ -2151,11 +2151,24 @@ def add_time_context_to_prompt(question: str) -> str:
     return f"{current_time_context()}\n\n用户问题：{question}\n\n{reply_style_instruction(question)}"
 
 
+def default_system_prompt() -> str:
+    persona_path = BASE_DIR / "wendell_persona.txt"
+    if persona_path.exists():
+        try:
+            text = persona_path.read_text(encoding="utf-8").strip()
+            if text:
+                return text
+        except Exception:
+            pass
+    return (
+        "你是一只叫温德尔的小狼。你不是机器人，不是 AI 助手，也不是客服。"
+        "你像熟悉的朋友一样自然聊天，真诚、柔软、偶尔有点慢半拍。"
+        "涉及商城、返场、价格、活动等准确信息时，不知道就说不知道，不要编造。"
+    )
+
+
 def add_wendell_persona_supplement(system_prompt: str) -> str:
-    prompt = system_prompt.rstrip()
-    if "补充设定：温德尔的性格与日常表现" in prompt:
-        return prompt
-    return f"{prompt}\n\n{WENDELL_PERSONA_SUPPLEMENT}"
+    return system_prompt.rstrip()
 
 
 def add_time_context_to_system(system_prompt: str) -> str:
@@ -2166,7 +2179,7 @@ def add_time_context_to_system(system_prompt: str) -> str:
         "如果用户询问当前日期或相对日期，直接给出具体日期，不要猜。\n"
         "普通闲聊默认只回 1-2 句，约 30-60 个中文字；能一句说清就不要补充第二句。"
         "不要主动列清单、写长段解释或扩展话题。"
-        "不要写神态描写、动作描写、括号旁白、小剧场或舞台提示，例如不要写“竖起耳朵”“晃尾巴”“抱着背包”。"
+        "不要频繁写神态描写、动作描写、括号旁白、小剧场或舞台提示；如果要写，只能偶尔很轻地带一下。"
         "可以偶尔用一个简短口癖，但不要每句都卖萌。"
         "如果问题需要步骤、风险提醒、准确数据或关键条件，可以多写一点，但必须完整收尾，不要半句截断。"
         "只有用户明确说“详细、仔细、展开、对比、区别、具体、分析一下、长一点”等要求时，才可以更详细。"
@@ -2591,7 +2604,7 @@ def ask_model_with_web_search(
         "不要把低相关、广告页、论坛猜测当成事实。"
         "如果可靠搜索结果数量为 0，或结果不足、互相矛盾、时间不匹配，必须直接说明没有搜到可靠结论，不要硬答。"
         "用简体中文，语气自然。默认回答控制在 1-2 句、30-70 个中文字；"
-        "只说最关键结论和必要来源，不要主动长篇展开。不要写神态描写、动作旁白或小剧场。只有用户明确要求详细时才展开。"
+        "只说最关键结论和必要来源，不要主动长篇展开。少写动作旁白或小剧场。只有用户明确要求详细时才展开。"
         "涉及今天、昨天、明天、最近、最新、今晚、明早时，必须结合上面的北京时间判断。"
         "最后用“参考：”列出最多 3 个最可靠来源标题或链接；不要列明显低质量来源。\n\n"
         f"{context}"
@@ -2609,7 +2622,7 @@ def ask_gemini(
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     system_prompt = str(
         config.get("system_prompt")
-        or "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店。回答用简体中文，像朋友聊天一样自然、有趣、实用；不确定就直接说不确定，不要编造。"
+        or default_system_prompt()
     )
     system_prompt = add_time_context_to_system(system_prompt)
     if private_memory_context:
@@ -2722,7 +2735,7 @@ def ask_deepseek(
     model = str(config.get("model") or "deepseek-v4-flash")
     system_prompt = str(
         config.get("system_prompt")
-        or "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店。回答用简体中文，像朋友聊天一样自然、有趣、实用；不确定就直接说不确定，不要编造。"
+        or default_system_prompt()
     )
     system_prompt = add_time_context_to_system(system_prompt)
     if private_memory_context:
