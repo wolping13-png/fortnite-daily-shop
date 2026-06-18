@@ -4,6 +4,7 @@ import json
 import os
 import random
 import re
+import asyncio
 import subprocess
 import sys
 import threading
@@ -1306,6 +1307,176 @@ def send_reddit_pet_update(config: dict[str, Any], group_id: int | str, topic: s
     )
 
 
+def normalize_simple_command(text: str) -> str:
+    return str(text or "").strip().lstrip("/").strip()
+
+
+def is_valorant_bind_request(text: str, bind_command: str) -> bool:
+    value = normalize_simple_command(text)
+    command = str(bind_command or "瓦").strip()
+    return value == command or value.startswith(command + " ")
+
+
+def is_valorant_shop_request(text: str, shop_command: str) -> bool:
+    compact = re.sub(r"\s+", "", normalize_simple_command(text).lower())
+    commands = {
+        str(shop_command or "无畏商店").strip().lower(),
+        "瓦店",
+        "每日商店",
+        "无畏每日商店",
+        "瓦洛兰特商店",
+        "valorant商店",
+        "val商店",
+    }
+    return compact in {re.sub(r"\s+", "", command) for command in commands if command}
+
+
+def is_valorant_watch_request(text: str) -> bool:
+    value = normalize_simple_command(text)
+    return value == "瓦监控" or value.startswith("瓦监控 ")
+
+
+def send_valorant_qr(config: dict[str, Any], group_id: int | str, image_path: Path) -> None:
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    post_onebot(
+        base_url=base_url,
+        action="send_group_msg",
+        payload={
+            "group_id": group_id,
+            "message": build_message(
+                caption="请用 QQ 扫码绑定无畏契约账号，二维码短时间内有效。",
+                image_path=image_path,
+            ),
+        },
+        access_token=access_token,
+        timeout=120,
+    )
+
+
+def handle_valorant_bind_command(config: dict[str, Any], group_id: int | str, sender_id: str, text: str) -> str:
+    from valorant_shop import ValorantShopError, bind_qq_account_flow, clear_valorant_user_config
+
+    value = normalize_simple_command(text)
+    command = str(config.get("valorant_bind_command") or "瓦").strip()
+    arg = value[len(command) :].strip() if value.startswith(command) else ""
+    arg_lower = arg.lower()
+
+    if arg in {"清除", "清空", "解绑"} or arg_lower in {"clear", "reset", "remove", "delete"}:
+        cleared = clear_valorant_user_config(sender_id)
+        return "已清除你的无畏契约登录信息。" if cleared else "当前没有检测到已绑定的无畏契约账号。"
+
+    if arg and arg_lower not in {"qq", "q"}:
+        return "用法：瓦 或 瓦 qq 绑定账号；瓦 清除 解绑。"
+
+    send_group_text(config, group_id, "嗷，我检查一下无畏契约绑定状态，等一下下。")
+
+    def send_qr(image_path: Path) -> None:
+        send_valorant_qr(config, group_id, image_path)
+
+    try:
+        return asyncio.run(bind_qq_account_flow(sender_id, config, send_qr))
+    except ValorantShopError as exc:
+        return str(exc)
+
+
+def send_valorant_shop_update(config: dict[str, Any], group_id: int | str, sender_id: str) -> str:
+    from valorant_shop import ValorantAuthExpired, ValorantNotBound, build_valorant_shop_image
+
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    try:
+        caption, image_path = asyncio.run(build_valorant_shop_image(sender_id, config))
+    except ValorantNotBound:
+        message = "你还没绑定无畏契约账号。先发：瓦"
+        send_group_text(config, group_id, message)
+        return message
+    except ValorantAuthExpired:
+        message = "无畏契约登录过期了。重新发：瓦"
+        send_group_text(config, group_id, message)
+        return message
+
+    result = post_onebot(
+        base_url=base_url,
+        action="send_group_msg",
+        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=choose_send_image(image_path))},
+        access_token=access_token,
+        timeout=120,
+    )
+    if result.get("_napcat_callback_timeout"):
+        safe_path = make_safe_image(image_path)
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={
+                "group_id": group_id,
+                "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            },
+            access_token=access_token,
+            timeout=120,
+        )
+    return caption
+
+
+def handle_valorant_watch_command(config: dict[str, Any], group_id: int | str, sender_id: str, text: str) -> str:
+    from valorant_shop import (
+        ValorantAuthExpired,
+        ValorantNotBound,
+        add_valorant_watch_item,
+        get_valorant_watchlist,
+        query_valorant_watchlist,
+        remove_valorant_watch_item,
+    )
+
+    value = normalize_simple_command(text)
+    parts = value.split(maxsplit=2)
+    if len(parts) < 2:
+        message = "瓦监控用法：添加 皮肤名 / 删除 皮肤名 / 列表 / 查询"
+        send_group_text(config, group_id, message)
+        return message
+
+    sub_command = parts[1].strip()
+    item_name = parts[2].strip().strip('"') if len(parts) >= 3 else ""
+
+    if sub_command == "添加":
+        if not item_name:
+            message = "要这样发：瓦监控 添加 皮肤名"
+        else:
+            added = add_valorant_watch_item(sender_id, item_name)
+            message = f"已添加监控：{item_name}" if added else f"监控里已经有：{item_name}"
+        send_group_text(config, group_id, message)
+        return message
+
+    if sub_command == "删除":
+        if not item_name:
+            message = "要这样发：瓦监控 删除 皮肤名"
+        else:
+            removed = remove_valorant_watch_item(sender_id, item_name)
+            message = f"已删除监控：{item_name}" if removed else f"监控里没找到：{item_name}"
+        send_group_text(config, group_id, message)
+        return message
+
+    if sub_command == "列表":
+        items = get_valorant_watchlist(sender_id)
+        message = "你的瓦监控列表是空的。" if not items else "你的瓦监控列表：\n" + "\n".join(f"- {item}" for item in items)
+        send_group_text(config, group_id, message)
+        return message
+
+    if sub_command == "查询":
+        try:
+            message = asyncio.run(query_valorant_watchlist(sender_id, config))
+        except ValorantNotBound:
+            message = "你还没绑定无畏契约账号。先发：瓦"
+        except ValorantAuthExpired:
+            message = "无畏契约登录过期了。重新发：瓦"
+        send_group_text(config, group_id, message)
+        return message
+
+    message = "瓦监控用法：添加 皮肤名 / 删除 皮肤名 / 列表 / 查询"
+    send_group_text(config, group_id, message)
+    return message
+
+
 def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str = "") -> str:
     from x_posts import build_x_posts_update, build_x_timeline_update
 
@@ -1558,12 +1729,17 @@ def command_help_text(config: dict[str, Any]) -> str:
     wolf_command = str(config.get("wolf_command") or "狼狼")
     x_search_command = str(config.get("x_search_command") or "X搜索")
     x_timeline_command = str(config.get("x_timeline_command") or "X日常")
+    valorant_bind_command = str(config.get("valorant_bind_command") or "瓦")
+    valorant_shop_command = str(config.get("valorant_shop_command") or "无畏商店")
 
     return (
         "温德尔指令表\n"
         "\n"
         "直接发：\n"
         f"- {shop_command}：发送 Fortnite 每日商店总图\n"
+        f"- {valorant_shop_command} / 瓦店 / 每日商店：发送你的无畏契约每日商店图\n"
+        f"- {valorant_bind_command} / {valorant_bind_command} 清除：绑定或解绑无畏契约账号\n"
+        "- 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询：管理无畏商店监控\n"
         f"- {game_deals_command} / Steam折扣榜 / Epic喜加一：发送游戏优惠日报\n"
         "- 吃什么：随机推荐食物并发实物图\n"
         "- 喝什么：随机推荐饮品并发实物图\n"
@@ -3089,6 +3265,8 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     wolf_command = str(config.get("wolf_command") or "狼狼")
     x_search_command = str(config.get("x_search_command") or "X搜索")
     x_timeline_command = str(config.get("x_timeline_command") or "X日常")
+    valorant_bind_command = str(config.get("valorant_bind_command") or "瓦")
+    valorant_shop_command = str(config.get("valorant_shop_command") or "无畏商店")
     sender_id = event_sender_id(event)
     sender_display_name = event_sender_display_name(event)
 
@@ -3126,6 +3304,52 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     if is_help_request(text):
         for chunk in split_reply(command_help_text(config), limit=850):
             send_group_text(config, group_id, chunk)
+        return
+
+    if is_valorant_bind_request(text, valorant_bind_command):
+        if not sender_id:
+            send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能绑定无畏契约账号。")
+            return
+        try:
+            answer = handle_valorant_bind_command(config, group_id, sender_id, text)
+            send_group_text(config, group_id, answer)
+            remember_group_exchange(config, group_id, text, answer)
+        except ModuleNotFoundError as exc:
+            print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
+        except Exception as exc:
+            print(f"Valorant bind failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "无畏契约绑定暂时失败了，稍后再试一下。")
+        return
+
+    if is_valorant_shop_request(text, valorant_shop_command):
+        if not sender_id:
+            send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能查询你的无畏商店。")
+            return
+        try:
+            answer = send_valorant_shop_update(config, group_id, sender_id)
+            remember_group_exchange(config, group_id, text, answer)
+        except ModuleNotFoundError as exc:
+            print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
+        except Exception as exc:
+            print(f"Valorant shop failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "无畏商店暂时查询失败了，可能是登录过期或接口波动。")
+        return
+
+    if is_valorant_watch_request(text):
+        if not sender_id:
+            send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能使用瓦监控。")
+            return
+        try:
+            answer = handle_valorant_watch_command(config, group_id, sender_id, text)
+            remember_group_exchange(config, group_id, text, answer)
+        except ModuleNotFoundError as exc:
+            print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
+        except Exception as exc:
+            print(f"Valorant watch failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "瓦监控暂时处理失败了，稍后再试一下。")
         return
 
     if text in {shop_command, shop_all_command}:

@@ -30,6 +30,8 @@
   "ask_prefix": "温德尔",
   "shop_command": "商店",
   "shop_all_command": "商店全部",
+  "valorant_bind_command": "瓦",
+  "valorant_shop_command": "无畏商店",
   "weather_command": "天气",
   "default_weather_location": "北京",
   "proactive_topic_enabled": false,

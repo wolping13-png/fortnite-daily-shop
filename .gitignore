@@ -5,6 +5,8 @@ publish.log
 qq_bot_config.json
 gemini_bot_config.json
 logs/
+bot_memory/
+temp/
 shop_qq.jpg
 shop_qq_safe.jpg
 shop_safe.jpg
