@@ -1737,9 +1737,6 @@ def command_help_text(config: dict[str, Any]) -> str:
         "\n"
         "直接发：\n"
         f"- {shop_command}：发送 Fortnite 每日商店总图\n"
-        f"- {valorant_shop_command} / 瓦店 / 每日商店：发送你的无畏契约每日商店图\n"
-        f"- {valorant_bind_command} / {valorant_bind_command} 清除：绑定或解绑无畏契约账号\n"
-        "- 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询：管理无畏商店监控\n"
         f"- {game_deals_command} / Steam折扣榜 / Epic喜加一：发送游戏优惠日报\n"
         "- 吃什么：随机推荐食物并发实物图\n"
         "- 喝什么：随机推荐饮品并发实物图\n"
@@ -1748,6 +1745,9 @@ def command_help_text(config: dict[str, Any]) -> str:
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
         "- @我 清空上下文：清掉本群短期聊天记录\n"
+        f"- @我 {valorant_shop_command} / 瓦店 / 每日商店：发送你的无畏契约每日商店图\n"
+        f"- @我 {valorant_bind_command} / {valorant_bind_command} 清除：绑定或解绑无畏契约账号\n"
+        "- @我 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询：管理无畏商店监控\n"
         f"- @我 {wolf_command}：随机发一张狼图\n"
         f"- @我 {x_search_command} 关键词 / 帮我在 X 搜索 关键词：搜索 X 公开图片帖子并生成卡片\n"
         f"- @我 {x_timeline_command} / X关注：抓取你 X 账号关注时间线里的图片帖子\n"
@@ -3306,7 +3306,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, chunk)
         return
 
-    if is_valorant_bind_request(text, valorant_bind_command):
+    if mentioned and is_valorant_bind_request(text, valorant_bind_command):
         if not sender_id:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能绑定无畏契约账号。")
             return
@@ -3322,7 +3322,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "无畏契约绑定暂时失败了，稍后再试一下。")
         return
 
-    if is_valorant_shop_request(text, valorant_shop_command):
+    if mentioned and is_valorant_shop_request(text, valorant_shop_command):
         if not sender_id:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能查询你的无畏商店。")
             return
@@ -3337,7 +3337,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "无畏商店暂时查询失败了，可能是登录过期或接口波动。")
         return
 
-    if is_valorant_watch_request(text):
+    if mentioned and is_valorant_watch_request(text):
         if not sender_id:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能使用瓦监控。")
             return
