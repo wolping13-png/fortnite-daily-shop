@@ -1788,7 +1788,7 @@ def command_help_text(config: dict[str, Any]) -> str:
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
         "- @我 清空上下文：清掉本群短期聊天记录\n"
-        f"- @我 {valorant_shop_command} / 瓦店 / 每日商店：私发你的无畏契约每日商店图\n"
+        f"- @我 {valorant_shop_command} / 瓦店 / 每日商店：把你的无畏契约每日商店图发到群里\n"
         f"- @我 {valorant_bind_command} / {valorant_bind_command} 清除：私聊绑定或解绑无畏契约账号\n"
         "- @我 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询：私聊管理无畏商店监控\n"
         "- 私聊我也可以直接发：瓦 / 无畏商店 / 瓦监控 列表\n"
@@ -3465,7 +3465,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能绑定无畏契约账号。")
             return
         try:
-            send_group_text(config, group_id, "我去私聊里处理绑定流程。")
+            send_group_text(config, group_id, "嗯……这个要私下弄比较好，我悄悄发你。")
             answer = handle_valorant_bind_command(config, sender_id, sender_id, text, private=True)
             send_private_text(config, sender_id, answer)
             remember_group_exchange(config, group_id, text, answer)
@@ -3474,7 +3474,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
         except Exception as exc:
             print(f"Valorant bind failed: {exc}", file=sys.stderr)
-            send_group_text(config, group_id, "我私发失败了。你可能需要先加我好友，或者允许 QQ 临时会话。")
+            send_group_text(config, group_id, "我没能悄悄发过去……你先加我好友，或者把临时会话打开一下。")
         return
 
     if mentioned and is_valorant_shop_request(text, valorant_shop_command):
@@ -3482,15 +3482,14 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能查询你的无畏商店。")
             return
         try:
-            send_group_text(config, group_id, "我去私聊里处理无畏商店。")
-            answer = send_valorant_shop_update(config, sender_id, sender_id, private=True)
+            answer = send_valorant_shop_update(config, group_id, sender_id, private=False)
             remember_group_exchange(config, group_id, text, answer)
         except ModuleNotFoundError as exc:
             print(f"Valorant shop dependency missing: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
         except Exception as exc:
             print(f"Valorant shop failed: {exc}", file=sys.stderr)
-            send_group_text(config, group_id, "我私发失败了。你可能需要先加我好友，或者允许 QQ 临时会话。")
+            send_group_text(config, group_id, "我刚刚没发出来……可能是登录过期了，或者接口有点慢。")
         return
 
     if mentioned and is_valorant_watch_request(text):
@@ -3498,7 +3497,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能使用瓦监控。")
             return
         try:
-            send_group_text(config, group_id, "我去私聊里处理瓦监控。")
+            send_group_text(config, group_id, "这个我拿小本子私下看，别在群里摊开啦。")
             answer = handle_valorant_watch_command(config, sender_id, sender_id, text, private=True)
             remember_group_exchange(config, group_id, text, answer)
         except ModuleNotFoundError as exc:
@@ -3506,7 +3505,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "无畏商店功能缺少 aiohttp 依赖。更新服务器依赖后重启我就能用了。")
         except Exception as exc:
             print(f"Valorant watch failed: {exc}", file=sys.stderr)
-            send_group_text(config, group_id, "我私发失败了。你可能需要先加我好友，或者允许 QQ 临时会话。")
+            send_group_text(config, group_id, "我没能悄悄发过去……你先加我好友，或者把临时会话打开一下。")
         return
 
     if text in {shop_command, shop_all_command}:
