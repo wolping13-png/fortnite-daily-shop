@@ -22,6 +22,7 @@ from send_qq_shop import build_message, choose_send_image, make_safe_image, post
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_PATH = BASE_DIR / "gemini_bot_config.json"
 CHAT_HISTORY_PATH = BASE_DIR / "bot_memory" / "chat_history.json"
+USER_MEMORY_PATH = BASE_DIR / "bot_memory" / "user_memory.json"
 PROACTIVE_STATE_PATH = BASE_DIR / "bot_memory" / "proactive_topics.json"
 MEME_STATE_PATH = BASE_DIR / "bot_memory" / "meme_state.json"
 SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
@@ -36,6 +37,7 @@ BRIEF_REPLY_MAX_TOKENS = 320
 BRIEF_REPLY_TOKEN_CEILING = 420
 DETAILED_REPLY_MAX_TOKENS = 1400
 DEEPSEEK_EMPTY_RETRY_TOKENS = 1800
+USER_MEMORY_LOCK = threading.RLock()
 PROACTIVE_STATE_LOCK = threading.RLock()
 MEME_STATE_LOCK = threading.RLock()
 DETAILED_REPLY_KEYWORDS = (
@@ -370,6 +372,58 @@ PROACTIVE_TOPIC_SEEDS: tuple[tuple[str, str], ...] = (
     ("memory_prompt", "回忆向：问一个轻松回忆问题，比如第一次玩某个游戏、印象深的皮肤、最近笑出来的瞬间。"),
 )
 
+RELATIONSHIP_TOKENS = (
+    "老婆大人",
+    "主人様",
+    "女朋友",
+    "男朋友",
+    "老婆",
+    "老公",
+    "主人",
+    "宝宝",
+    "宝贝",
+    "对象",
+    "搭档",
+    "饲主",
+    "宠物",
+    "哥哥",
+    "姐姐",
+    "弟弟",
+    "妹妹",
+)
+
+RELATIONSHIP_ALIASES: dict[str, tuple[str, ...]] = {
+    "老婆": ("老婆", "老婆大人", "女朋友", "对象"),
+    "老公": ("老公", "男朋友", "对象"),
+    "主人": ("主人", "主人様", "饲主"),
+    "宝宝": ("宝宝", "宝贝"),
+    "宝贝": ("宝贝", "宝宝"),
+    "对象": ("对象", "老婆", "老公", "女朋友", "男朋友"),
+    "搭档": ("搭档",),
+    "宠物": ("宠物",),
+    "哥哥": ("哥哥",),
+    "姐姐": ("姐姐",),
+    "弟弟": ("弟弟",),
+    "妹妹": ("妹妹",),
+}
+
+MEMORY_SET_CALL_PATTERNS = (
+    re.compile(r"^(?:你以后|以后|今后|以后都|以后就)?(?:叫|喊|称呼)我(?:做|为)?[：:，, ]*(?P<name>[^。！？!?\\n]{1,24})[。！!？?]*$"),
+    re.compile(r"^(?:请)?(?:叫|喊|称呼)我(?:做|为)?[：:，, ]*(?P<name>[^。！？!?\\n]{1,24})[。！!？?]*$"),
+    re.compile(r"^(?:以后|今后)?(?:改叫|改喊|改称呼)我(?:做|为)?[：:，, ]*(?P<name>[^。！？!?\\n]{1,24})[。！!？?]*$"),
+)
+
+MEMORY_SET_RELATION_PATTERNS = (
+    re.compile(r"^(?:我就是|我是)(?:你的|你)?(?P<relation>[^。！？!?\\n]{1,24})[。！!？?]*$"),
+    re.compile(r"^把我当成(?:你的|你)?(?P<relation>[^。！？!?\\n]{1,24})[。！!？?]*$"),
+)
+
+MEMORY_CLEAR_PATTERNS = (
+    re.compile(r"^(?:不要|别|不用)(?:再)?(?:叫|喊|称呼)我(?:做|为)?(?P<name>[^。！？!?\\n]{0,24})[了啦。！!]*$"),
+    re.compile(r"^(?:不要|别|不用)(?:再)?把我当成(?:你的|你)?(?P<name>[^。！？!?\\n]{0,24})[了啦。！!]*$"),
+    re.compile(r"^(?:忘掉|忘记|清除|清空)(?:我的)?(?:称呼|昵称|关系|设定|称呼设定|关系设定)[。！!]*$"),
+)
+
 WEATHER_CODES = {
     0: "晴",
     1: "大部晴朗",
@@ -552,6 +606,189 @@ def send_group_text(config: dict[str, Any], group_id: int | str, text: str) -> N
         access_token=access_token,
         timeout=60,
     )
+
+
+def normalize_memory_value(value: str) -> str:
+    value = str(value or "").strip()
+    value = value.strip(" ：:，,。.!！?？\"'“”‘’")
+    value = re.sub(r"^(?:你的|你|叫做|叫|喊|称呼)", "", value).strip(" ：:，,。.!！?？")
+    value = re.sub(r"(?:了|啦|吧|呀|哦|哈)+$", "", value).strip()
+    return value[:24]
+
+
+def is_relation_token(value: str) -> bool:
+    compact = re.sub(r"\s+", "", normalize_memory_value(value).lower())
+    return any(token.lower() == compact for token in RELATIONSHIP_TOKENS)
+
+
+def relation_matches(query: str, stored: str) -> bool:
+    query_value = normalize_memory_value(query)
+    stored_value = normalize_memory_value(stored)
+    if not query_value or not stored_value:
+        return False
+    if query_value == stored_value:
+        return True
+    aliases = RELATIONSHIP_ALIASES.get(query_value, (query_value,))
+    return stored_value in aliases
+
+
+def load_user_memory() -> dict[str, Any]:
+    if not USER_MEMORY_PATH.exists():
+        return {"groups": {}}
+    try:
+        data = json.loads(USER_MEMORY_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"groups": {}}
+    if not isinstance(data, dict):
+        return {"groups": {}}
+    if not isinstance(data.get("groups"), dict):
+        data["groups"] = {}
+    return data
+
+
+def save_user_memory(data: dict[str, Any]) -> None:
+    USER_MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = USER_MEMORY_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(USER_MEMORY_PATH)
+
+
+def user_memory_entry(data: dict[str, Any], group_id: int | str, user_id: int | str) -> dict[str, Any]:
+    groups = data.setdefault("groups", {})
+    if not isinstance(groups, dict):
+        groups = {}
+        data["groups"] = groups
+    group = groups.setdefault(str(group_id), {})
+    if not isinstance(group, dict):
+        group = {}
+        groups[str(group_id)] = group
+    users = group.setdefault("users", {})
+    if not isinstance(users, dict):
+        users = {}
+        group["users"] = users
+    memory = users.get(str(user_id))
+    if not isinstance(memory, dict):
+        memory = {"privacy": "private"}
+        users[str(user_id)] = memory
+    return memory
+
+
+def current_timestamp_text() -> str:
+    return datetime.now(CHINA_TZ).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def get_user_memory(group_id: int | str, user_id: int | str) -> dict[str, Any]:
+    if not str(user_id or "").strip():
+        return {}
+    with USER_MEMORY_LOCK:
+        data = load_user_memory()
+        groups = data.get("groups") if isinstance(data.get("groups"), dict) else {}
+        group = groups.get(str(group_id)) if isinstance(groups, dict) else {}
+        users = group.get("users") if isinstance(group, dict) else {}
+        memory = users.get(str(user_id)) if isinstance(users, dict) else {}
+        return dict(memory) if isinstance(memory, dict) else {}
+
+
+def update_user_memory(
+    group_id: int | str,
+    user_id: int | str,
+    display_name: str,
+    nickname: str | None = None,
+    relationship: str | None = None,
+    clear_nickname: bool = False,
+    clear_relationship: bool = False,
+) -> dict[str, Any]:
+    with USER_MEMORY_LOCK:
+        data = load_user_memory()
+        memory = user_memory_entry(data, group_id, user_id)
+        if display_name:
+            memory["display_name"] = display_name[:80]
+        memory["group_id"] = str(group_id)
+        memory["user_id"] = str(user_id)
+        memory["privacy"] = "private"
+
+        if clear_nickname:
+            memory.pop("nickname", None)
+        if clear_relationship:
+            memory.pop("relationship", None)
+            memory.pop("relationship_mode", None)
+
+        if nickname:
+            memory["nickname"] = normalize_memory_value(nickname)
+        if relationship:
+            memory["relationship"] = normalize_memory_value(relationship)
+            memory["relationship_mode"] = "聊天/角色扮演设定"
+
+        memory["updated_at"] = current_timestamp_text()
+        save_user_memory(data)
+        return dict(memory)
+
+
+def parse_personal_memory_command(text: str) -> dict[str, str] | None:
+    value = text.strip()
+    if not value:
+        return None
+
+    for pattern in MEMORY_CLEAR_PATTERNS:
+        if pattern.match(value):
+            return {"action": "clear"}
+
+    for pattern in MEMORY_SET_CALL_PATTERNS:
+        match = pattern.match(value)
+        if not match:
+            continue
+        nickname = normalize_memory_value(match.group("name"))
+        if not nickname or any(token in nickname for token in ("什么", "怎么", "为何", "为什么", "谁", "吗")):
+            return None
+        result = {"action": "set", "nickname": nickname}
+        if is_relation_token(nickname):
+            result["relationship"] = nickname
+        return result
+
+    for pattern in MEMORY_SET_RELATION_PATTERNS:
+        match = pattern.match(value)
+        if not match:
+            continue
+        relationship = normalize_memory_value(match.group("relation"))
+        if not relationship or any(token in relationship for token in ("什么", "怎么", "为何", "为什么", "谁", "吗")):
+            return None
+        result = {"action": "set", "relationship": relationship}
+        if is_relation_token(relationship):
+            result["nickname"] = relationship
+        return result
+
+    return None
+
+
+def is_personal_memory_like_text(text: str) -> bool:
+    return parse_personal_memory_command(text) is not None
+
+
+def user_memory_context(memory: dict[str, Any], user_id: int | str, display_name: str) -> str:
+    nickname = str(memory.get("nickname") or "").strip()
+    relationship = str(memory.get("relationship") or "").strip()
+    relationship_mode = str(memory.get("relationship_mode") or "聊天/角色扮演设定").strip()
+    lines = [
+        "当前发言者私有记忆：",
+        f"- 当前发言者 QQ：{user_id or '未知'}。",
+        f"- 当前发言者显示名：{display_name or str(memory.get('display_name') or '未知')}。",
+    ]
+    if nickname:
+        lines.append(f"- 只对当前发言者生效的称呼偏好：{nickname}。")
+    else:
+        lines.append("- 当前发言者没有设置私有称呼偏好。")
+    if relationship:
+        lines.append(f"- 只对当前发言者生效的关系设定：{relationship}（{relationship_mode}，不是现实关系）。")
+    else:
+        lines.append("- 当前发言者没有设置私有关系设定。")
+    lines.extend(
+        [
+            "- 这些私有记忆按“群号 + 用户 QQ”隔离，只能用于当前发言者。",
+            "- 不要把群历史里其他人说过的称呼或关系套用到当前发言者。",
+            "- 如果其他用户询问别人的私有关系或称呼，不能透露具体是谁。",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def meme_enabled(config: dict[str, Any]) -> bool:
@@ -746,6 +983,8 @@ def load_chat_history() -> dict[str, list[dict[str, str]]]:
                 continue
             role = str(item.get("role") or "")
             content = str(item.get("content") or "").strip()
+            if role == "user" and is_personal_memory_like_text(content):
+                continue
             if role in {"user", "assistant"} and content:
                 cleaned.append({"role": role, "content": content[:2000]})
         if cleaned:
@@ -786,6 +1025,44 @@ def append_group_history(config: dict[str, Any], group_id: int | str, role: str,
 def remember_group_exchange(config: dict[str, Any], group_id: int | str, user_text: str, assistant_text: str) -> None:
     append_group_history(config, group_id, "user", user_text)
     append_group_history(config, group_id, "assistant", assistant_text)
+
+
+def private_memory_values(memory: dict[str, Any]) -> list[str]:
+    values: list[str] = []
+    for key in ("nickname", "relationship"):
+        value = str(memory.get(key) or "").strip()
+        if value and value not in values:
+            values.append(value)
+    return values
+
+
+def text_mentions_private_memory(text: str, memory: dict[str, Any]) -> bool:
+    compact = re.sub(r"\s+", "", text)
+    for value in private_memory_values(memory):
+        if value and value in compact:
+            return True
+    return bool(relation_query_word(text))
+
+
+def remember_group_exchange_with_memory(
+    config: dict[str, Any],
+    group_id: int | str,
+    user_text: str,
+    assistant_text: str,
+    memory: dict[str, Any],
+) -> None:
+    if memory and (
+        text_mentions_private_memory(user_text, memory)
+        or text_mentions_private_memory(assistant_text, memory)
+    ):
+        append_group_history(
+            config,
+            group_id,
+            "assistant",
+            "某位用户进行了包含私有称呼或关系设定的对话，该内容已按用户隔离处理，不作为群体规则。",
+        )
+        return
+    remember_group_exchange(config, group_id, user_text, assistant_text)
 
 
 def clear_group_history(group_id: int | str) -> None:
@@ -843,6 +1120,17 @@ def event_sender_id(event: dict[str, Any]) -> str:
         if text and text.lower() not in {"none", "null", "0"}:
             return text
     return ""
+
+
+def event_sender_display_name(event: dict[str, Any]) -> str:
+    sender = event.get("sender")
+    if isinstance(sender, dict):
+        for key in ("card", "nickname", "title"):
+            value = str(sender.get(key) or "").strip()
+            if value:
+                return value[:80]
+    user_id = event_sender_id(event)
+    return user_id
 
 
 def is_bot_message_event(config: dict[str, Any], event: dict[str, Any]) -> bool:
@@ -2135,7 +2423,12 @@ def ask_model_with_web_search(
     return ask_model(config, prompt), image_urls
 
 
-def ask_gemini(config: dict[str, Any], question: str, history: list[dict[str, str]] | None = None) -> str:
+def ask_gemini(
+    config: dict[str, Any],
+    question: str,
+    history: list[dict[str, str]] | None = None,
+    private_memory_context: str = "",
+) -> str:
     model = str(config.get("model") or "gemini-2.0-flash")
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     system_prompt = str(
@@ -2143,6 +2436,8 @@ def ask_gemini(config: dict[str, Any], question: str, history: list[dict[str, st
         or "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店。回答用简体中文，像朋友聊天一样自然、有趣、实用；不确定就直接说不确定，不要编造。"
     )
     system_prompt = add_time_context_to_system(system_prompt)
+    if private_memory_context:
+        system_prompt = f"{system_prompt}\n\n{private_memory_context}"
 
     user_question = add_time_context_to_prompt(enrich_question(question))
 
@@ -2241,7 +2536,12 @@ def deepseek_retry_prompt(user_question: str, question: str, answer: str) -> str
     )
 
 
-def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, str]] | None = None) -> str:
+def ask_deepseek(
+    config: dict[str, Any],
+    question: str,
+    history: list[dict[str, str]] | None = None,
+    private_memory_context: str = "",
+) -> str:
     base_url = str(config.get("deepseek_base_url") or "https://api.deepseek.com").rstrip("/")
     model = str(config.get("model") or "deepseek-v4-flash")
     system_prompt = str(
@@ -2249,6 +2549,8 @@ def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, 
         or "你叫温德尔，是一个友好的 QQ 群游戏助手。你是游戏专家，尤其熟悉 Fortnite / 堡垒之夜，但也可以聊其他游戏、攻略、更新、电竞、硬件配置、主机、PC 和手游。用户说“商店”时，默认指 Fortnite 每日商店。回答用简体中文，像朋友聊天一样自然、有趣、实用；不确定就直接说不确定，不要编造。"
     )
     system_prompt = add_time_context_to_system(system_prompt)
+    if private_memory_context:
+        system_prompt = f"{system_prompt}\n\n{private_memory_context}"
 
     user_question = add_time_context_to_prompt(enrich_question(question))
 
@@ -2316,11 +2618,76 @@ def ask_deepseek(config: dict[str, Any], question: str, history: list[dict[str, 
     return answer or "DeepSeek 没有返回文字内容。"
 
 
-def ask_model(config: dict[str, Any], question: str, history: list[dict[str, str]] | None = None) -> str:
+def ask_model(
+    config: dict[str, Any],
+    question: str,
+    history: list[dict[str, str]] | None = None,
+    private_memory_context: str = "",
+) -> str:
     provider = str(config.get("provider") or "gemini").lower()
     if provider == "deepseek":
-        return ask_deepseek(config, question, history=history)
-    return ask_gemini(config, question, history=history)
+        return ask_deepseek(config, question, history=history, private_memory_context=private_memory_context)
+    return ask_gemini(config, question, history=history, private_memory_context=private_memory_context)
+
+
+def relation_query_word(question: str) -> str:
+    compact = re.sub(r"\s+", "", question.strip())
+    if not compact:
+        return ""
+
+    for relation in RELATIONSHIP_TOKENS:
+        if (
+            f"你{relation}是谁" in compact
+            or f"你的{relation}是谁" in compact
+            or f"谁是你{relation}" in compact
+            or f"谁是你的{relation}" in compact
+        ):
+            return relation
+    if "我是你的谁" in compact or "我是你什么人" in compact:
+        return "__self_relation__"
+    return ""
+
+
+def answer_user_memory_question(memory: dict[str, Any], question: str) -> str | None:
+    compact = re.sub(r"\s+", "", question.strip())
+    nickname = str(memory.get("nickname") or "").strip()
+    relationship = str(memory.get("relationship") or "").strip()
+
+    if any(token in compact for token in ("你叫我什么", "你喊我什么", "你怎么叫我", "你应该叫我什么")):
+        if nickname:
+            return f"嗷，我记得，在这个群里我叫你“{nickname}”。"
+        return "嗷，你还没有给本狼设置专属称呼。"
+
+    relation = relation_query_word(question)
+    if not relation:
+        return None
+
+    if relation == "__self_relation__":
+        if relationship:
+            return f"在这个群的聊天设定里，你是我的“{relationship}”。"
+        return "嗷，你还没有给本狼设置专属关系设定。"
+
+    if relationship and relation_matches(relation, relationship):
+        call = nickname or relationship
+        return f"是你呀，{call}。这是我们在这个群里的聊天设定。"
+
+    return "这是用户自己的私有聊天设定，本狼不能透露别人是谁；如果你也想设置，可以对我说“以后叫我某某”。"
+
+
+def memory_update_response(command: dict[str, str], memory: dict[str, Any]) -> str:
+    action = command.get("action")
+    if action == "clear":
+        return "记忆已清掉啦。本狼不会再按之前那个称呼或关系设定叫你。"
+
+    nickname = str(memory.get("nickname") or "").strip()
+    relationship = str(memory.get("relationship") or "").strip()
+    if nickname and relationship:
+        return f"记住啦，在这个群里我会只对你使用“{nickname}”这个称呼，并把关系设定记为“{relationship}”。不会串到别人身上。"
+    if nickname:
+        return f"记住啦，在这个群里我以后只对你叫“{nickname}”。不会拿去叫别人。"
+    if relationship:
+        return f"记住啦，在这个群里你和本狼的关系设定是“{relationship}”。这是私有聊天设定，不会公开给别人。"
+    return "记住啦。"
 
 
 def proactive_topics_enabled(config: dict[str, Any]) -> bool:
@@ -2722,6 +3089,39 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     wolf_command = str(config.get("wolf_command") or "狼狼")
     x_search_command = str(config.get("x_search_command") or "X搜索")
     x_timeline_command = str(config.get("x_timeline_command") or "X日常")
+    sender_id = event_sender_id(event)
+    sender_display_name = event_sender_display_name(event)
+
+    memory_command_text = text.strip()
+    if mentioned:
+        memory_command_text = memory_command_text.lstrip(" ：:，,")
+    elif memory_command_text.startswith(ask_prefix):
+        memory_command_text = memory_command_text[len(ask_prefix) :].strip().lstrip(" ：:，,")
+
+    memory_command = parse_personal_memory_command(memory_command_text)
+    if memory_command:
+        if not sender_id:
+            send_group_text(config, group_id, "我没拿到你的 QQ 号，暂时不能保存专属称呼。")
+            return
+
+        if memory_command.get("action") == "clear":
+            memory = update_user_memory(
+                group_id,
+                sender_id,
+                sender_display_name,
+                clear_nickname=True,
+                clear_relationship=True,
+            )
+        else:
+            memory = update_user_memory(
+                group_id,
+                sender_id,
+                sender_display_name,
+                nickname=memory_command.get("nickname"),
+                relationship=memory_command.get("relationship"),
+            )
+        send_group_text(config, group_id, memory_update_response(memory_command, memory))
+        return
 
     if is_help_request(text):
         for chunk in split_reply(command_help_text(config), limit=850):
@@ -2841,6 +3241,13 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_group_text(config, group_id, "已清空本群短期上下文。")
         return
 
+    current_memory = get_user_memory(group_id, sender_id)
+    private_context = user_memory_context(current_memory, sender_id, sender_display_name)
+    memory_answer = answer_user_memory_question(current_memory, question)
+    if memory_answer:
+        send_group_text_with_optional_meme(config, group_id, memory_answer, context=question)
+        return
+
     if is_weather_question(question):
         try:
             answer = ask_weather(config, question)
@@ -2857,7 +3264,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             answer, image_urls = ask_model_with_web_search(config, question, include_images=False)
         else:
             history = get_group_history(group_id, chat_history_limit(config))
-            answer = ask_model(config, question, history=history)
+            answer = ask_model(config, question, history=history, private_memory_context=private_context)
     except ValueError as exc:
         print(f"Model request failed: {exc}", file=sys.stderr)
         if "Tavily API key" in str(exc):
@@ -2874,7 +3281,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_web_search_reply(config, group_id, answer, image_urls)
     else:
         send_group_text_with_optional_meme(config, group_id, answer, context=question)
-    remember_group_exchange(config, group_id, question, answer)
+    remember_group_exchange_with_memory(config, group_id, question, answer, current_memory)
 
 
 class OneBotHandler(BaseHTTPRequestHandler):
