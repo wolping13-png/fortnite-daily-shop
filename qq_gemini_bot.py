@@ -373,6 +373,27 @@ PROACTIVE_TOPIC_SEEDS: tuple[tuple[str, str], ...] = (
     ("memory_prompt", "回忆向：问一个轻松回忆问题，比如第一次玩某个游戏、印象深的皮肤、最近笑出来的瞬间。"),
 )
 
+PROACTIVE_TOPIC_KIND_FAMILY: dict[str, str] = {
+    "daily_mood": "daily",
+    "game_mood": "game",
+    "fortnite_locker": "shop_style",
+    "tiny_choice": "choice",
+    "cozy_plan": "daily",
+    "curious_question": "curious",
+    "weather_hint": "weather",
+    "festival_hint": "festival",
+    "recommend_prompt": "recommend",
+    "memory_prompt": "memory",
+}
+
+PROACTIVE_TOPIC_TEXT_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("festival", ("节日", "纪念日", "明天是", "今天是", "农历", "春节", "元旦", "端午", "中秋", "国庆", "圣诞")),
+    ("shop_style", ("商店", "商城", "物品商店", "每日商店", "返场", "上架", "V币", "v币", "皮肤", "背饰", "镐子", "储物柜")),
+    ("weather", ("天气", "下雨", "雨伞", "降温", "高温", "闷热", "冷空气", "补水", "带伞")),
+)
+
+PROACTIVE_TOPIC_COOLDOWN_FAMILIES = {"festival", "weather", "shop_style"}
+
 RELATIONSHIP_TOKENS = (
     "老婆大人",
     "主人様",
@@ -2979,6 +3000,46 @@ def proactive_interval_for_group(config: dict[str, Any], group: dict[str, Any]) 
     return min(proactive_max_interval_minutes(config), proactive_base_interval_minutes(config) * multiplier)
 
 
+def proactive_topic_family(kind: str, text: str = "") -> str:
+    compact = re.sub(r"\s+", "", str(text or ""))
+    lowered = compact.lower()
+    for family, patterns in PROACTIVE_TOPIC_TEXT_PATTERNS:
+        if any(pattern.lower() in lowered for pattern in patterns):
+            return family
+    return PROACTIVE_TOPIC_KIND_FAMILY.get(str(kind or "").strip(), "misc")
+
+
+def proactive_recent_families(recent_topics: list[dict[str, Any]], limit: int = 6) -> list[str]:
+    families: list[str] = []
+    for item in recent_topics[-limit:]:
+        family = str(item.get("family") or "").strip()
+        if not family:
+            family = proactive_topic_family(str(item.get("kind") or ""), str(item.get("text") or ""))
+        if family:
+            families.append(family)
+    return families
+
+
+def proactive_topic_guardrails(seed_family: str, recent_topics: list[dict[str, Any]]) -> str:
+    recent_families = proactive_recent_families(recent_topics, limit=8)
+    recent_family_text = "、".join(recent_families[-6:]) or "暂无"
+    rules = [
+        f"本次主题大类：{seed_family}；最近主题大类：{recent_family_text}。",
+        "硬性要求：这次必须换角度，不要复述最近主动聊过的主题、句式和关键词。",
+    ]
+    if "shop_style" in recent_families[-4:] and seed_family != "shop_style":
+        rules.append("最近已经聊过商店/皮肤/储物柜，这次不要提商店、商城、返场、上架、皮肤、V币。")
+    if "festival" in recent_families[-4:] and seed_family != "festival":
+        rules.append("最近已经聊过节日，这次不要再说明天/今天是什么节日，也不要围绕节日气氛展开。")
+    if "weather" in recent_families[-4:] and seed_family != "weather":
+        rules.append("最近已经聊过天气，这次不要以天气、下雨、冷热、出门为开头。")
+    if seed_family != "festival":
+        rules.append("节日信息只当背景，除非本次大类是 festival，否则不要主动聊节日。")
+    if seed_family != "weather":
+        rules.append("天气信息只当背景，除非本次大类是 weather，否则不要主动聊天气。")
+    return "\n".join(rules)
+
+
 def recent_proactive_topics(config: dict[str, Any], group_id: int | str) -> list[dict[str, Any]]:
     with PROACTIVE_STATE_LOCK:
         data = load_proactive_state()
@@ -2994,13 +3055,34 @@ def recent_proactive_topics(config: dict[str, Any], group_id: int | str) -> list
             text = str(item.get("text") or "").strip()
             kind = str(item.get("kind") or "").strip()
             if text or kind:
-                cleaned.append({"text": text[:220], "kind": kind})
+                family = str(item.get("family") or "").strip() or proactive_topic_family(kind, text)
+                cleaned.append({"text": text[:220], "kind": kind, "family": family})
         return cleaned
 
 
 def choose_proactive_topic_seed(config: dict[str, Any], recent_topics: list[dict[str, Any]]) -> tuple[str, str]:
-    recent_kinds = [str(item.get("kind") or "") for item in recent_topics[-4:]]
-    candidates = [seed for seed in PROACTIVE_TOPIC_SEEDS if seed[0] not in recent_kinds]
+    recent_kinds = [str(item.get("kind") or "") for item in recent_topics[-8:] if item.get("kind")]
+    recent_families = proactive_recent_families(recent_topics, limit=8)
+    last_family = recent_families[-1] if recent_families else ""
+    blocked_kinds = set(recent_kinds[-6:])
+    blocked_families = {last_family} if last_family else set()
+    blocked_families.update(
+        family for family in recent_families[-4:] if family in PROACTIVE_TOPIC_COOLDOWN_FAMILIES
+    )
+
+    def is_candidate_allowed(seed: tuple[str, str]) -> bool:
+        seed_kind = seed[0]
+        seed_family = proactive_topic_family(seed_kind)
+        return seed_kind not in blocked_kinds and seed_family not in blocked_families
+
+    candidates = [seed for seed in PROACTIVE_TOPIC_SEEDS if is_candidate_allowed(seed)]
+    if not candidates:
+        candidates = [
+            seed
+            for seed in PROACTIVE_TOPIC_SEEDS
+            if seed[0] not in set(recent_kinds[-3:])
+            and proactive_topic_family(seed[0]) != last_family
+        ]
     if not candidates:
         candidates = list(PROACTIVE_TOPIC_SEEDS)
 
@@ -3079,6 +3161,8 @@ def mark_proactive_topic_sent(
         group["last_proactive_at"] = now_ts
         group["last_proactive_text"] = message[:500]
         group["last_proactive_kind"] = topic_kind
+        topic_family = proactive_topic_family(topic_kind, message)
+        group["last_proactive_family"] = topic_family
         group["daily_count"] = int(group.get("daily_count") or 0) + 1
 
         recent = group.get("recent_proactive_topics")
@@ -3088,6 +3172,7 @@ def mark_proactive_topic_sent(
             {
                 "time": now.strftime("%Y-%m-%d %H:%M:%S"),
                 "kind": topic_kind,
+                "family": topic_family,
                 "text": message[:220],
             }
         )
@@ -3159,17 +3244,19 @@ def fallback_proactive_topic(
     seed_kind: str,
 ) -> str:
     period = proactive_time_period(now)
+    seed_family = proactive_topic_family(seed_kind)
     weather_hint = ""
-    if "雨" in weather:
-        weather_hint = "外面像是有雨，补给包里别忘了塞伞。"
-    elif "热" in weather or "高温" in weather:
-        weather_hint = "今天有点热，记得补水。"
-    elif "冷" in weather or "低温" in weather:
-        weather_hint = "天气偏冷，别把自己冻成小冰块。"
-    elif weather:
-        weather_hint = "我刚看了眼天气，今天还挺适合慢慢安排。"
+    if seed_family == "weather":
+        if "雨" in weather:
+            weather_hint = "外面像是有雨，补给包里别忘了塞伞。"
+        elif "热" in weather or "高温" in weather:
+            weather_hint = "今天有点热，记得补水。"
+        elif "冷" in weather or "低温" in weather:
+            weather_hint = "天气偏冷，别把自己冻成小冰块。"
+        elif weather:
+            weather_hint = "我刚看了眼天气，今天还挺适合慢慢安排。"
 
-    festival_hint = f"{festival}，" if festival else ""
+    festival_hint = f"{festival}，" if seed_family == "festival" and festival else ""
     templates_by_kind = {
         "daily_mood": [
             f"嗷，{festival_hint}{period}了。{weather_hint}队友们今天状态怎么样，电量还够不够？",
@@ -3223,8 +3310,11 @@ def build_proactive_topic(config: dict[str, Any], group_id: int | str, now: date
     history_text = "\n".join(f"{item.get('role')}: {item.get('content')}" for item in history[-6:])
     recent_topics = recent_proactive_topics(config, group_id)
     seed_kind, seed_instruction = choose_proactive_topic_seed(config, recent_topics)
+    seed_family = proactive_topic_family(seed_kind)
+    family_guardrails = proactive_topic_guardrails(seed_family, recent_topics)
     recent_topic_text = "\n".join(
-        f"- {item.get('kind') or 'unknown'}：{item.get('text')}" for item in recent_topics[-8:]
+        f"- {item.get('family') or 'misc'} / {item.get('kind') or 'unknown'}：{item.get('text')}"
+        for item in recent_topics[-8:]
     )
 
     prompt = (
@@ -3233,9 +3323,10 @@ def build_proactive_topic(config: dict[str, Any], group_id: int | str, now: date
         "如果群里没人回，也不要催促或抱怨；最好用一个容易接的话题问题结尾。"
         "必须避免重复最近主动说过的话题、问题结构和关键词；不要总聊开局、跳点、天气或“想玩什么”。\n\n"
         f"本次话题方向：{seed_kind}。{seed_instruction}\n"
+        f"{family_guardrails}\n"
         f"当前北京时间：{now:%Y-%m-%d %H:%M}，{WEEKDAYS_ZH[now.weekday()]}，{proactive_time_period(now)}。\n"
-        f"日期/节日信息：{festival or '无特别节日信息'}。\n"
-        f"天气信息：{weather or '未获取到天气'}。\n"
+        f"日期/节日信息（只在规则允许时使用）：{festival or '无特别节日信息'}。\n"
+        f"天气信息（只在规则允许时使用）：{weather or '未获取到天气'}。\n"
         f"最近主动话题，必须避开：\n{recent_topic_text or '暂无'}\n"
         f"最近群聊上下文：\n{history_text or '暂无可用上下文'}"
     )
