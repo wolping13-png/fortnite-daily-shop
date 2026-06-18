@@ -21,9 +21,12 @@ HISTORY_PATH = CACHE_DIR / "history.json"
 COMMONS_API_URL = "https://commons.wikimedia.org/w/api.php"
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 
-REQUEST_TIMEOUT = 18
+REQUEST_TIMEOUT = 10
 RECENT_ITEM_LIMITS = {"food": 12, "drink": 9}
 RECENT_IMAGE_LIMIT = 100
+CACHED_IMAGE_LIMIT_PER_ITEM = 5
+MAX_ITEM_ATTEMPTS = 7
+OUTPUT_IMAGE_MAX_SIZE = 960
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"
@@ -125,11 +128,17 @@ BAD_IMAGE_TERMS = (
     "illustration",
     "drawing",
     "cartoon",
+    "emoji",
+    "sticker",
+    "vector",
     "map",
     "menu",
     "poster",
     "advertisement",
     "infographic",
+    "packaging",
+    "package",
+    "brand",
 )
 
 
@@ -178,10 +187,17 @@ def recent_bucket(history: dict[str, Any], kind: str) -> dict[str, Any]:
         history[kind] = bucket
     bucket.setdefault("items", [])
     bucket.setdefault("images", [])
+    bucket.setdefault("item_images", {})
     return bucket
 
 
-def update_history(history: dict[str, Any], kind: str, item_name: str, image_url: str) -> None:
+def update_history(
+    history: dict[str, Any],
+    kind: str,
+    item_name: str,
+    image_url: str,
+    candidate: dict[str, Any] | None = None,
+) -> None:
     bucket = recent_bucket(history, kind)
 
     items = [str(value) for value in bucket.get("items", []) if str(value) != item_name]
@@ -192,6 +208,27 @@ def update_history(history: dict[str, Any], kind: str, item_name: str, image_url
     images = [str(value) for value in bucket.get("images", []) if str(value) != image_key]
     images.insert(0, image_key)
     bucket["images"] = images[:RECENT_IMAGE_LIMIT]
+
+    item_images = bucket.get("item_images")
+    if not isinstance(item_images, dict):
+        item_images = {}
+        bucket["item_images"] = item_images
+    existing = item_images.get(item_name)
+    if not isinstance(existing, list):
+        existing = []
+    source = str((candidate or {}).get("source") or "unknown")
+    title = str((candidate or {}).get("title") or (candidate or {}).get("source_title") or item_name)
+    entries = [entry for entry in existing if isinstance(entry, dict) and str(entry.get("url") or "") != image_url]
+    entries.insert(
+        0,
+        {
+            "url": image_url,
+            "source": source,
+            "title": title[:160],
+            "saved_at": int(time.time()),
+        },
+    )
+    item_images[item_name] = entries[:CACHED_IMAGE_LIMIT_PER_ITEM]
     bucket["updated_at"] = int(time.time())
 
     save_history(history)
@@ -216,13 +253,49 @@ def candidate_text(candidate: dict[str, Any]) -> str:
     return normalize_match_text(" ".join(values))
 
 
-def candidate_matches_item(candidate: dict[str, Any], item: dict[str, Any]) -> bool:
+def candidate_match_score(candidate: dict[str, Any], item: dict[str, Any]) -> int:
+    if candidate.get("trusted_match"):
+        return 100
+
     text = candidate_text(candidate)
     if not text:
-        return False
+        return 0
     if any(term in text for term in BAD_IMAGE_TERMS):
-        return False
-    return any(normalize_match_text(term) in text for term in item_terms(item))
+        return 0
+
+    score = 0
+    for term in item_terms(item):
+        normalized = normalize_match_text(term)
+        if not normalized:
+            continue
+        if normalized in text:
+            score += 6 if (" " in normalized or len(normalized) >= 5) else 3
+
+    title = normalize_match_text(str(candidate.get("title") or ""))
+    source_title = normalize_match_text(str(candidate.get("source_title") or ""))
+    name = normalize_match_text(str(item.get("name") or ""))
+    if name and (name in title or name in source_title):
+        score += 8
+
+    if str(candidate.get("source") or "").startswith("tavily"):
+        score += 1
+    return score if score >= 5 else 0
+
+
+def candidate_matches_item(candidate: dict[str, Any], item: dict[str, Any]) -> bool:
+    return candidate_match_score(candidate, item) > 0
+
+
+def ranked_matching_candidates(candidates: list[dict[str, Any]], item: dict[str, Any]) -> list[dict[str, Any]]:
+    shuffled = dedupe_candidates(candidates)
+    random.shuffle(shuffled)
+    scored: list[tuple[int, dict[str, Any]]] = []
+    for candidate in shuffled:
+        score = candidate_match_score(candidate, item)
+        if score:
+            scored.append((score, candidate))
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [candidate for _score, candidate in scored]
 
 
 def dedupe_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -245,6 +318,36 @@ def ordered_items(pool: list[dict[str, Any]], kind: str, history: dict[str, Any]
     else:
         candidates = pool
     return random.sample(candidates, k=len(candidates))
+
+
+def cached_image_candidates(history: dict[str, Any], kind: str, item: dict[str, Any]) -> list[dict[str, Any]]:
+    bucket = recent_bucket(history, kind)
+    item_images = bucket.get("item_images")
+    if not isinstance(item_images, dict):
+        return []
+
+    name = str(item.get("name") or "")
+    entries = item_images.get(name)
+    if not isinstance(entries, list):
+        return []
+
+    candidates: list[dict[str, Any]] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        url = str(entry.get("url") or "").strip()
+        if not url:
+            continue
+        candidates.append(
+            {
+                "url": url,
+                "title": str(entry.get("title") or name),
+                "description": name,
+                "source": f"cache:{entry.get('source') or 'unknown'}",
+                "trusted_match": True,
+            }
+        )
+    return candidates
 
 
 def commons_image_candidates(session: requests.Session, query: str, limit: int = 8) -> list[dict[str, Any]]:
@@ -300,6 +403,17 @@ def tavily_image_candidates(session: requests.Session, api_key: str, item: dict[
 
     name = str(item.get("name") or "")
     query = str(item.get("query") or name)
+    terms = [term for term in item_terms(item) if re.search(r"[a-zA-Z]", term)]
+    primary_term = terms[0] if terms else query
+    search_query = (
+        f'"{primary_term}" "{name}" real food photo actual dish close-up '
+        f'-logo -icon -cartoon -illustration -menu -poster -packaging'
+    )
+    if any(word in query for word in ("drink", "coffee", "tea", "juice", "smoothie", "cola", "latte")):
+        search_query = (
+            f'"{primary_term}" "{name}" real drink photo actual beverage close-up '
+            f'-logo -icon -cartoon -illustration -menu -poster -packaging'
+        )
 
     response = session.post(
         TAVILY_SEARCH_URL,
@@ -308,13 +422,14 @@ def tavily_image_candidates(session: requests.Session, api_key: str, item: dict[
             "Content-Type": "application/json",
         },
         json={
-            "query": f"{name} {query} real photo close up",
+            "query": search_query,
             "topic": "general",
-            "search_depth": "advanced",
-            "max_results": 5,
+            "search_depth": "basic",
+            "max_results": 4,
             "include_answer": False,
             "include_raw_content": False,
             "include_images": True,
+            "include_image_descriptions": True,
         },
         timeout=REQUEST_TIMEOUT,
     )
@@ -385,8 +500,8 @@ def save_real_photo(session: requests.Session, url: str, output_path: Path) -> P
     if image.width < 160 or image.height < 160:
         raise ValueError("Image is too small.")
 
-    image.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
-    image.save(output_path, quality=90, optimize=True)
+    image.thumbnail((OUTPUT_IMAGE_MAX_SIZE, OUTPUT_IMAGE_MAX_SIZE), Image.Resampling.LANCZOS)
+    image.save(output_path, quality=84, optimize=True)
     return output_path
 
 
@@ -399,23 +514,38 @@ def build_random_food_recommendation(kind: str, tavily_api_key: str = "") -> tup
     recent_images = set(str(value) for value in recent_bucket(history, normalized).get("images", []))
     errors: list[str] = []
 
-    for item in candidates:
+    for item in candidates[:MAX_ITEM_ATTEMPTS]:
         image_candidates: list[dict[str, Any]] = []
-        try:
-            image_candidates.extend(commons_image_candidates(session, str(item["query"])))
-        except Exception as exc:
-            errors.append(f"{item['name']} Wikimedia: {exc}")
 
-        matched = [candidate for candidate in image_candidates if candidate_matches_item(candidate, item)]
-
-        if len(matched) < 2:
+        cached = ranked_matching_candidates(cached_image_candidates(history, normalized, item), item)
+        for candidate in cached:
+            url = str(candidate.get("url") or "").strip()
+            if not url or image_fingerprint(url) in recent_images:
+                continue
             try:
-                image_candidates.extend(tavily_image_candidates(session, tavily_api_key, item))
+                key = hashlib.sha1(f"{normalized}:{item['name']}:{url}".encode("utf-8")).hexdigest()[:12]
+                image_path = OUTPUT_DIR / f"random_{normalized}_{key}.jpg"
+                save_real_photo(session, url, image_path)
+                caption = f"今天{'喝' if normalized == 'drink' else '吃'}：{item['name']}"
+                update_history(history, normalized, str(item["name"]), url, candidate)
+                return caption, image_path, {"kind": normalized, **item, "image_url": url, "source": "cache"}
             except Exception as exc:
-                errors.append(f"{item['name']} Tavily: {exc}")
+                errors.append(f"{item['name']} cache: {exc}")
 
-        matched = [candidate for candidate in dedupe_candidates(image_candidates) if candidate_matches_item(candidate, item)]
-        random.shuffle(matched)
+        try:
+            image_candidates.extend(tavily_image_candidates(session, tavily_api_key, item, limit=6))
+        except Exception as exc:
+            errors.append(f"{item['name']} Tavily: {exc}")
+
+        matched = ranked_matching_candidates(image_candidates, item)
+
+        if not matched:
+            try:
+                image_candidates.extend(commons_image_candidates(session, str(item["query"]), limit=6))
+            except Exception as exc:
+                errors.append(f"{item['name']} Wikimedia: {exc}")
+
+        matched = ranked_matching_candidates(image_candidates, item)
 
         for candidate in matched:
             url = str(candidate.get("url") or "").strip()
@@ -426,8 +556,8 @@ def build_random_food_recommendation(kind: str, tavily_api_key: str = "") -> tup
                 image_path = OUTPUT_DIR / f"random_{normalized}_{key}.jpg"
                 save_real_photo(session, url, image_path)
                 caption = f"今天{'喝' if normalized == 'drink' else '吃'}：{item['name']}"
-                update_history(history, normalized, str(item["name"]), url)
-                return caption, image_path, {"kind": normalized, **item, "image_url": url}
+                update_history(history, normalized, str(item["name"]), url, candidate)
+                return caption, image_path, {"kind": normalized, **item, "image_url": url, "source": candidate.get("source")}
             except Exception as exc:
                 errors.append(f"{item['name']}: {exc}")
                 continue

@@ -1645,7 +1645,7 @@ def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: s
         action="send_group_msg",
         payload={"group_id": group_id, "message": build_message(caption=caption, image_path=image_path)},
         access_token=access_token,
-        timeout=120,
+        timeout=45,
     )
     if result.get("_napcat_callback_timeout"):
         safe_path = make_safe_image(image_path)
@@ -1657,7 +1657,7 @@ def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: s
                 "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
             },
             access_token=access_token,
-            timeout=120,
+            timeout=45,
         )
     return caption
 
