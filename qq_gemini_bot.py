@@ -3290,6 +3290,10 @@ def proactive_topic_loop(initial_config: dict[str, Any]) -> None:
         time.sleep(check_seconds)
 
 
+def private_history_key(user_id: int | str) -> str:
+    return f"private:{user_id}"
+
+
 def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     if is_bot_message_event(config, event):
         return
@@ -3311,7 +3315,8 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             "- 瓦：绑定无畏契约账号\n"
             "- 瓦 清除：解绑\n"
             "- 无畏商店 / 瓦店 / 每日商店：查无畏每日商店\n"
-            "- 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询"
+            "- 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询\n"
+            "- 其他内容：直接和我聊天"
         )
         for chunk in split_reply(help_text, limit=850):
             send_private_text(config, sender_id, chunk)
@@ -3351,7 +3356,30 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_private_text(config, sender_id, "瓦监控暂时处理失败了，稍后再试一下。")
         return
 
-    send_private_text(config, sender_id, "私聊里我现在主要处理无畏账号绑定和商店：发“瓦”或“无畏商店”就行。")
+    key = private_history_key(sender_id)
+    if is_clear_history_request(text):
+        clear_group_history(key)
+        send_private_text(config, sender_id, "我把我们私聊的短期上下文清掉了。")
+        return
+
+    sender_display_name = event_sender_display_name(event)
+    current_memory = get_user_memory(key, sender_id)
+    private_context = user_memory_context(current_memory, sender_id, sender_display_name)
+    memory_answer = answer_user_memory_question(current_memory, text)
+    if memory_answer:
+        send_private_text(config, sender_id, memory_answer)
+        return
+
+    try:
+        history = get_group_history(key, chat_history_limit(config))
+        answer = ask_model(config, text, history=history, private_memory_context=private_context)
+    except Exception as exc:
+        print(f"Private chat model request failed: {exc}", file=sys.stderr)
+        send_private_text(config, sender_id, "我这边刚刚没想出来……等一下再试试。")
+        return
+
+    send_private_text(config, sender_id, answer)
+    remember_group_exchange_with_memory(config, key, text, answer, current_memory)
 
 
 def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
