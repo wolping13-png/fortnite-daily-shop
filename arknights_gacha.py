@@ -676,13 +676,7 @@ def format_catalog_entry(index: int, item: dict[str, Any], selected_banner: str)
     key = str(item.get("key") or "")
     marker = "（当前）" if key == selected_banner else ""
     title = str(item.get("title") or key)
-    open_date = str(item.get("open_date") or "")
-    prefix = f"{open_date} " if open_date else ""
-    up6 = " / ".join(str(name) for name in (item.get("up_6") or [])[:4])
-    detail = up6 or str(item.get("description") or "")
-    if detail:
-        return f"{index}. {prefix}{title}{marker}：{detail}"
-    return f"{index}. {prefix}{title}{marker}"
+    return f"{index}. {title}{marker}"
 
 
 def banner_list_text(selected_banner: str, page: int = 1, per_page: int = 15) -> str:
@@ -701,7 +695,6 @@ def banner_list_text(selected_banner: str, page: int = 1, per_page: int = 15) ->
     lines.append("想切换就回复：温德尔 4（数字换成上面的编号）。")
     if page_count > 1:
         lines.append("翻页：方舟卡池 第2页 / 方舟卡池 下一页 / 方舟卡池 上一页。")
-    lines.append("已隐藏中坚、联合、定向、归航和普池编号。")
     lines.append("也可以直接搜：方舟卡池 水月 / 方舟卡池 巨斧与笔尖 / 方舟卡池 最新。")
     return "\n".join(lines)
 
@@ -711,8 +704,7 @@ def banner_matches_text(matches: list[dict[str, Any]], query: str) -> str:
         return f"没找到和“{query.strip()}”匹配的方舟UP池。可以试试：方舟卡池 水月 / 方舟卡池 最新。"
     lines = [f"找到 {len(matches)} 个可能的方舟UP池：", "━━━━━━"]
     for index, item in enumerate(matches[:12], 1):
-        six_up = " / ".join(str(name) for name in (item.get("up_6") or [])[:5]) or "无六星UP"
-        lines.append(f"{index}. {item.get('open_date') or '?'} {item.get('title')}：{six_up}")
+        lines.append(f"{index}. {item.get('title')}")
     lines.append("想切换就回复：温德尔 1（数字换成上面的编号），也可以发方舟卡池 + 池名或UP干员名。")
     return "\n".join(lines)
 
