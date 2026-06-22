@@ -8,6 +8,7 @@ import re
 import threading
 import time
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urljoin
@@ -17,6 +18,7 @@ from zoneinfo import ZoneInfo
 BASE_DIR = Path(__file__).resolve().parent
 STATE_PATH = BASE_DIR / "bot_memory" / "arknights_gacha.json"
 OUTPUT_DIR = BASE_DIR / "bot_memory" / "arknights_gacha_images"
+OFFICIAL_GACHA_DATA_PATH = BASE_DIR / "data" / "arknights_gacha_official.json"
 ASSET_DIR = BASE_DIR / "assets" / "akgacha"
 PORTRAIT_DIR = BASE_DIR / "bot_memory" / "arknights_gacha_assets" / "half"
 PRTS_HALF_MAP_PATH = BASE_DIR / "bot_memory" / "arknights_prts_halves.json"
@@ -327,8 +329,180 @@ BANNERS: dict[str, dict[str, Any]] = {
 BANNER_ORDER = ("standard", "limited", "kernel")
 
 
+@lru_cache(maxsize=1)
+def load_official_gacha_data() -> dict[str, Any]:
+    if not OFFICIAL_GACHA_DATA_PATH.exists():
+        return {"banners": [], "operators": []}
+    try:
+        data = json.loads(OFFICIAL_GACHA_DATA_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"banners": [], "operators": []}
+    if not isinstance(data, dict):
+        return {"banners": [], "operators": []}
+    data.setdefault("banners", [])
+    data.setdefault("operators", [])
+    return data
+
+
+def official_banner_records() -> list[dict[str, Any]]:
+    records = load_official_gacha_data().get("banners")
+    return records if isinstance(records, list) else []
+
+
+@lru_cache(maxsize=1)
+def official_banners_by_key() -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for item in official_banner_records():
+        if isinstance(item, dict) and item.get("key"):
+            result[str(item["key"])] = item
+    return result
+
+
+def official_operator_pool(rarity: int) -> list[dict[str, Any]]:
+    operators = load_official_gacha_data().get("operators")
+    if not isinstance(operators, list):
+        return []
+    result: list[dict[str, Any]] = []
+    for item in operators:
+        if not isinstance(item, dict) or int(item.get("rarity") or 0) != rarity:
+            continue
+        result.append(
+            {
+                "rarity": rarity,
+                "profession": str(item.get("profession") or "干员"),
+                "name": str(item.get("name") or ""),
+                "limited": False,
+            }
+        )
+    return [item for item in result if item["name"]]
+
+
+def combined_operator_pool(rarity: int) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    result: list[dict[str, Any]] = []
+    for item in [*POOLS.get(rarity, []), *official_operator_pool(rarity)]:
+        name = str(item.get("name") or "")
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        result.append(dict(item))
+    return result or POOLS.get(rarity, [])
+
+
+def compact_text(value: str) -> str:
+    return re.sub(r"\s+", "", str(value or "").lower())
+
+
+def clean_banner_query(text: str) -> str:
+    compact = compact_text(text)
+    compact = re.sub(r"(抽卡|寻访|抽)\d{1,3}", "", compact)
+    for token in (
+        "明日方舟",
+        "arknights",
+        "方舟",
+        "卡池",
+        "池子",
+        "选择",
+        "切换",
+        "换成",
+        "设为",
+        "十连",
+        "10连",
+        "单抽",
+        "一抽",
+        "抽卡",
+        "寻访",
+        "来一井",
+        "一井",
+        "列表",
+        "搜索",
+        "查找",
+    ):
+        compact = compact.replace(token, "")
+    compact = re.sub(r"\d{1,3}$", "", compact)
+    compact = re.sub(r"\d{4}[-年]?\d{0,2}[-月]?\d{0,2}日?", "", compact)
+    return compact.strip()
+
+
+def banner_search_blob(item: dict[str, Any]) -> str:
+    names: list[str] = []
+    for key in ("title", "key", "pool_id", "rule_type", "open_date", "end_date"):
+        names.append(str(item.get(key) or ""))
+    for key in ("up_6", "up_5", "up_4"):
+        values = item.get(key)
+        if isinstance(values, list):
+            names.extend(str(value) for value in values)
+    return compact_text(" ".join(names))
+
+
+def latest_known_official_banner() -> dict[str, Any] | None:
+    records = [item for item in official_banner_records() if isinstance(item, dict)]
+    if not records:
+        return None
+    return max(records, key=lambda item: int(item.get("open_time") or 0))
+
+
+def current_or_latest_official_banner() -> dict[str, Any] | None:
+    now = int(time.time())
+    active = [
+        item
+        for item in official_banner_records()
+        if int(item.get("open_time") or 0) <= now <= int(item.get("end_time") or 0)
+    ]
+    if active:
+        return max(active, key=lambda item: int(item.get("open_time") or 0))
+    return latest_known_official_banner()
+
+
+def find_official_banner_matches(query: str, limit: int = 10) -> list[dict[str, Any]]:
+    q = clean_banner_query(query)
+    if q in {"最新", "最近", "当前", "现在", "本期"}:
+        item = current_or_latest_official_banner()
+        return [item] if item else []
+    if not q:
+        return []
+
+    scored: list[tuple[int, int, dict[str, Any]]] = []
+    for item in official_banner_records():
+        if not isinstance(item, dict):
+            continue
+        title = compact_text(str(item.get("title") or ""))
+        blob = banner_search_blob(item)
+        score = 0
+        if compact_text(str(item.get("key") or "")) == q:
+            score = 100
+        elif title == q:
+            score = 95
+        elif q in title:
+            score = 80
+        elif q in blob:
+            score = 55
+        if score:
+            scored.append((score, int(item.get("open_time") or 0), item))
+    scored.sort(key=lambda row: (row[0], row[1]), reverse=True)
+    return [item for _score, _open_time, item in scored[:limit]]
+
+
 def banner_config(banner_key: str) -> dict[str, Any]:
-    return BANNERS.get(banner_key, BANNERS["standard"])
+    if banner_key in BANNERS:
+        return BANNERS[banner_key]
+    official = official_banners_by_key().get(str(banner_key))
+    if official:
+        title = str(official.get("title") or "官方UP池")
+        rule_type = str(official.get("rule_type") or "")
+        return {
+            "title": title,
+            "aliases": (title, str(official.get("key") or "")),
+            "description": f"{official.get('open_date') or '?'} - {official.get('end_date') or '?'}",
+            "six_up": tuple(official.get("up_6") or ()),
+            "five_up": tuple(official.get("up_5") or ()),
+            "four_up": tuple(official.get("up_4") or ()),
+            "limited": bool(official.get("limited")),
+            "official": True,
+            "legacy": rule_type.startswith("LEGACY"),
+            "key": str(official.get("key") or banner_key),
+        }
+    return BANNERS["standard"]
 
 
 def banner_title(banner_key: str) -> str:
@@ -336,7 +510,7 @@ def banner_title(banner_key: str) -> str:
 
 
 def resolve_banner_key_from_text(text: str, default: str = "") -> str:
-    compact = re.sub(r"\s+", "", str(text or "").lower())
+    compact = compact_text(text)
     for key, data in BANNERS.items():
         aliases = data.get("aliases") or ()
         if key in compact:
@@ -344,6 +518,9 @@ def resolve_banner_key_from_text(text: str, default: str = "") -> str:
         for alias in aliases:
             if str(alias).lower() in compact:
                 return key
+    matches = find_official_banner_matches(compact, limit=1)
+    if matches:
+        return str(matches[0].get("key") or "")
     return default
 
 
@@ -357,10 +534,10 @@ def find_operator_by_name(name: str, rarity: int | None = None) -> dict[str, Any
     if rarity is None or rarity == 6:
         pools.extend(LIMITED_POOL)
     if rarity is None:
-        for items in POOLS.values():
-            pools.extend(items)
+        for star in (6, 5, 4, 3):
+            pools.extend(combined_operator_pool(star))
     else:
-        pools.extend(POOLS.get(rarity, []))
+        pools.extend(combined_operator_pool(rarity))
 
     for operator in pools:
         if operator_matches_name(operator, name):
@@ -381,9 +558,49 @@ def banner_list_text(selected_banner: str) -> str:
         data = banner_config(key)
         marker = "当前" if key == selected_banner else "可选"
         lines.append(f"- {data['title']}（{marker}）：{data['description']}")
+
+    recent = sorted(
+        official_banner_records(),
+        key=lambda item: int(item.get("open_time") or 0),
+        reverse=True,
+    )[:12]
+    if recent:
+        lines.append("━━━━━━")
+        lines.append("最近已知官方UP池：")
+        for item in recent:
+            marker = "当前" if str(item.get("key") or "") == selected_banner else "可选"
+            six_up = " / ".join(str(name) for name in (item.get("up_6") or [])[:4]) or "无六星UP"
+            lines.append(f"- {item.get('open_date') or '?'} {item.get('title')}（{marker}）：{six_up}")
+
     lines.append("用法：方舟卡池 限定 / 方舟卡池 标准 / 方舟卡池 中坚")
-    lines.append("也可以直接说：方舟限定十连、方舟中坚抽卡50。")
+    lines.append("历史UP池：方舟卡池 水月 / 方舟卡池 巨斧与笔尖 / 方舟卡池 最新")
+    lines.append("也可以直接说：方舟水月十连、方舟最新抽卡50。")
     return "\n".join(lines)
+
+
+def banner_matches_text(matches: list[dict[str, Any]], query: str) -> str:
+    if not matches:
+        return f"没找到和“{query.strip()}”匹配的方舟UP池。可以试试：方舟卡池 水月 / 方舟卡池 最新。"
+    lines = [f"找到 {len(matches)} 个可能的方舟UP池：", "━━━━━━"]
+    for index, item in enumerate(matches[:12], 1):
+        six_up = " / ".join(str(name) for name in (item.get("up_6") or [])[:5]) or "无六星UP"
+        lines.append(f"{index}. {item.get('open_date') or '?'} {item.get('title')}：{six_up}")
+    lines.append("想切换就发：方舟卡池 + 上面某个池名或UP干员名。")
+    return "\n".join(lines)
+
+
+def select_banner_response(state: dict[str, Any], banner_key: str) -> str:
+    state["selected_banner"] = banner_key
+    banner = banner_config(banner_key)
+    up6 = " / ".join(str(name) for name in tuple(banner.get("six_up") or ())[:6]) or "无六星UP"
+    up5 = " / ".join(str(name) for name in tuple(banner.get("five_up") or ())[:6]) or "无五星UP"
+    source = "历史UP池" if banner.get("legacy") else ("官方UP池" if banner.get("official") else "模拟池")
+    return (
+        f"已切换到 {banner_title(banner_key)}。\n"
+        f"{source}；6★UP：{up6}\n"
+        f"5★UP：{up5}\n"
+        "下次不写卡池时，就默认抽这个池。"
+    )
 
 
 def load_state() -> dict[str, Any]:
@@ -448,6 +665,8 @@ def choose_operator(rarity: int, banner_key: str = "standard") -> dict[str, Any]
     if rarity == 6:
         up = choose_up_operator(tuple(banner.get("six_up") or ()), rarity=6)
         up_chance = 0.7 if banner.get("limited") else 0.5
+        if banner.get("official") and len(tuple(banner.get("six_up") or ())) >= 3:
+            up_chance = 0.7 if banner.get("limited") else 0.6
         if up and random.random() < up_chance:
             return up
         if banner.get("limited") and LIMITED_POOL and random.random() < 0.35:
@@ -456,7 +675,11 @@ def choose_operator(rarity: int, banner_key: str = "standard") -> dict[str, Any]
         up = choose_up_operator(tuple(banner.get("five_up") or ()), rarity=5)
         if up and random.random() < 0.5:
             return up
-    return dict(random.choice(POOLS[rarity]))
+    if rarity == 4:
+        up = choose_up_operator(tuple(banner.get("four_up") or ()), rarity=4)
+        if up and random.random() < 0.2:
+            return up
+    return dict(random.choice(combined_operator_pool(rarity)))
 
 
 def roll_once(state: dict[str, Any], banner_key: str = "standard") -> dict[str, Any]:
@@ -960,6 +1183,9 @@ def parse_command(text: str) -> dict[str, Any] | None:
     if "卡池" in compact or "池子" in compact:
         if banner_key:
             return {"action": "select_banner", "banner": banner_key}
+        query = clean_banner_query(value)
+        if query:
+            return {"action": "banner_search", "query": query}
         return {"action": "banners"}
     if any(word in compact for word in ("选择", "切换", "换成", "设为")) and banner_key:
         return {"action": "select_banner", "banner": banner_key}
@@ -1006,17 +1232,28 @@ def handle_command_payload(text: str, user_key: str, nickname: str = "") -> tupl
         if action == "help":
             answer = (
                 "方舟寻访用法：方舟单抽 / 方舟十连 / 方舟抽卡 50 / 方舟来一井 / "
-                "方舟限定十连 / 方舟中坚抽卡50 / 方舟卡池 / 方舟卡池 限定 / 方舟状态 / 方舟重置"
+                "方舟限定十连 / 方舟中坚抽卡50 / 方舟卡池 / 方舟卡池 水月 / 方舟卡池 最新 / 方舟状态 / 方舟重置"
             )
             return answer, None, answer
         if action == "banners":
             answer = banner_list_text(str(state.get("selected_banner") or "standard"))
             return answer, None, answer
+        if action == "banner_search":
+            query = str(command.get("query") or "")
+            matches = find_official_banner_matches(query, limit=12)
+            if len(matches) == 1:
+                answer = select_banner_response(state, str(matches[0].get("key") or "standard"))
+                save_state(data)
+            else:
+                answer = banner_matches_text(matches, query)
+            return answer, None, answer
         if action == "select_banner":
             banner_key = str(command.get("banner") or "standard")
-            state["selected_banner"] = banner_key
+            if banner_key not in BANNERS and banner_key not in official_banners_by_key():
+                answer = "这个卡池我没找到……可以先发“方舟卡池”看看最近可选池。"
+                return answer, None, answer
+            answer = select_banner_response(state, banner_key)
             save_state(data)
-            answer = f"已切换到 {banner_title(banner_key)}。下次不写卡池时，就默认抽这个池。"
             return answer, None, answer
         if action == "status":
             answer = format_status(state, nickname)
@@ -1029,7 +1266,7 @@ def handle_command_payload(text: str, user_key: str, nickname: str = "") -> tupl
 
         count = int(command.get("count") or 10)
         banner_key = str(command.get("banner") or state.get("selected_banner") or "standard")
-        if banner_key not in BANNERS:
+        if banner_key not in BANNERS and banner_key not in official_banners_by_key():
             banner_key = "standard"
         results = [roll_once(state, banner_key=banner_key) for _ in range(count)]
         save_state(data)

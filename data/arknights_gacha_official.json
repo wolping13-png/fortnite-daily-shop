@@ -1,0 +1,7144 @@
+{
+  "source": "Kengxxiao/ArknightsGameData zh_CN gacha_table.json + character_table.json",
+  "source_url": "https://github.com/Kengxxiao/ArknightsGameData",
+  "generated_at": "2026-06-22 17:39:57",
+  "banner_count": 253,
+  "operators": [
+    {
+      "name": "12F",
+      "rarity": 3,
+      "profession": "术师"
+    },
+    {
+      "name": "夜刀",
+      "rarity": 3,
+      "profession": "先锋"
+    },
+    {
+      "name": "巡林者",
+      "rarity": 3,
+      "profession": "狙击"
+    },
+    {
+      "name": "杜林",
+      "rarity": 3,
+      "profession": "术师"
+    },
+    {
+      "name": "黑角",
+      "rarity": 3,
+      "profession": "重装"
+    },
+    {
+      "name": "克洛丝",
+      "rarity": 4,
+      "profession": "狙击"
+    },
+    {
+      "name": "卡缇",
+      "rarity": 4,
+      "profession": "重装"
+    },
+    {
+      "name": "史都华德",
+      "rarity": 4,
+      "profession": "术师"
+    },
+    {
+      "name": "安德切尔",
+      "rarity": 4,
+      "profession": "狙击"
+    },
+    {
+      "name": "安赛尔",
+      "rarity": 4,
+      "profession": "医疗"
+    },
+    {
+      "name": "斑点",
+      "rarity": 4,
+      "profession": "重装"
+    },
+    {
+      "name": "月见夜",
+      "rarity": 4,
+      "profession": "近卫"
+    },
+    {
+      "name": "梓兰",
+      "rarity": 4,
+      "profession": "辅助"
+    },
+    {
+      "name": "泡普卡",
+      "rarity": 4,
+      "profession": "近卫"
+    },
+    {
+      "name": "炎熔",
+      "rarity": 4,
+      "profession": "术师"
+    },
+    {
+      "name": "玫兰莎",
+      "rarity": 4,
+      "profession": "近卫"
+    },
+    {
+      "name": "空爆",
+      "rarity": 4,
+      "profession": "狙击"
+    },
+    {
+      "name": "米格鲁",
+      "rarity": 4,
+      "profession": "重装"
+    },
+    {
+      "name": "翎羽",
+      "rarity": 4,
+      "profession": "先锋"
+    },
+    {
+      "name": "芙蓉",
+      "rarity": 4,
+      "profession": "医疗"
+    },
+    {
+      "name": "芬",
+      "rarity": 4,
+      "profession": "先锋"
+    },
+    {
+      "name": "香草",
+      "rarity": 4,
+      "profession": "先锋"
+    },
+    {
+      "name": "云迹",
+      "rarity": 5,
+      "profession": "特种"
+    },
+    {
+      "name": "伊桑",
+      "rarity": 5,
+      "profession": "特种"
+    },
+    {
+      "name": "休谟斯",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "冬时",
+      "rarity": 5,
+      "profession": "先锋"
+    },
+    {
+      "name": "刻刀",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "协律",
+      "rarity": 5,
+      "profession": "术师"
+    },
+    {
+      "name": "卡达",
+      "rarity": 5,
+      "profession": "术师"
+    },
+    {
+      "name": "古米",
+      "rarity": 5,
+      "profession": "重装"
+    },
+    {
+      "name": "嘉维尔",
+      "rarity": 5,
+      "profession": "医疗"
+    },
+    {
+      "name": "地灵",
+      "rarity": 5,
+      "profession": "辅助"
+    },
+    {
+      "name": "坚雷",
+      "rarity": 5,
+      "profession": "重装"
+    },
+    {
+      "name": "夜烟",
+      "rarity": 5,
+      "profession": "术师"
+    },
+    {
+      "name": "孑",
+      "rarity": 5,
+      "profession": "特种"
+    },
+    {
+      "name": "安比尔",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "宴",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "布丁",
+      "rarity": 5,
+      "profession": "术师"
+    },
+    {
+      "name": "慕斯",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "断罪者",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "暗索",
+      "rarity": 5,
+      "profession": "特种"
+    },
+    {
+      "name": "末药",
+      "rarity": 5,
+      "profession": "医疗"
+    },
+    {
+      "name": "杜宾",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "杰克",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "杰西卡",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "松果",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "格雷伊",
+      "rarity": 5,
+      "profession": "术师"
+    },
+    {
+      "name": "桃金娘",
+      "rarity": 5,
+      "profession": "先锋"
+    },
+    {
+      "name": "梅",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "泡泡",
+      "rarity": 5,
+      "profession": "重装"
+    },
+    {
+      "name": "波登可",
+      "rarity": 5,
+      "profession": "辅助"
+    },
+    {
+      "name": "流星",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "深海色",
+      "rarity": 5,
+      "profession": "辅助"
+    },
+    {
+      "name": "深靛",
+      "rarity": 5,
+      "profession": "术师"
+    },
+    {
+      "name": "清流",
+      "rarity": 5,
+      "profession": "医疗"
+    },
+    {
+      "name": "清道夫",
+      "rarity": 5,
+      "profession": "先锋"
+    },
+    {
+      "name": "猎蜂",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "白雪",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "石英",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "砾",
+      "rarity": 5,
+      "profession": "特种"
+    },
+    {
+      "name": "红云",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "红豆",
+      "rarity": 5,
+      "profession": "先锋"
+    },
+    {
+      "name": "维荻",
+      "rarity": 5,
+      "profession": "特种"
+    },
+    {
+      "name": "缠丸",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "罗小黑",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "罗比菈塔",
+      "rarity": 5,
+      "profession": "辅助"
+    },
+    {
+      "name": "艾丝黛尔",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "芳汀",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "苏苏洛",
+      "rarity": 5,
+      "profession": "医疗"
+    },
+    {
+      "name": "蛇屠箱",
+      "rarity": 5,
+      "profession": "重装"
+    },
+    {
+      "name": "褐果",
+      "rarity": 5,
+      "profession": "医疗"
+    },
+    {
+      "name": "角峰",
+      "rarity": 5,
+      "profession": "重装"
+    },
+    {
+      "name": "讯使",
+      "rarity": 5,
+      "profession": "先锋"
+    },
+    {
+      "name": "调香师",
+      "rarity": 5,
+      "profession": "医疗"
+    },
+    {
+      "name": "豆苗",
+      "rarity": 5,
+      "profession": "先锋"
+    },
+    {
+      "name": "跃跃",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "远山",
+      "rarity": 5,
+      "profession": "术师"
+    },
+    {
+      "name": "酸糖",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "铅踝",
+      "rarity": 5,
+      "profession": "狙击"
+    },
+    {
+      "name": "阿消",
+      "rarity": 5,
+      "profession": "特种"
+    },
+    {
+      "name": "霜叶",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "露托",
+      "rarity": 5,
+      "profession": "重装"
+    },
+    {
+      "name": "骋风",
+      "rarity": 5,
+      "profession": "近卫"
+    },
+    {
+      "name": "Miss.Christine",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "万顷",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "三角初华",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "临光",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "乌啾",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "乌有",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "九色鹿",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "亚叶",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "伯塔尼",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "但书",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "八幡海铃",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "冰酿",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "凛冬",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "凛视",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "凯瑟琳",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "初雪",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "刺玫",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "医生",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "华法琳",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "卡夫卡",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "历阵锐枪芬",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "双月",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "可颂",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "吉星",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "吽",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "和弦",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "哈洛德",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "哈蒂娅",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "响石",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "四月",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "因陀罗",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "图耶",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "埃拉托",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "复奏",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "夏栎",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "夜半",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "夜魔",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "天火",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "天空盒",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "奥斯塔",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "奥达",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "子月",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "守林人",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "安哲拉",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "寒檀",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "寒芒克洛丝",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "寻澜",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "导火索",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "小满",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "崖心",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "巫恋",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "布洛卡",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "幽灵鲨",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "录武官",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "微风",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "德克萨斯",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "惊蛰",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "慑砂",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "战车",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "截云",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "戴菲恩",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "承曦格雷伊",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "折光",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "折桠",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "拉普兰德",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "拜松",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "掠风",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "摆渡人",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "摩根",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "撷英调香师",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "断崖",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "明椒",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "星极",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "星源",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "晓歌",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "普罗旺斯",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "暮落",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "暴行",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "暴雨",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "月禾",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "杏仁",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "松桐",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "极光",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "极境",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "柏喙",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "格劳克斯",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "格拉尼",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "桑葚",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "梅尔",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "森西",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "槐琥",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "水灯心",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "波卜",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "洋灰",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "洛洛",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "海沫",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "海蒂",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "海霓",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "深巡",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "深律",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "渡桥",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "温米",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "濯尘芙蓉",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "火哨",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "火神",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "火龙S黑角",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "灰喉",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "灰毫",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "炎客",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "炎狱炎熔",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "烈夏",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "熔泉",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "燧石",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "爱丽丝",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "特克诺",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "特米米",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "狮蝎",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "玫拉",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "瑰盐",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "白金",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "白面鸮",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "真理",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "矩",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "石棉",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "祐天寺若麦",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "稀音",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "空",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "空构",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "絮雨",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "红",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "红隼",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "绮良",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "罗宾",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "羽毛笔",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "耶拉",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "聆音",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "至简",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "芙兰卡",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "苇草",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "苍苔",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "若叶睦",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "苦艾",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "莎草",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "莱恩哈特",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "莱欧斯",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "菲莱",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "蒂比",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "蓝毒",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "薄绿",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "蚀清",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "蜜莓",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "蜜蜡",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "行箸",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "衡沙",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "裁度",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "裂响",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "见行者",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "诗怀雅",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "诺威尔",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "谜图",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "贝娜",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "贾维",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "赤冬",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "赫默",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "车尔尼",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "达格达",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "送葬人",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "野鬃",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "钼铅",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "铎铃",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "铸铁",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "锡人",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "锡兰",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "闪击",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "阿兰娜",
+      "rarity": 6,
+      "profession": "辅助"
+    },
+    {
+      "name": "阿米娅",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "阿罗玛",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "陨星",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "隐现",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "雪猎",
+      "rarity": 6,
+      "profession": "狙击"
+    },
+    {
+      "name": "雪绒",
+      "rarity": 6,
+      "profession": "术师"
+    },
+    {
+      "name": "雪雉",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "雷狼龙S空爆",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "雷蛇",
+      "rarity": 6,
+      "profession": "重装"
+    },
+    {
+      "name": "霜华",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "青枳",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "鞭刃",
+      "rarity": 6,
+      "profession": "近卫"
+    },
+    {
+      "name": "风丸",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "风絮",
+      "rarity": 6,
+      "profession": "医疗"
+    },
+    {
+      "name": "食铁兽",
+      "rarity": 6,
+      "profession": "特种"
+    },
+    {
+      "name": "齐尔查克",
+      "rarity": 6,
+      "profession": "先锋"
+    },
+    {
+      "name": "龙舌兰",
+      "rarity": 6,
+      "profession": "近卫"
+    }
+  ],
+  "banners": [
+    {
+      "key": "NORM_0_1_1",
+      "title": "适合多种场合的强力干员（能天使 / 安洁莉娜 （占6）",
+      "pool_id": "NORM_0_1_1",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1548727200,
+      "end_time": 1557950399,
+      "open_date": "2019-01-29",
+      "end_date": "2019-05-16",
+      "up_6": [
+        "能天使",
+        "安洁莉娜 （占6"
+      ],
+      "up_5": [
+        "能天使",
+        "安洁莉娜 （占6"
+      ],
+      "up_4": [
+        "能天使",
+        "安洁莉娜 （占6"
+      ]
+    },
+    {
+      "key": "legacy_1556589600_普池_1",
+      "title": "普池#1",
+      "pool_id": "legacy_1556589600_普池_1",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1556589600,
+      "end_time": 1557950340,
+      "open_date": "2019-04-30",
+      "end_date": "2019-05-16",
+      "up_6": [
+        "安洁莉娜",
+        "能天使"
+      ],
+      "up_5": [
+        "可颂",
+        "天火",
+        "凛冬"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "NORM_0_1_2",
+      "title": "适合多种场合的强力干员（推进之王 / 夜莺 （占6）",
+      "pool_id": "NORM_0_1_2",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1557950400,
+      "end_time": 1559181599,
+      "open_date": "2019-05-16",
+      "end_date": "2019-05-30",
+      "up_6": [
+        "推进之王",
+        "夜莺 （占6"
+      ],
+      "up_5": [
+        "推进之王",
+        "夜莺 （占6"
+      ],
+      "up_4": [
+        "推进之王",
+        "夜莺 （占6"
+      ]
+    },
+    {
+      "key": "legacy_1557950400_普池_2",
+      "title": "普池#2",
+      "pool_id": "legacy_1557950400_普池_2",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1557950400,
+      "end_time": 1559181540,
+      "open_date": "2019-05-16",
+      "end_date": "2019-05-30",
+      "up_6": [
+        "夜莺",
+        "推进之王"
+      ],
+      "up_5": [
+        "德克萨斯",
+        "白金",
+        "芙兰卡"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "NORM_0_1_3",
+      "title": "银灰色的荣耀",
+      "pool_id": "NORM_0_1_3",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1558576800,
+      "end_time": 1559159999,
+      "open_date": "2019-05-23",
+      "end_date": "2019-05-30",
+      "up_6": [
+        "银灰（占6"
+      ],
+      "up_5": [
+        "银灰（占6"
+      ],
+      "up_4": [
+        "银灰（占6"
+      ]
+    },
+    {
+      "key": "legacy_1558576800_银灰色的荣耀",
+      "title": "银灰色的荣耀",
+      "pool_id": "legacy_1558576800_银灰色的荣耀",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1558576800,
+      "end_time": 1559159940,
+      "open_date": "2019-05-23",
+      "end_date": "2019-05-30",
+      "up_6": [
+        "银灰"
+      ],
+      "up_5": [
+        "初雪",
+        "崖心"
+      ],
+      "up_4": [
+        "角峰"
+      ]
+    },
+    {
+      "key": "NORM_0_1_4",
+      "title": "适合多种场合的强力干员（伊芙利特 / 艾雅法拉（占6）",
+      "pool_id": "NORM_0_1_4",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1559181600,
+      "end_time": 1560369599,
+      "open_date": "2019-05-30",
+      "end_date": "2019-06-13",
+      "up_6": [
+        "伊芙利特",
+        "艾雅法拉（占6"
+      ],
+      "up_5": [
+        "伊芙利特",
+        "艾雅法拉（占6"
+      ],
+      "up_4": [
+        "伊芙利特",
+        "艾雅法拉（占6"
+      ]
+    },
+    {
+      "key": "NORM_1_0_1",
+      "title": "搅动潮汐之剑",
+      "pool_id": "NORM_1_0_1",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1559181600,
+      "end_time": 1560369599,
+      "open_date": "2019-05-30",
+      "end_date": "2019-06-13",
+      "up_6": [
+        "斯卡蒂（占6"
+      ],
+      "up_5": [
+        "斯卡蒂（占6"
+      ],
+      "up_4": [
+        "斯卡蒂（占6"
+      ]
+    },
+    {
+      "key": "legacy_1559181600_搅动潮汐之剑",
+      "title": "搅动潮汐之剑",
+      "pool_id": "legacy_1559181600_搅动潮汐之剑",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1559181600,
+      "end_time": 1560369540,
+      "open_date": "2019-05-30",
+      "end_date": "2019-06-13",
+      "up_6": [
+        "斯卡蒂"
+      ],
+      "up_5": [
+        "夜魔",
+        "临光"
+      ],
+      "up_4": [
+        "猎蜂",
+        "暗索"
+      ]
+    },
+    {
+      "key": "legacy_1559181600_普池_3",
+      "title": "普池#3",
+      "pool_id": "legacy_1559181600_普池_3",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1559181600,
+      "end_time": 1560369540,
+      "open_date": "2019-05-30",
+      "end_date": "2019-06-13",
+      "up_6": [
+        "伊芙利特",
+        "艾雅法拉"
+      ],
+      "up_5": [
+        "拉普兰德",
+        "梅尔",
+        "赫默"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "NORM_1_0_2",
+      "title": "适合多种场合的强力干员（塞雷娅 / 闪灵（占6）",
+      "pool_id": "NORM_1_0_2",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1560369600,
+      "end_time": 1561579199,
+      "open_date": "2019-06-13",
+      "end_date": "2019-06-27",
+      "up_6": [
+        "塞雷娅",
+        "闪灵（占6"
+      ],
+      "up_5": [
+        "塞雷娅",
+        "闪灵（占6"
+      ],
+      "up_4": [
+        "塞雷娅",
+        "闪灵（占6"
+      ]
+    },
+    {
+      "key": "legacy_1560369600_普池_4",
+      "title": "普池#4",
+      "pool_id": "legacy_1560369600_普池_4",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1560369600,
+      "end_time": 1561579140,
+      "open_date": "2019-06-13",
+      "end_date": "2019-06-27",
+      "up_6": [
+        "塞雷娅",
+        "闪灵"
+      ],
+      "up_5": [
+        "幽灵鲨",
+        "真理",
+        "红"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "NORM_1_0_3",
+      "title": "适合多种场合的强力干员（银灰 / 夜莺（占6）",
+      "pool_id": "NORM_1_0_3",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1561579200,
+      "end_time": 1562788799,
+      "open_date": "2019-06-27",
+      "end_date": "2019-07-11",
+      "up_6": [
+        "银灰",
+        "夜莺（占6"
+      ],
+      "up_5": [
+        "银灰",
+        "夜莺（占6"
+      ],
+      "up_4": [
+        "银灰",
+        "夜莺（占6"
+      ]
+    },
+    {
+      "key": "legacy_1561579200_普池_5",
+      "title": "普池#5",
+      "pool_id": "legacy_1561579200_普池_5",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1561579200,
+      "end_time": 1562788740,
+      "open_date": "2019-06-27",
+      "end_date": "2019-07-11",
+      "up_6": [
+        "夜莺",
+        "银灰"
+      ],
+      "up_5": [
+        "蓝毒",
+        "空",
+        "白面鸮"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "NORM_2_0_1",
+      "title": "鞘中赤红",
+      "pool_id": "NORM_2_0_1",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1562659200,
+      "end_time": 1563739199,
+      "open_date": "2019-07-09",
+      "end_date": "2019-07-22",
+      "up_6": [
+        "陈（占6"
+      ],
+      "up_5": [
+        "陈（占6"
+      ],
+      "up_4": [
+        "陈（占6"
+      ]
+    },
+    {
+      "key": "legacy_1562659200_鞘中赤红",
+      "title": "鞘中赤红",
+      "pool_id": "legacy_1562659200_鞘中赤红",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1562659200,
+      "end_time": 1563739140,
+      "open_date": "2019-07-09",
+      "end_date": "2019-07-22",
+      "up_6": [
+        "陈"
+      ],
+      "up_5": [
+        "诗怀雅",
+        "食铁兽"
+      ],
+      "up_4": [
+        "格雷伊"
+      ]
+    },
+    {
+      "key": "NORM_2_0_2",
+      "title": "适合多种场合的强力干员（安洁莉娜 / 推进之王（占6）",
+      "pool_id": "NORM_2_0_2",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1562788800,
+      "end_time": 1563998399,
+      "open_date": "2019-07-11",
+      "end_date": "2019-07-25",
+      "up_6": [
+        "安洁莉娜",
+        "推进之王（占6"
+      ],
+      "up_5": [
+        "安洁莉娜",
+        "推进之王（占6"
+      ],
+      "up_4": [
+        "安洁莉娜",
+        "推进之王（占6"
+      ]
+    },
+    {
+      "key": "legacy_1562788800_普池_6",
+      "title": "普池#6",
+      "pool_id": "legacy_1562788800_普池_6",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1562788800,
+      "end_time": 1563998340,
+      "open_date": "2019-07-11",
+      "end_date": "2019-07-25",
+      "up_6": [
+        "推进之王",
+        "安洁莉娜"
+      ],
+      "up_5": [
+        "华法琳",
+        "狮蝎",
+        "守林人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "NORM_2_0_3",
+      "title": "龙门特别行动专员寻访",
+      "pool_id": "NORM_2_0_3",
+      "rule_type": "NORMAL",
+      "limited": false,
+      "open_time": 1563782400,
+      "end_time": 1564948799,
+      "open_date": "2019-07-22",
+      "end_date": "2019-08-05",
+      "up_6": [
+        "星熊（占6"
+      ],
+      "up_5": [
+        "星熊（占6"
+      ],
+      "up_4": [
+        "星熊（占6"
+      ]
+    },
+    {
+      "key": "legacy_1563782400_龙门特别行动专员寻访",
+      "title": "龙门特别行动专员寻访",
+      "pool_id": "legacy_1563782400_龙门特别行动专员寻访",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1563782400,
+      "end_time": 1564948740,
+      "open_date": "2019-07-22",
+      "end_date": "2019-08-05",
+      "up_6": [
+        "星熊"
+      ],
+      "up_5": [
+        "雷蛇",
+        "陨星"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1563998400_普池_7",
+      "title": "普池#7",
+      "pool_id": "legacy_1563998400_普池_7",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1563998400,
+      "end_time": 1565207940,
+      "open_date": "2019-07-25",
+      "end_date": "2019-08-08",
+      "up_6": [
+        "塞雷娅",
+        "艾雅法拉"
+      ],
+      "up_5": [
+        "红",
+        "普罗旺斯",
+        "芙兰卡"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1565208000_普池_8",
+      "title": "普池#8",
+      "pool_id": "legacy_1565208000_普池_8",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1565208000,
+      "end_time": 1566417540,
+      "open_date": "2019-08-08",
+      "end_date": "2019-08-22",
+      "up_6": [
+        "伊芙利特",
+        "能天使"
+      ],
+      "up_5": [
+        "初雪",
+        "凛冬",
+        "白金"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1566417600_普池_9",
+      "title": "普池#9",
+      "pool_id": "legacy_1566417600_普池_9",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1566417600,
+      "end_time": 1567627140,
+      "open_date": "2019-08-22",
+      "end_date": "2019-09-05",
+      "up_6": [
+        "闪灵",
+        "斯卡蒂"
+      ],
+      "up_5": [
+        "天火",
+        "崖心",
+        "临光"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1566892800_深夏的守夜人",
+      "title": "深夏的守夜人",
+      "pool_id": "legacy_1566892800_深夏的守夜人",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1566892800,
+      "end_time": 1568059140,
+      "open_date": "2019-08-27",
+      "end_date": "2019-09-10",
+      "up_6": [
+        "黑"
+      ],
+      "up_5": [
+        "格劳克斯",
+        "蓝毒"
+      ],
+      "up_4": [
+        "苏苏洛"
+      ]
+    },
+    {
+      "key": "legacy_1567627200_普池_10",
+      "title": "普池#10",
+      "pool_id": "legacy_1567627200_普池_10",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1567627200,
+      "end_time": 1568836740,
+      "open_date": "2019-09-05",
+      "end_date": "2019-09-19",
+      "up_6": [
+        "安洁莉娜",
+        "星熊"
+      ],
+      "up_5": [
+        "白面鸮",
+        "拉普兰德",
+        "空"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1568102400_久铸尘铁",
+      "title": "久铸尘铁",
+      "pool_id": "legacy_1568102400_久铸尘铁",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1568102400,
+      "end_time": 1569268740,
+      "open_date": "2019-09-10",
+      "end_date": "2019-09-24",
+      "up_6": [
+        "赫拉格"
+      ],
+      "up_5": [
+        "星极",
+        "可颂"
+      ],
+      "up_4": [
+        "桃金娘"
+      ]
+    },
+    {
+      "key": "legacy_1568836800_普池_11",
+      "title": "普池#11",
+      "pool_id": "legacy_1568836800_普池_11",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1568836800,
+      "end_time": 1570046340,
+      "open_date": "2019-09-19",
+      "end_date": "2019-10-03",
+      "up_6": [
+        "推进之王",
+        "能天使"
+      ],
+      "up_5": [
+        "守林人",
+        "夜魔",
+        "德克萨斯"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1569916800_火舞之人",
+      "title": "火舞之人",
+      "pool_id": "legacy_1569916800_火舞之人",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1569916800,
+      "end_time": 1570737540,
+      "open_date": "2019-10-01",
+      "end_date": "2019-10-11",
+      "up_6": [
+        "艾雅法拉"
+      ],
+      "up_5": [
+        "普罗旺斯",
+        "幽灵鲨"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1570046400_普池_12",
+      "title": "普池#12",
+      "pool_id": "legacy_1570046400_普池_12",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1570046400,
+      "end_time": 1571255940,
+      "open_date": "2019-10-03",
+      "end_date": "2019-10-17",
+      "up_6": [
+        "银灰",
+        "伊芙利特"
+      ],
+      "up_5": [
+        "雷蛇",
+        "梅尔",
+        "华法琳"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1571126400_冰封原野",
+      "title": "冰封原野",
+      "pool_id": "legacy_1571126400_冰封原野",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1571126400,
+      "end_time": 1572292740,
+      "open_date": "2019-10-15",
+      "end_date": "2019-10-29",
+      "up_6": [
+        "麦哲伦"
+      ],
+      "up_5": [
+        "送葬人",
+        "赫默"
+      ],
+      "up_4": [
+        "红云"
+      ]
+    },
+    {
+      "key": "legacy_1571256000_普池_13",
+      "title": "普池#13",
+      "pool_id": "legacy_1571256000_普池_13",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1571256000,
+      "end_time": 1572465540,
+      "open_date": "2019-10-17",
+      "end_date": "2019-10-31",
+      "up_6": [
+        "塞雷娅",
+        "斯卡蒂"
+      ],
+      "up_5": [
+        "陨星",
+        "食铁兽",
+        "真理"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1572465600_普池_14",
+      "title": "普池#14",
+      "pool_id": "legacy_1572465600_普池_14",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1572465600,
+      "end_time": 1573675140,
+      "open_date": "2019-10-31",
+      "end_date": "2019-11-14",
+      "up_6": [
+        "闪灵",
+        "夜莺"
+      ],
+      "up_5": [
+        "临光",
+        "初雪",
+        "拉普兰德"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1572552000_联合行动01",
+      "title": "联合行动01",
+      "pool_id": "legacy_1572552000_联合行动01",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1572552000,
+      "end_time": 1573761540,
+      "open_date": "2019-11-01",
+      "end_date": "2019-11-15",
+      "up_6": [
+        "陈",
+        "银灰",
+        "艾雅法拉",
+        "安洁莉娜"
+      ],
+      "up_5": [
+        "白面鸮",
+        "德克萨斯",
+        "白金",
+        "可颂",
+        "狮蝎",
+        "诗怀雅"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1573675200_普池_15",
+      "title": "普池#15",
+      "pool_id": "legacy_1573675200_普池_15",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1573675200,
+      "end_time": 1574884740,
+      "open_date": "2019-11-14",
+      "end_date": "2019-11-28",
+      "up_6": [
+        "星熊",
+        "推进之王"
+      ],
+      "up_5": [
+        "空",
+        "格劳克斯",
+        "蓝毒"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1574150400_锁与匙的守卫者",
+      "title": "锁与匙的守卫者",
+      "pool_id": "legacy_1574150400_锁与匙的守卫者",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1574150400,
+      "end_time": 1575316740,
+      "open_date": "2019-11-19",
+      "end_date": "2019-12-03",
+      "up_6": [
+        "莫斯提马"
+      ],
+      "up_5": [
+        "槐琥",
+        "守林人"
+      ],
+      "up_4": [
+        "梅"
+      ]
+    },
+    {
+      "key": "legacy_1574884800_普池_16",
+      "title": "普池#16",
+      "pool_id": "legacy_1574884800_普池_16",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1574884800,
+      "end_time": 1576094340,
+      "open_date": "2019-11-28",
+      "end_date": "2019-12-12",
+      "up_6": [
+        "伊芙利特",
+        "塞雷娅"
+      ],
+      "up_5": [
+        "梅尔",
+        "凛冬",
+        "红"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1575964800_凝电之钻",
+      "title": "凝电之钻",
+      "pool_id": "legacy_1575964800_凝电之钻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1575964800,
+      "end_time": 1577131140,
+      "open_date": "2019-12-10",
+      "end_date": "2019-12-24",
+      "up_6": [
+        "能天使"
+      ],
+      "up_5": [
+        "布洛卡",
+        "苇草"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1576094400_普池_17",
+      "title": "普池#17",
+      "pool_id": "legacy_1576094400_普池_17",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1576094400,
+      "end_time": 1577303940,
+      "open_date": "2019-12-12",
+      "end_date": "2019-12-26",
+      "up_6": [
+        "夜莺",
+        "黑"
+      ],
+      "up_5": [
+        "白金",
+        "星极",
+        "崖心"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1577174400_热情_膨胀_爆发_",
+      "title": "热情，膨胀，爆发！",
+      "pool_id": "legacy_1577174400_热情_膨胀_爆发_",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1577174400,
+      "end_time": 1578340740,
+      "open_date": "2019-12-24",
+      "end_date": "2020-01-07",
+      "up_6": [
+        "煌"
+      ],
+      "up_5": [
+        "灰喉",
+        "天火"
+      ],
+      "up_4": [
+        "安比尔"
+      ]
+    },
+    {
+      "key": "legacy_1577304000_普池_18",
+      "title": "普池#18",
+      "pool_id": "legacy_1577304000_普池_18",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1577304000,
+      "end_time": 1578513540,
+      "open_date": "2019-12-26",
+      "end_date": "2020-01-09",
+      "up_6": [
+        "安洁莉娜",
+        "银灰"
+      ],
+      "up_5": [
+        "芙兰卡",
+        "初雪",
+        "食铁兽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1578513600_普池_19",
+      "title": "普池#19",
+      "pool_id": "legacy_1578513600_普池_19",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1578513600,
+      "end_time": 1579723140,
+      "open_date": "2020-01-09",
+      "end_date": "2020-01-23",
+      "up_6": [
+        "闪灵",
+        "赫拉格"
+      ],
+      "up_5": [
+        "狮蝎",
+        "凛冬",
+        "华法琳"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1579161600_地生五金",
+      "title": "地生五金",
+      "pool_id": "legacy_1579161600_地生五金",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1579161600,
+      "end_time": 1580327940,
+      "open_date": "2020-01-16",
+      "end_date": "2020-01-30",
+      "up_6": [
+        "年",
+        "阿"
+      ],
+      "up_5": [
+        "吽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1579723200_普池_20",
+      "title": "普池#20",
+      "pool_id": "legacy_1579723200_普池_20",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1579723200,
+      "end_time": 1580932740,
+      "open_date": "2020-01-23",
+      "end_date": "2020-02-06",
+      "up_6": [
+        "推进之王",
+        "陈"
+      ],
+      "up_5": [
+        "真理",
+        "雷蛇",
+        "德克萨斯"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1580932800_普池_21",
+      "title": "普池#21",
+      "pool_id": "legacy_1580932800_普池_21",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1580932800,
+      "end_time": 1582142340,
+      "open_date": "2020-02-06",
+      "end_date": "2020-02-20",
+      "up_6": [
+        "艾雅法拉",
+        "斯卡蒂"
+      ],
+      "up_5": [
+        "赫默",
+        "夜魔",
+        "诗怀雅"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1582142400_普池_22",
+      "title": "普池#22",
+      "pool_id": "legacy_1582142400_普池_22",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1582142400,
+      "end_time": 1583351940,
+      "open_date": "2020-02-20",
+      "end_date": "2020-03-05",
+      "up_6": [
+        "星熊",
+        "麦哲伦"
+      ],
+      "up_5": [
+        "红",
+        "送葬人",
+        "白面鸮"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1582617600_百种兵器",
+      "title": "百种兵器",
+      "pool_id": "legacy_1582617600_百种兵器",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1582617600,
+      "end_time": 1583783940,
+      "open_date": "2020-02-25",
+      "end_date": "2020-03-10",
+      "up_6": [
+        "刻俄柏"
+      ],
+      "up_5": [
+        "拉普兰德",
+        "惊蛰"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1583352000_普池_23",
+      "title": "普池#23",
+      "pool_id": "legacy_1583352000_普池_23",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1583352000,
+      "end_time": 1584561540,
+      "open_date": "2020-03-05",
+      "end_date": "2020-03-19",
+      "up_6": [
+        "塞雷娅",
+        "银灰"
+      ],
+      "up_5": [
+        "崖心",
+        "苇草",
+        "蓝毒"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1584432000_草垛上的风笛声",
+      "title": "草垛上的风笛声",
+      "pool_id": "legacy_1584432000_草垛上的风笛声",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1584432000,
+      "end_time": 1585598340,
+      "open_date": "2020-03-17",
+      "end_date": "2020-03-31",
+      "up_6": [
+        "风笛"
+      ],
+      "up_5": [
+        "慑砂",
+        "凛冬"
+      ],
+      "up_4": [
+        "宴"
+      ]
+    },
+    {
+      "key": "legacy_1584561600_普池_24",
+      "title": "普池#24",
+      "pool_id": "legacy_1584561600_普池_24",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1584561600,
+      "end_time": 1585771140,
+      "open_date": "2020-03-19",
+      "end_date": "2020-04-02",
+      "up_6": [
+        "能天使",
+        "夜莺"
+      ],
+      "up_5": [
+        "普罗旺斯",
+        "布洛卡",
+        "梅尔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1585771200_普池_25",
+      "title": "普池#25",
+      "pool_id": "legacy_1585771200_普池_25",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1585771200,
+      "end_time": 1586980740,
+      "open_date": "2020-04-02",
+      "end_date": "2020-04-16",
+      "up_6": [
+        "伊芙利特",
+        "莫斯提马"
+      ],
+      "up_5": [
+        "食铁兽",
+        "幽灵鲨",
+        "槐琥"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1586980800_普池_26",
+      "title": "普池#26",
+      "pool_id": "legacy_1586980800_普池_26",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1586980800,
+      "end_time": 1588190340,
+      "open_date": "2020-04-16",
+      "end_date": "2020-04-30",
+      "up_6": [
+        "闪灵",
+        "陈"
+      ],
+      "up_5": [
+        "凛冬",
+        "可颂",
+        "陨星"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1587456000_往日幻象",
+      "title": "往日幻象",
+      "pool_id": "legacy_1587456000_往日幻象",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1587456000,
+      "end_time": 1588622340,
+      "open_date": "2020-04-21",
+      "end_date": "2020-05-05",
+      "up_6": [
+        "傀影"
+      ],
+      "up_5": [
+        "巫恋",
+        "白面鸮"
+      ],
+      "up_4": [
+        "刻刀"
+      ]
+    },
+    {
+      "key": "legacy_1588190400_普池_27",
+      "title": "普池#27",
+      "pool_id": "legacy_1588190400_普池_27",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1588190400,
+      "end_time": 1589399940,
+      "open_date": "2020-04-30",
+      "end_date": "2020-05-14",
+      "up_6": [
+        "斯卡蒂",
+        "安洁莉娜"
+      ],
+      "up_5": [
+        "夜魔",
+        "拉普兰德",
+        "空"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1588320000_遗愿焰火",
+      "title": "遗愿焰火",
+      "pool_id": "legacy_1588320000_遗愿焰火",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1588320000,
+      "end_time": 1589486340,
+      "open_date": "2020-05-01",
+      "end_date": "2020-05-15",
+      "up_6": [
+        "W",
+        "温蒂"
+      ],
+      "up_5": [
+        "极境"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1589400000_普池_28",
+      "title": "普池#28",
+      "pool_id": "legacy_1589400000_普池_28",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1589400000,
+      "end_time": 1590609540,
+      "open_date": "2020-05-14",
+      "end_date": "2020-05-28",
+      "up_6": [
+        "推进之王",
+        "黑"
+      ],
+      "up_5": [
+        "诗怀雅",
+        "雷蛇",
+        "红"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1589529600_联合行动02",
+      "title": "联合行动02",
+      "pool_id": "legacy_1589529600_联合行动02",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1589529600,
+      "end_time": 1590695940,
+      "open_date": "2020-05-15",
+      "end_date": "2020-05-29",
+      "up_6": [
+        "煌",
+        "塞雷娅",
+        "莫斯提马",
+        "赫拉格"
+      ],
+      "up_5": [
+        "临光",
+        "守林人",
+        "灰喉",
+        "吽",
+        "送葬人",
+        "格劳克斯"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1590609600_普池_29",
+      "title": "普池#29",
+      "pool_id": "legacy_1590609600_普池_29",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1590609600,
+      "end_time": 1591819140,
+      "open_date": "2020-05-28",
+      "end_date": "2020-06-11",
+      "up_6": [
+        "艾雅法拉",
+        "阿"
+      ],
+      "up_5": [
+        "华法琳",
+        "狮蝎",
+        "惊蛰"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1591084800_雾漫荒林",
+      "title": "雾漫荒林",
+      "pool_id": "legacy_1591084800_雾漫荒林",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1591084800,
+      "end_time": 1592251140,
+      "open_date": "2020-06-02",
+      "end_date": "2020-06-16",
+      "up_6": [],
+      "up_5": [
+        "石棉",
+        "月禾"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1591819200_普池_30",
+      "title": "普池#30",
+      "pool_id": "legacy_1591819200_普池_30",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1591819200,
+      "end_time": 1593028740,
+      "open_date": "2020-06-11",
+      "end_date": "2020-06-25",
+      "up_6": [
+        "星熊",
+        "麦哲伦"
+      ],
+      "up_5": [
+        "德克萨斯",
+        "真理",
+        "白面鸮"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1592467200_雪落晨心",
+      "title": "雪落晨心",
+      "pool_id": "legacy_1592467200_雪落晨心",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1592467200,
+      "end_time": 1593633540,
+      "open_date": "2020-06-18",
+      "end_date": "2020-07-02",
+      "up_6": [
+        "早露"
+      ],
+      "up_5": [
+        "莱恩哈特",
+        "真理"
+      ],
+      "up_4": [
+        "波登可"
+      ]
+    },
+    {
+      "key": "legacy_1593028800_普池_31",
+      "title": "普池#31",
+      "pool_id": "legacy_1593028800_普池_31",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1593028800,
+      "end_time": 1594238340,
+      "open_date": "2020-06-25",
+      "end_date": "2020-07-09",
+      "up_6": [
+        "陈",
+        "能天使"
+      ],
+      "up_5": [
+        "蓝毒",
+        "布洛卡",
+        "梅尔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1594238400_普池_32",
+      "title": "普池#32",
+      "pool_id": "legacy_1594238400_普池_32",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1594238400,
+      "end_time": 1595447940,
+      "open_date": "2020-07-09",
+      "end_date": "2020-07-23",
+      "up_6": [
+        "夜莺",
+        "莫斯提马"
+      ],
+      "up_5": [
+        "星极",
+        "芙兰卡",
+        "初雪"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1594281600_君影轻灵",
+      "title": "君影轻灵",
+      "pool_id": "legacy_1594281600_君影轻灵",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1594281600,
+      "end_time": 1595447940,
+      "open_date": "2020-07-09",
+      "end_date": "2020-07-23",
+      "up_6": [
+        "铃兰"
+      ],
+      "up_5": [
+        "断崖",
+        "夜魔"
+      ],
+      "up_4": [
+        "卡达"
+      ]
+    },
+    {
+      "key": "legacy_1595448000_普池_33",
+      "title": "普池#33",
+      "pool_id": "legacy_1595448000_普池_33",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1595448000,
+      "end_time": 1596657540,
+      "open_date": "2020-07-23",
+      "end_date": "2020-08-06",
+      "up_6": [
+        "安洁莉娜",
+        "风笛"
+      ],
+      "up_5": [
+        "临光",
+        "槐琥",
+        "慑砂"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1595923200_流沙涡旋",
+      "title": "流沙涡旋",
+      "pool_id": "legacy_1595923200_流沙涡旋",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1595923200,
+      "end_time": 1597089540,
+      "open_date": "2020-07-28",
+      "end_date": "2020-08-11",
+      "up_6": [],
+      "up_5": [
+        "蜜蜡",
+        "贾维"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1596657600_普池_34",
+      "title": "普池#34",
+      "pool_id": "legacy_1596657600_普池_34",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1596657600,
+      "end_time": 1597867140,
+      "open_date": "2020-08-06",
+      "end_date": "2020-08-20",
+      "up_6": [
+        "黑",
+        "斯卡蒂"
+      ],
+      "up_5": [
+        "白金",
+        "苇草",
+        "天火"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1597132800_不羁逆流",
+      "title": "不羁逆流",
+      "pool_id": "legacy_1597132800_不羁逆流",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1597132800,
+      "end_time": 1598299140,
+      "open_date": "2020-08-11",
+      "end_date": "2020-08-25",
+      "up_6": [
+        "棘刺"
+      ],
+      "up_5": [
+        "安哲拉",
+        "普罗旺斯"
+      ],
+      "up_4": [
+        "孑"
+      ]
+    },
+    {
+      "key": "legacy_1597867200_普池_35",
+      "title": "普池#35",
+      "pool_id": "legacy_1597867200_普池_35",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1597867200,
+      "end_time": 1599076740,
+      "open_date": "2020-08-20",
+      "end_date": "2020-09-03",
+      "up_6": [
+        "银灰",
+        "刻俄柏"
+      ],
+      "up_5": [
+        "可颂",
+        "空",
+        "巫恋"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1598342400_燃钢之心_暴躁铁皮",
+      "title": "燃钢之心 暴躁铁皮",
+      "pool_id": "legacy_1598342400_燃钢之心_暴躁铁皮",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1598342400,
+      "end_time": 1599508740,
+      "open_date": "2020-08-25",
+      "end_date": "2020-09-08",
+      "up_6": [
+        "森蚺"
+      ],
+      "up_5": [
+        "燧石",
+        "陨星"
+      ],
+      "up_4": [
+        "酸糖"
+      ]
+    },
+    {
+      "key": "legacy_1599076800_普池_36",
+      "title": "普池#36",
+      "pool_id": "legacy_1599076800_普池_36",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1599076800,
+      "end_time": 1600286340,
+      "open_date": "2020-09-03",
+      "end_date": "2020-09-17",
+      "up_6": [
+        "闪灵",
+        "煌"
+      ],
+      "up_5": [
+        "幽灵鲨",
+        "赫默",
+        "崖心"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1599552000_不羁逆流_返场",
+      "title": "不羁逆流 返场",
+      "pool_id": "legacy_1599552000_不羁逆流_返场",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1599552000,
+      "end_time": 1600113540,
+      "open_date": "2020-09-08",
+      "end_date": "2020-09-15",
+      "up_6": [
+        "棘刺"
+      ],
+      "up_5": [
+        "安哲拉",
+        "普罗旺斯"
+      ],
+      "up_4": [
+        "孑"
+      ]
+    },
+    {
+      "key": "legacy_1599552000_燃钢之心_暴躁铁皮_返场",
+      "title": "燃钢之心 暴躁铁皮 返场",
+      "pool_id": "legacy_1599552000_燃钢之心_暴躁铁皮_返场",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1599552000,
+      "end_time": 1600113540,
+      "open_date": "2020-09-08",
+      "end_date": "2020-09-15",
+      "up_6": [
+        "森蚺"
+      ],
+      "up_5": [
+        "燧石",
+        "陨星"
+      ],
+      "up_4": [
+        "酸糖"
+      ]
+    },
+    {
+      "key": "legacy_1600286400_普池_37",
+      "title": "普池#37",
+      "pool_id": "legacy_1600286400_普池_37",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1600286400,
+      "end_time": 1601495940,
+      "open_date": "2020-09-17",
+      "end_date": "2020-10-01",
+      "up_6": [
+        "赫拉格",
+        "伊芙利特"
+      ],
+      "up_5": [
+        "雷蛇",
+        "凛冬",
+        "惊蛰"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1600934400_无拘熔火",
+      "title": "无拘熔火",
+      "pool_id": "legacy_1600934400_无拘熔火",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1600934400,
+      "end_time": 1602100740,
+      "open_date": "2020-09-24",
+      "end_date": "2020-10-08",
+      "up_6": [
+        "史尔特尔"
+      ],
+      "up_5": [
+        "四月",
+        "极境"
+      ],
+      "up_4": [
+        "芳汀"
+      ]
+    },
+    {
+      "key": "legacy_1601496000_普池_38",
+      "title": "普池#38",
+      "pool_id": "legacy_1601496000_普池_38",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1601496000,
+      "end_time": 1602705540,
+      "open_date": "2020-10-01",
+      "end_date": "2020-10-15",
+      "up_6": [
+        "塞雷娅",
+        "温蒂"
+      ],
+      "up_5": [
+        "食铁兽",
+        "拉普兰德",
+        "送葬人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1601539200_搅动潮汐之剑_复刻",
+      "title": "搅动潮汐之剑 复刻",
+      "pool_id": "legacy_1601539200_搅动潮汐之剑_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1601539200,
+      "end_time": 1602705540,
+      "open_date": "2020-10-01",
+      "end_date": "2020-10-15",
+      "up_6": [
+        "斯卡蒂"
+      ],
+      "up_5": [
+        "夜魔",
+        "临光"
+      ],
+      "up_4": [
+        "猎蜂",
+        "暗索"
+      ]
+    },
+    {
+      "key": "legacy_1602705600_普池_39",
+      "title": "普池#39",
+      "pool_id": "legacy_1602705600_普池_39",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1602705600,
+      "end_time": 1603915140,
+      "open_date": "2020-10-15",
+      "end_date": "2020-10-29",
+      "up_6": [
+        "推进之王",
+        "傀影"
+      ],
+      "up_5": [
+        "格劳克斯",
+        "梅尔",
+        "狮蝎"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1602748800_瑕光微明",
+      "title": "瑕光微明",
+      "pool_id": "legacy_1602748800_瑕光微明",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1602748800,
+      "end_time": 1603915140,
+      "open_date": "2020-10-15",
+      "end_date": "2020-10-29",
+      "up_6": [
+        "瑕光"
+      ],
+      "up_5": [
+        "奥斯塔",
+        "白金"
+      ],
+      "up_4": [
+        "泡泡"
+      ]
+    },
+    {
+      "key": "legacy_1603915200_普池_40",
+      "title": "普池#40",
+      "pool_id": "legacy_1603915200_普池_40",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1603915200,
+      "end_time": 1605124740,
+      "open_date": "2020-10-29",
+      "end_date": "2020-11-12",
+      "up_6": [
+        "麦哲伦",
+        "艾雅法拉"
+      ],
+      "up_5": [
+        "灰喉",
+        "诗怀雅",
+        "吽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1604217600_勿忘我",
+      "title": "勿忘我",
+      "pool_id": "legacy_1604217600_勿忘我",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1604217600,
+      "end_time": 1605383940,
+      "open_date": "2020-11-01",
+      "end_date": "2020-11-15",
+      "up_6": [
+        "迷迭香",
+        "泥岩"
+      ],
+      "up_5": [
+        "絮雨"
+      ],
+      "up_4": [
+        "杰克"
+      ]
+    },
+    {
+      "key": "legacy_1605124800_普池_41",
+      "title": "普池#41",
+      "pool_id": "legacy_1605124800_普池_41",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1605124800,
+      "end_time": 1606334340,
+      "open_date": "2020-11-12",
+      "end_date": "2020-11-26",
+      "up_6": [
+        "夜莺",
+        "早露"
+      ],
+      "up_5": [
+        "红",
+        "白面鸮",
+        "月禾"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1605427200_联合行动03",
+      "title": "联合行动03",
+      "pool_id": "legacy_1605427200_联合行动03",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1605427200,
+      "end_time": 1606593540,
+      "open_date": "2020-11-15",
+      "end_date": "2020-11-29",
+      "up_6": [
+        "阿",
+        "星熊",
+        "刻俄柏",
+        "风笛"
+      ],
+      "up_5": [
+        "布洛卡",
+        "石棉",
+        "蓝毒",
+        "华法琳",
+        "真理",
+        "星极"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1606334400_普池_42",
+      "title": "普池#42",
+      "pool_id": "legacy_1606334400_普池_42",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1606334400,
+      "end_time": 1607543940,
+      "open_date": "2020-11-26",
+      "end_date": "2020-12-10",
+      "up_6": [
+        "能天使",
+        "安洁莉娜"
+      ],
+      "up_5": [
+        "初雪",
+        "德克萨斯",
+        "断崖"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1606809600_锁与匙的守卫者_复刻",
+      "title": "锁与匙的守卫者 复刻",
+      "pool_id": "legacy_1606809600_锁与匙的守卫者_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1606809600,
+      "end_time": 1607975940,
+      "open_date": "2020-12-01",
+      "end_date": "2020-12-15",
+      "up_6": [
+        "莫斯提马"
+      ],
+      "up_5": [
+        "槐琥",
+        "守林人"
+      ],
+      "up_4": [
+        "梅"
+      ]
+    },
+    {
+      "key": "legacy_1607544000_普池_43",
+      "title": "普池#43",
+      "pool_id": "legacy_1607544000_普池_43",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1607544000,
+      "end_time": 1608753540,
+      "open_date": "2020-12-10",
+      "end_date": "2020-12-24",
+      "up_6": [
+        "煌",
+        "铃兰"
+      ],
+      "up_5": [
+        "苇草",
+        "莱恩哈特",
+        "慑砂"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1608192000_自由的囚徒",
+      "title": "自由的囚徒",
+      "pool_id": "legacy_1608192000_自由的囚徒",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1608192000,
+      "end_time": 1609358340,
+      "open_date": "2020-12-17",
+      "end_date": "2020-12-31",
+      "up_6": [
+        "山"
+      ],
+      "up_5": [
+        "卡夫卡",
+        "赫默"
+      ],
+      "up_4": [
+        "松果"
+      ]
+    },
+    {
+      "key": "legacy_1608753600_普池_44",
+      "title": "普池#44",
+      "pool_id": "legacy_1608753600_普池_44",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1608753600,
+      "end_time": 1609963140,
+      "open_date": "2020-12-24",
+      "end_date": "2021-01-07",
+      "up_6": [
+        "斯卡蒂",
+        "塞雷娅"
+      ],
+      "up_5": [
+        "芙兰卡",
+        "白金",
+        "极境"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1609833600_麦穗与赞美诗",
+      "title": "麦穗与赞美诗",
+      "pool_id": "legacy_1609833600_麦穗与赞美诗",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1609833600,
+      "end_time": 1610999940,
+      "open_date": "2021-01-05",
+      "end_date": "2021-01-19",
+      "up_6": [
+        "空弦"
+      ],
+      "up_5": [
+        "爱丽丝",
+        "贾维"
+      ],
+      "up_4": [
+        "豆苗"
+      ]
+    },
+    {
+      "key": "legacy_1609963200_普池_45",
+      "title": "普池#45",
+      "pool_id": "legacy_1609963200_普池_45",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1609963200,
+      "end_time": 1611172740,
+      "open_date": "2021-01-07",
+      "end_date": "2021-01-21",
+      "up_6": [
+        "银灰",
+        "闪灵"
+      ],
+      "up_5": [
+        "天火",
+        "安哲拉",
+        "蜜蜡"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1611043200_地生五金2021",
+      "title": "地生五金2021",
+      "pool_id": "legacy_1611043200_地生五金2021",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1611043200,
+      "end_time": 1612209540,
+      "open_date": "2021-01-19",
+      "end_date": "2021-02-02",
+      "up_6": [
+        "年",
+        "阿"
+      ],
+      "up_5": [
+        "吽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1611172800_普池_46",
+      "title": "普池#46",
+      "pool_id": "legacy_1611172800_普池_46",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1611172800,
+      "end_time": 1612382340,
+      "open_date": "2021-01-21",
+      "end_date": "2021-02-04",
+      "up_6": [
+        "陈",
+        "推进之王"
+      ],
+      "up_5": [
+        "可颂",
+        "临光",
+        "燧石"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1612382400_普池_47",
+      "title": "普池#47",
+      "pool_id": "legacy_1612382400_普池_47",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1612382400,
+      "end_time": 1613591940,
+      "open_date": "2021-02-04",
+      "end_date": "2021-02-18",
+      "up_6": [
+        "莫斯提马",
+        "棘刺"
+      ],
+      "up_5": [
+        "空",
+        "梅尔",
+        "四月"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1612512000_月隐晦明",
+      "title": "月隐晦明",
+      "pool_id": "legacy_1612512000_月隐晦明",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1612512000,
+      "end_time": 1613678340,
+      "open_date": "2021-02-05",
+      "end_date": "2021-02-19",
+      "up_6": [
+        "夕",
+        "嵯峨"
+      ],
+      "up_5": [
+        "乌有"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1613592000_普池_48",
+      "title": "普池#48",
+      "pool_id": "legacy_1613592000_普池_48",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1613592000,
+      "end_time": 1614801540,
+      "open_date": "2021-02-18",
+      "end_date": "2021-03-04",
+      "up_6": [
+        "伊芙利特",
+        "森蚺"
+      ],
+      "up_5": [
+        "惊蛰",
+        "幽灵鲨",
+        "食铁兽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1614801600_普池_49",
+      "title": "普池#49",
+      "pool_id": "legacy_1614801600_普池_49",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1614801600,
+      "end_time": 1616011140,
+      "open_date": "2021-03-04",
+      "end_date": "2021-03-18",
+      "up_6": [
+        "黑",
+        "史尔特尔"
+      ],
+      "up_5": [
+        "雷蛇",
+        "崖心",
+        "奥斯塔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1615276800_进攻_防守_战术交汇",
+      "title": "进攻、防守、战术交汇",
+      "pool_id": "legacy_1615276800_进攻_防守_战术交汇",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1615276800,
+      "end_time": 1616443140,
+      "open_date": "2021-03-09",
+      "end_date": "2021-03-23",
+      "up_6": [
+        "灰烬"
+      ],
+      "up_5": [
+        "霜华",
+        "闪击"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1616011200_普池_50",
+      "title": "普池#50",
+      "pool_id": "legacy_1616011200_普池_50",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1616011200,
+      "end_time": 1617220740,
+      "open_date": "2021-03-18",
+      "end_date": "2021-04-01",
+      "up_6": [
+        "刻俄柏",
+        "安洁莉娜"
+      ],
+      "up_5": [
+        "拉普兰德",
+        "普罗旺斯",
+        "絮雨"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1617091200_往日幻象_复刻",
+      "title": "往日幻象 复刻",
+      "pool_id": "legacy_1617091200_往日幻象_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1617091200,
+      "end_time": 1618257540,
+      "open_date": "2021-03-30",
+      "end_date": "2021-04-13",
+      "up_6": [
+        "傀影"
+      ],
+      "up_5": [
+        "巫恋",
+        "白面鸮"
+      ],
+      "up_4": [
+        "刻刀"
+      ]
+    },
+    {
+      "key": "legacy_1617220800_普池_51",
+      "title": "普池#51",
+      "pool_id": "legacy_1617220800_普池_51",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1617220800,
+      "end_time": 1618430340,
+      "open_date": "2021-04-01",
+      "end_date": "2021-04-15",
+      "up_6": [
+        "星熊",
+        "瑕光"
+      ],
+      "up_5": [
+        "凛冬",
+        "狮蝎",
+        "格劳克斯"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1618430400_普池_52",
+      "title": "普池#52",
+      "pool_id": "legacy_1618430400_普池_52",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1618430400,
+      "end_time": 1619639940,
+      "open_date": "2021-04-15",
+      "end_date": "2021-04-29",
+      "up_6": [
+        "赫拉格",
+        "泥岩"
+      ],
+      "up_5": [
+        "送葬人",
+        "卡夫卡",
+        "灰喉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1618473600_沙海过客",
+      "title": "沙海过客",
+      "pool_id": "legacy_1618473600_沙海过客",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1618473600,
+      "end_time": 1619639940,
+      "open_date": "2021-04-15",
+      "end_date": "2021-04-29",
+      "up_6": [
+        "异客"
+      ],
+      "up_5": [
+        "熔泉",
+        "慑砂"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1619640000_普池_53",
+      "title": "普池#53",
+      "pool_id": "legacy_1619640000_普池_53",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1619640000,
+      "end_time": 1620849540,
+      "open_date": "2021-04-29",
+      "end_date": "2021-05-13",
+      "up_6": [
+        "煌",
+        "山"
+      ],
+      "up_5": [
+        "布洛卡",
+        "燧石",
+        "石棉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1619856000_深悼",
+      "title": "深悼",
+      "pool_id": "legacy_1619856000_深悼",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1619856000,
+      "end_time": 1621022340,
+      "open_date": "2021-05-01",
+      "end_date": "2021-05-15",
+      "up_6": [
+        "浊心斯卡蒂",
+        "凯尔希"
+      ],
+      "up_5": [
+        "赤冬"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1620849600_普池_54",
+      "title": "普池#54",
+      "pool_id": "legacy_1620849600_普池_54",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1620849600,
+      "end_time": 1622059140,
+      "open_date": "2021-05-13",
+      "end_date": "2021-05-27",
+      "up_6": [
+        "阿",
+        "森蚺"
+      ],
+      "up_5": [
+        "真理",
+        "白面鸮",
+        "蓝毒"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1621065600_联合行动04",
+      "title": "联合行动04",
+      "pool_id": "legacy_1621065600_联合行动04",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1621065600,
+      "end_time": 1622231940,
+      "open_date": "2021-05-15",
+      "end_date": "2021-05-29",
+      "up_6": [
+        "棘刺",
+        "夜莺",
+        "铃兰",
+        "温蒂"
+      ],
+      "up_5": [
+        "临光",
+        "安哲拉",
+        "赫默",
+        "芙兰卡",
+        "极境",
+        "莱恩哈特"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1622059200_普池_55",
+      "title": "普池#55",
+      "pool_id": "legacy_1622059200_普池_55",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1622059200,
+      "end_time": 1623268740,
+      "open_date": "2021-05-27",
+      "end_date": "2021-06-10",
+      "up_6": [
+        "艾雅法拉",
+        "史尔特尔"
+      ],
+      "up_5": [
+        "槐琥",
+        "凛冬",
+        "华法琳"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1622534400_革新交响曲",
+      "title": "革新交响曲",
+      "pool_id": "legacy_1622534400_革新交响曲",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1622534400,
+      "end_time": 1623700740,
+      "open_date": "2021-06-01",
+      "end_date": "2021-06-15",
+      "up_6": [
+        "卡涅利安"
+      ],
+      "up_5": [
+        "绮良",
+        "崖心"
+      ],
+      "up_4": [
+        "深靛"
+      ]
+    },
+    {
+      "key": "legacy_1623268800_普池_56",
+      "title": "普池#56",
+      "pool_id": "legacy_1623268800_普池_56",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1623268800,
+      "end_time": 1624478340,
+      "open_date": "2021-06-10",
+      "end_date": "2021-06-24",
+      "up_6": [
+        "推进之王",
+        "莫斯提马"
+      ],
+      "up_5": [
+        "星极",
+        "诗怀雅",
+        "爱丽丝"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1623916800_君影轻灵_复刻",
+      "title": "君影轻灵 复刻",
+      "pool_id": "legacy_1623916800_君影轻灵_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1623916800,
+      "end_time": 1625083140,
+      "open_date": "2021-06-17",
+      "end_date": "2021-07-01",
+      "up_6": [
+        "铃兰"
+      ],
+      "up_5": [
+        "断崖",
+        "夜魔"
+      ],
+      "up_4": [
+        "卡达"
+      ]
+    },
+    {
+      "key": "legacy_1624478400_普池_57",
+      "title": "普池#57",
+      "pool_id": "legacy_1624478400_普池_57",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1624478400,
+      "end_time": 1625687940,
+      "open_date": "2021-06-24",
+      "end_date": "2021-07-08",
+      "up_6": [
+        "风笛",
+        "空弦"
+      ],
+      "up_5": [
+        "初雪",
+        "月禾",
+        "蜜蜡"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1625212800_从星火中来",
+      "title": "从星火中来",
+      "pool_id": "legacy_1625212800_从星火中来",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1625212800,
+      "end_time": 1626379140,
+      "open_date": "2021-07-02",
+      "end_date": "2021-07-16",
+      "up_6": [
+        "帕拉斯"
+      ],
+      "up_5": [
+        "幽灵鲨",
+        "红"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1625688000_普池_58",
+      "title": "普池#58",
+      "pool_id": "legacy_1625688000_普池_58",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1625688000,
+      "end_time": 1626897540,
+      "open_date": "2021-07-08",
+      "end_date": "2021-07-22",
+      "up_6": [
+        "塞雷娅",
+        "嵯峨"
+      ],
+      "up_5": [
+        "灰喉",
+        "食铁兽",
+        "四月"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1626768000_燃钢之心_暴躁铁皮_复刻",
+      "title": "燃钢之心 暴躁铁皮 复刻",
+      "pool_id": "legacy_1626768000_燃钢之心_暴躁铁皮_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1626768000,
+      "end_time": 1627934340,
+      "open_date": "2021-07-20",
+      "end_date": "2021-08-03",
+      "up_6": [
+        "森蚺"
+      ],
+      "up_5": [
+        "燧石",
+        "陨星"
+      ],
+      "up_4": [
+        "酸糖"
+      ]
+    },
+    {
+      "key": "legacy_1626897600_普池_59",
+      "title": "普池#59",
+      "pool_id": "legacy_1626897600_普池_59",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1626897600,
+      "end_time": 1628107140,
+      "open_date": "2021-07-22",
+      "end_date": "2021-08-05",
+      "up_6": [
+        "安洁莉娜",
+        "早露"
+      ],
+      "up_5": [
+        "梅尔",
+        "普罗旺斯",
+        "乌有"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1627977600_盛夏新星",
+      "title": "盛夏新星",
+      "pool_id": "legacy_1627977600_盛夏新星",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1627977600,
+      "end_time": 1629143940,
+      "open_date": "2021-08-03",
+      "end_date": "2021-08-17",
+      "up_6": [
+        "假日威龙陈",
+        "水月"
+      ],
+      "up_5": [
+        "羽毛笔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1628107200_普池_60",
+      "title": "普池#60",
+      "pool_id": "legacy_1628107200_普池_60",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1628107200,
+      "end_time": 1629316740,
+      "open_date": "2021-08-05",
+      "end_date": "2021-08-19",
+      "up_6": [
+        "傀影",
+        "泥岩"
+      ],
+      "up_5": [
+        "吽",
+        "苇草",
+        "贾维"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1629316800_普池_61",
+      "title": "普池#61",
+      "pool_id": "legacy_1629316800_普池_61",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1629316800,
+      "end_time": 1630526340,
+      "open_date": "2021-08-19",
+      "end_date": "2021-09-02",
+      "up_6": [
+        "闪灵",
+        "异客"
+      ],
+      "up_5": [
+        "守林人",
+        "卡夫卡",
+        "天火"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1629964800_不羁逆流_复刻",
+      "title": "不羁逆流 复刻",
+      "pool_id": "legacy_1629964800_不羁逆流_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1629964800,
+      "end_time": 1631131140,
+      "open_date": "2021-08-26",
+      "end_date": "2021-09-09",
+      "up_6": [
+        "棘刺"
+      ],
+      "up_5": [
+        "安哲拉",
+        "普罗旺斯"
+      ],
+      "up_4": [
+        "孑"
+      ]
+    },
+    {
+      "key": "legacy_1630526400_普池_62",
+      "title": "普池#62",
+      "pool_id": "legacy_1630526400_普池_62",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1630526400,
+      "end_time": 1631735940,
+      "open_date": "2021-09-02",
+      "end_date": "2021-09-16",
+      "up_6": [
+        "麦哲伦",
+        "刻俄柏"
+      ],
+      "up_5": [
+        "慑砂",
+        "絮雨",
+        "熔泉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1631736000_普池_63",
+      "title": "普池#63",
+      "pool_id": "legacy_1631736000_普池_63",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1631736000,
+      "end_time": 1632945540,
+      "open_date": "2021-09-16",
+      "end_date": "2021-09-30",
+      "up_6": [
+        "温蒂",
+        "空弦"
+      ],
+      "up_5": [
+        "格劳克斯",
+        "拉普兰德",
+        "空"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1631865600_小丘上的眠柳",
+      "title": "小丘上的眠柳",
+      "pool_id": "legacy_1631865600_小丘上的眠柳",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1631865600,
+      "end_time": 1633031940,
+      "open_date": "2021-09-17",
+      "end_date": "2021-10-01",
+      "up_6": [
+        "琴柳"
+      ],
+      "up_5": [
+        "桑葚",
+        "雷蛇"
+      ],
+      "up_4": [
+        "罗比菈塔"
+      ]
+    },
+    {
+      "key": "legacy_1632945600_普池_64",
+      "title": "普池#64",
+      "pool_id": "legacy_1632945600_普池_64",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1632945600,
+      "end_time": 1634155140,
+      "open_date": "2021-09-30",
+      "end_date": "2021-10-14",
+      "up_6": [
+        "能天使",
+        "凯尔希"
+      ],
+      "up_5": [
+        "巫恋",
+        "惊蛰",
+        "送葬人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1633075200_瑕光微明_复刻",
+      "title": "瑕光微明 复刻",
+      "pool_id": "legacy_1633075200_瑕光微明_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1633075200,
+      "end_time": 1634241540,
+      "open_date": "2021-10-01",
+      "end_date": "2021-10-15",
+      "up_6": [
+        "瑕光"
+      ],
+      "up_5": [
+        "奥斯塔",
+        "白金"
+      ],
+      "up_4": [
+        "泡泡"
+      ]
+    },
+    {
+      "key": "legacy_1634155200_普池_65",
+      "title": "普池#65",
+      "pool_id": "legacy_1634155200_普池_65",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1634155200,
+      "end_time": 1635364740,
+      "open_date": "2021-10-14",
+      "end_date": "2021-10-28",
+      "up_6": [
+        "斯卡蒂",
+        "伊芙利特"
+      ],
+      "up_5": [
+        "白面鸮",
+        "赤冬",
+        "莱恩哈特"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1634284800_漂泊于风",
+      "title": "漂泊于风",
+      "pool_id": "legacy_1634284800_漂泊于风",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1634284800,
+      "end_time": 1635451140,
+      "open_date": "2021-10-15",
+      "end_date": "2021-10-29",
+      "up_6": [
+        "远牙"
+      ],
+      "up_5": [
+        "灰毫",
+        "狮蝎"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1635364800_普池_66",
+      "title": "普池#66",
+      "pool_id": "legacy_1635364800_普池_66",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1635364800,
+      "end_time": 1636574340,
+      "open_date": "2021-10-28",
+      "end_date": "2021-11-11",
+      "up_6": [
+        "早露",
+        "陈"
+      ],
+      "up_5": [
+        "极境",
+        "布洛卡",
+        "可颂"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1635753600_循光道途",
+      "title": "循光道途",
+      "pool_id": "legacy_1635753600_循光道途",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1635753600,
+      "end_time": 1636919940,
+      "open_date": "2021-11-01",
+      "end_date": "2021-11-15",
+      "up_6": [
+        "耀骑士临光",
+        "焰尾"
+      ],
+      "up_5": [
+        "蚀清"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1636574400_普池_67",
+      "title": "普池#67",
+      "pool_id": "legacy_1636574400_普池_67",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1636574400,
+      "end_time": 1637783940,
+      "open_date": "2021-11-11",
+      "end_date": "2021-11-25",
+      "up_6": [
+        "星熊",
+        "卡涅利安"
+      ],
+      "up_5": [
+        "蓝毒",
+        "绮良",
+        "槐琥"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1636963200_联合行动05",
+      "title": "联合行动05",
+      "pool_id": "legacy_1636963200_联合行动05",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1636963200,
+      "end_time": 1638129540,
+      "open_date": "2021-11-15",
+      "end_date": "2021-11-29",
+      "up_6": [
+        "嵯峨",
+        "黑",
+        "傀影",
+        "史尔特尔"
+      ],
+      "up_5": [
+        "陨星",
+        "断崖",
+        "蜜蜡",
+        "燧石",
+        "四月",
+        "爱丽丝"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1637784000_普池_68",
+      "title": "普池#68",
+      "pool_id": "legacy_1637784000_普池_68",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1637784000,
+      "end_time": 1638993540,
+      "open_date": "2021-11-25",
+      "end_date": "2021-12-09",
+      "up_6": [
+        "夜莺",
+        "赫拉格"
+      ],
+      "up_5": [
+        "石棉",
+        "真理",
+        "华法琳"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1638864000_自由的囚徒_复刻",
+      "title": "自由的囚徒 复刻",
+      "pool_id": "legacy_1638864000_自由的囚徒_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1638864000,
+      "end_time": 1640030340,
+      "open_date": "2021-12-07",
+      "end_date": "2021-12-21",
+      "up_6": [
+        "山"
+      ],
+      "up_5": [
+        "卡夫卡",
+        "赫默"
+      ],
+      "up_4": [
+        "松果"
+      ]
+    },
+    {
+      "key": "legacy_1638993600_普池_69",
+      "title": "普池#69",
+      "pool_id": "legacy_1638993600_普池_69",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1638993600,
+      "end_time": 1640203140,
+      "open_date": "2021-12-09",
+      "end_date": "2021-12-23",
+      "up_6": [
+        "铃兰",
+        "帕拉斯"
+      ],
+      "up_5": [
+        "临光",
+        "芙兰卡",
+        "夜魔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1640073600_雪融之诺",
+      "title": "雪融之诺",
+      "pool_id": "legacy_1640073600_雪融之诺",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1640073600,
+      "end_time": 1641239940,
+      "open_date": "2021-12-21",
+      "end_date": "2022-01-04",
+      "up_6": [
+        "灵知"
+      ],
+      "up_5": [
+        "极光",
+        "初雪"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1640203200_普池_70",
+      "title": "普池#70",
+      "pool_id": "legacy_1640203200_普池_70",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1640203200,
+      "end_time": 1641412740,
+      "open_date": "2021-12-23",
+      "end_date": "2022-01-06",
+      "up_6": [
+        "莫斯提马",
+        "银灰"
+      ],
+      "up_5": [
+        "月禾",
+        "灰喉",
+        "星极"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1641412800_普池_71",
+      "title": "普池#71",
+      "pool_id": "legacy_1641412800_普池_71",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1641412800,
+      "end_time": 1642622340,
+      "open_date": "2022-01-06",
+      "end_date": "2022-01-20",
+      "up_6": [
+        "风笛",
+        "煌"
+      ],
+      "up_5": [
+        "苇草",
+        "幽灵鲨",
+        "食铁兽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1642622400_普池_72",
+      "title": "普池#72",
+      "pool_id": "legacy_1642622400_普池_72",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1642622400,
+      "end_time": 1643831940,
+      "open_date": "2022-01-20",
+      "end_date": "2022-02-03",
+      "up_6": [
+        "棘刺",
+        "艾雅法拉"
+      ],
+      "up_5": [
+        "诗怀雅",
+        "乌有",
+        "雷蛇"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1643097600_浊酒澄心",
+      "title": "浊酒澄心",
+      "pool_id": "legacy_1643097600_浊酒澄心",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1643097600,
+      "end_time": 1644263940,
+      "open_date": "2022-01-25",
+      "end_date": "2022-02-08",
+      "up_6": [
+        "令",
+        "老鲤"
+      ],
+      "up_5": [
+        "夜半"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1643832000_普池_73",
+      "title": "普池#73",
+      "pool_id": "legacy_1643832000_普池_73",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1643832000,
+      "end_time": 1645041540,
+      "open_date": "2022-02-03",
+      "end_date": "2022-02-17",
+      "up_6": [
+        "刻俄柏",
+        "水月"
+      ],
+      "up_5": [
+        "莱恩哈特",
+        "赤冬",
+        "安哲拉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1644912000_火花绽放",
+      "title": "火花绽放",
+      "pool_id": "legacy_1644912000_火花绽放",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1644912000,
+      "end_time": 1646078340,
+      "open_date": "2022-02-15",
+      "end_date": "2022-03-01",
+      "up_6": [
+        "澄闪"
+      ],
+      "up_5": [
+        "夏栎",
+        "天火"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1645041600_普池_74",
+      "title": "普池#74",
+      "pool_id": "legacy_1645041600_普池_74",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1645041600,
+      "end_time": 1646251140,
+      "open_date": "2022-02-17",
+      "end_date": "2022-03-03",
+      "up_6": [
+        "阿",
+        "琴柳"
+      ],
+      "up_5": [
+        "普罗旺斯",
+        "羽毛笔",
+        "吽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1646251200_普池_75",
+      "title": "普池#75",
+      "pool_id": "legacy_1646251200_普池_75",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1646251200,
+      "end_time": 1647460740,
+      "open_date": "2022-03-03",
+      "end_date": "2022-03-17",
+      "up_6": [
+        "森蚺",
+        "泥岩"
+      ],
+      "up_5": [
+        "断崖",
+        "桑葚",
+        "槐琥"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1647331200_炽焰无霾",
+      "title": "炽焰无霾",
+      "pool_id": "legacy_1647331200_炽焰无霾",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1647331200,
+      "end_time": 1648497540,
+      "open_date": "2022-03-15",
+      "end_date": "2022-03-29",
+      "up_6": [
+        "菲亚梅塔"
+      ],
+      "up_5": [
+        "风丸",
+        "送葬人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1647460800_普池_76",
+      "title": "普池#76",
+      "pool_id": "legacy_1647460800_普池_76",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1647460800,
+      "end_time": 1648670340,
+      "open_date": "2022-03-17",
+      "end_date": "2022-03-31",
+      "up_6": [
+        "伊芙利特",
+        "远牙"
+      ],
+      "up_5": [
+        "崖心",
+        "格劳克斯",
+        "巫恋"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1648540800_沙海过客_复刻",
+      "title": "沙海过客 复刻",
+      "pool_id": "legacy_1648540800_沙海过客_复刻",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1648540800,
+      "end_time": 1649707140,
+      "open_date": "2022-03-29",
+      "end_date": "2022-04-12",
+      "up_6": [
+        "异客"
+      ],
+      "up_5": [
+        "熔泉",
+        "慑砂"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1648670400_普池_77",
+      "title": "普池#77",
+      "pool_id": "legacy_1648670400_普池_77",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1648670400,
+      "end_time": 1649879940,
+      "open_date": "2022-03-31",
+      "end_date": "2022-04-14",
+      "up_6": [
+        "陈",
+        "焰尾"
+      ],
+      "up_5": [
+        "蜜蜡",
+        "絮雨",
+        "灰毫"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1649880000_普池_78",
+      "title": "普池#78",
+      "pool_id": "legacy_1649880000_普池_78",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1649880000,
+      "end_time": 1651089540,
+      "open_date": "2022-04-14",
+      "end_date": "2022-04-28",
+      "up_6": [
+        "史尔特尔",
+        "麦哲伦"
+      ],
+      "up_5": [
+        "空",
+        "极境",
+        "惊蛰"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1649923200_奔崖怒号",
+      "title": "奔崖怒号",
+      "pool_id": "legacy_1649923200_奔崖怒号",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1649923200,
+      "end_time": 1651089540,
+      "open_date": "2022-04-14",
+      "end_date": "2022-04-28",
+      "up_6": [
+        "号角"
+      ],
+      "up_5": [
+        "洛洛",
+        "华法琳"
+      ],
+      "up_4": [
+        "褐果"
+      ]
+    },
+    {
+      "key": "legacy_1651089600_普池_79",
+      "title": "普池#79",
+      "pool_id": "legacy_1651089600_普池_79",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1651089600,
+      "end_time": 1652299140,
+      "open_date": "2022-04-28",
+      "end_date": "2022-05-12",
+      "up_6": [
+        "推进之王",
+        "空弦"
+      ],
+      "up_5": [
+        "贾维",
+        "蚀清",
+        "守林人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1651392000_海蚀",
+      "title": "海蚀",
+      "pool_id": "legacy_1651392000_海蚀",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1651392000,
+      "end_time": 1652558340,
+      "open_date": "2022-05-01",
+      "end_date": "2022-05-15",
+      "up_6": [
+        "归溟幽灵鲨",
+        "艾丽妮"
+      ],
+      "up_5": [
+        "掠风"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1652299200_普池_80",
+      "title": "普池#80",
+      "pool_id": "legacy_1652299200_普池_80",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1652299200,
+      "end_time": 1653508740,
+      "open_date": "2022-05-12",
+      "end_date": "2022-05-26",
+      "up_6": [
+        "黑",
+        "灵知"
+      ],
+      "up_5": [
+        "可颂",
+        "赫默",
+        "梅尔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1652947200_联合行动06",
+      "title": "联合行动06",
+      "pool_id": "legacy_1652947200_联合行动06",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1652947200,
+      "end_time": 1654113540,
+      "open_date": "2022-05-19",
+      "end_date": "2022-06-02",
+      "up_6": [
+        "能天使",
+        "斯卡蒂",
+        "山",
+        "凯尔希"
+      ],
+      "up_5": [
+        "拉普兰德",
+        "雷蛇",
+        "普罗旺斯",
+        "食铁兽",
+        "月禾",
+        "赤冬"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1653508800_普池_81",
+      "title": "普池#81",
+      "pool_id": "legacy_1653508800_普池_81",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1653508800,
+      "end_time": 1654718340,
+      "open_date": "2022-05-26",
+      "end_date": "2022-06-09",
+      "up_6": [
+        "瑕光",
+        "嵯峨"
+      ],
+      "up_5": [
+        "布洛卡",
+        "爱丽丝",
+        "极光"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1654718400_普池_82",
+      "title": "普池#82",
+      "pool_id": "legacy_1654718400_普池_82",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1654718400,
+      "end_time": 1655927940,
+      "open_date": "2022-06-09",
+      "end_date": "2022-06-23",
+      "up_6": [
+        "赫拉格",
+        "老鲤"
+      ],
+      "up_5": [
+        "安哲拉",
+        "奥斯塔",
+        "绮良"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1654761600_不协和音程",
+      "title": "不协和音程",
+      "pool_id": "legacy_1654761600_不协和音程",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1654761600,
+      "end_time": 1655927940,
+      "open_date": "2022-06-09",
+      "end_date": "2022-06-23",
+      "up_6": [
+        "黑键"
+      ],
+      "up_5": [
+        "濯尘芙蓉",
+        "蓝毒"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1655928000_普池_83",
+      "title": "普池#83",
+      "pool_id": "legacy_1655928000_普池_83",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1655928000,
+      "end_time": 1657137540,
+      "open_date": "2022-06-23",
+      "end_date": "2022-07-07",
+      "up_6": [
+        "银灰",
+        "卡涅利安"
+      ],
+      "up_5": [
+        "凛冬",
+        "红",
+        "真理"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1657008000_沙洲引路人",
+      "title": "沙洲引路人",
+      "pool_id": "legacy_1657008000_沙洲引路人",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1657008000,
+      "end_time": 1658174340,
+      "open_date": "2022-07-05",
+      "end_date": "2022-07-19",
+      "up_6": [
+        "多萝西"
+      ],
+      "up_5": [
+        "承曦格雷伊",
+        "白面鸮"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1657137600_普池_84",
+      "title": "普池#84",
+      "pool_id": "legacy_1657137600_普池_84",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1657137600,
+      "end_time": 1658347140,
+      "open_date": "2022-07-07",
+      "end_date": "2022-07-21",
+      "up_6": [
+        "泥岩",
+        "澄闪"
+      ],
+      "up_5": [
+        "陨星",
+        "石棉",
+        "夜半"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1658347200_普池_85",
+      "title": "普池#85",
+      "pool_id": "legacy_1658347200_普池_85",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1658347200,
+      "end_time": 1659556740,
+      "open_date": "2022-07-21",
+      "end_date": "2022-08-04",
+      "up_6": [
+        "煌",
+        "塞雷娅"
+      ],
+      "up_5": [
+        "燧石",
+        "白金",
+        "夜魔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1659556800_普池_86",
+      "title": "普池#86",
+      "pool_id": "legacy_1659556800_普池_86",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1659556800,
+      "end_time": 1660766340,
+      "open_date": "2022-08-04",
+      "end_date": "2022-08-18",
+      "up_6": [
+        "安洁莉娜",
+        "温蒂"
+      ],
+      "up_5": [
+        "德克萨斯",
+        "临光",
+        "夏栎"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1660204800_巨斧与笔尖",
+      "title": "巨斧与笔尖",
+      "pool_id": "legacy_1660204800_巨斧与笔尖",
+      "rule_type": "LEGACY_LIMITED",
+      "limited": true,
+      "open_time": 1660204800,
+      "end_time": 1661371140,
+      "open_date": "2022-08-11",
+      "end_date": "2022-08-25",
+      "up_6": [
+        "百炼嘉维尔",
+        "鸿雪"
+      ],
+      "up_5": [
+        "晓歌"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1660766400_普池_87",
+      "title": "普池#87",
+      "pool_id": "legacy_1660766400_普池_87",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1660766400,
+      "end_time": 1661975940,
+      "open_date": "2022-08-18",
+      "end_date": "2022-09-01",
+      "up_6": [
+        "山",
+        "菲亚梅塔"
+      ],
+      "up_5": [
+        "四月",
+        "苇草",
+        "月禾"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1661414400_联合行动07",
+      "title": "联合行动07",
+      "pool_id": "legacy_1661414400_联合行动07",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1661414400,
+      "end_time": 1662580740,
+      "open_date": "2022-08-25",
+      "end_date": "2022-09-08",
+      "up_6": [
+        "风笛",
+        "卡涅利安",
+        "麦哲伦",
+        "异客"
+      ],
+      "up_5": [
+        "乌有",
+        "巫恋",
+        "熔泉",
+        "桑葚",
+        "羽毛笔",
+        "天火"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "legacy_1662624000_未曾起誓",
+      "title": "未曾起誓",
+      "pool_id": "legacy_1662624000_未曾起誓",
+      "rule_type": "LEGACY",
+      "limited": false,
+      "open_time": 1662624000,
+      "end_time": 1663790340,
+      "open_date": "2022-09-08",
+      "end_date": "2022-09-22",
+      "up_6": [
+        "玛恩纳"
+      ],
+      "up_5": [
+        "但书",
+        "芙兰卡"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_37_0_1",
+      "title": "适合多种场合的强力干员（赫拉格 / 煌）",
+      "pool_id": "CLASSIC_37_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1680753600,
+      "end_time": 1681934399,
+      "open_date": "2023-04-06",
+      "end_date": "2023-04-20",
+      "up_6": [
+        "赫拉格",
+        "煌"
+      ],
+      "up_5": [
+        "德克萨斯",
+        "慑砂",
+        "巫恋"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_37_0_2",
+      "title": "适合多种场合的强力干员（星熊 / 斯卡蒂）",
+      "pool_id": "CLASSIC_37_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1681934400,
+      "end_time": 1683143999,
+      "open_date": "2023-04-20",
+      "end_date": "2023-05-04",
+      "up_6": [
+        "星熊",
+        "斯卡蒂"
+      ],
+      "up_5": [
+        "赫默",
+        "芙兰卡",
+        "食铁兽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_38_0_1",
+      "title": "适合多种场合的强力干员（陈 / 风笛）",
+      "pool_id": "CLASSIC_38_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1683144000,
+      "end_time": 1684353599,
+      "open_date": "2023-05-04",
+      "end_date": "2023-05-18",
+      "up_6": [
+        "陈",
+        "风笛"
+      ],
+      "up_5": [
+        "夜魔",
+        "蓝毒",
+        "雷蛇"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_38_0_2",
+      "title": "适合多种场合的强力干员（推进之王 / 伊芙利特 / 艾雅法拉）",
+      "pool_id": "FESCLASSIC_38_0_2",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1684353600,
+      "end_time": 1685563199,
+      "open_date": "2023-05-18",
+      "end_date": "2023-06-01",
+      "up_6": [
+        "推进之王",
+        "伊芙利特",
+        "艾雅法拉",
+        "夜莺",
+        "塞雷娅",
+        "银灰",
+        "黑",
+        "麦哲伦",
+        "莫斯提马",
+        "阿",
+        "刻俄柏",
+        "傀影"
+      ],
+      "up_5": [
+        "白面鸮",
+        "凛冬",
+        "德克萨斯",
+        "拉普兰德",
+        "幽灵鲨",
+        "白金",
+        "陨星",
+        "天火",
+        "梅尔",
+        "华法琳",
+        "临光",
+        "红",
+        "普罗旺斯",
+        "守林人",
+        "崖心",
+        "初雪",
+        "真理",
+        "空",
+        "狮蝎",
+        "诗怀雅",
+        "格劳克斯",
+        "星极",
+        "送葬人",
+        "槐琥"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_38_0_3",
+      "title": "适合多种场合的强力干员（安洁莉娜 / 闪灵）",
+      "pool_id": "CLASSIC_38_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1685563200,
+      "end_time": 1686772799,
+      "open_date": "2023-06-01",
+      "end_date": "2023-06-15",
+      "up_6": [
+        "安洁莉娜",
+        "闪灵"
+      ],
+      "up_5": [
+        "苇草",
+        "布洛卡",
+        "灰喉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_39_0_1",
+      "title": "适合多种场合的强力干员（能天使 / 推进之王）",
+      "pool_id": "CLASSIC_39_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1686772800,
+      "end_time": 1687982399,
+      "open_date": "2023-06-15",
+      "end_date": "2023-06-29",
+      "up_6": [
+        "能天使",
+        "推进之王"
+      ],
+      "up_5": [
+        "送葬人",
+        "惊蛰",
+        "吽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_39_0_2",
+      "title": "适合多种场合的强力干员（塞雷娅 / 伊芙利特）",
+      "pool_id": "CLASSIC_39_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1687982400,
+      "end_time": 1689191999,
+      "open_date": "2023-06-29",
+      "end_date": "2023-07-13",
+      "up_6": [
+        "塞雷娅",
+        "伊芙利特"
+      ],
+      "up_5": [
+        "华法琳",
+        "拉普兰德",
+        "普罗旺斯"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_40_0_1",
+      "title": "适合多种场合的强力干员（麦哲伦 / 阿）",
+      "pool_id": "CLASSIC_40_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1689192000,
+      "end_time": 1690401599,
+      "open_date": "2023-07-13",
+      "end_date": "2023-07-27",
+      "up_6": [
+        "麦哲伦",
+        "阿"
+      ],
+      "up_5": [
+        "可颂",
+        "陨星",
+        "临光"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_40_0_2",
+      "title": "适合多种场合的强力干员（艾雅法拉 / 黑）",
+      "pool_id": "CLASSIC_40_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1690401600,
+      "end_time": 1691611199,
+      "open_date": "2023-07-27",
+      "end_date": "2023-08-10",
+      "up_6": [
+        "艾雅法拉",
+        "黑"
+      ],
+      "up_5": [
+        "诗怀雅",
+        "灰喉",
+        "狮蝎"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_41_0_1",
+      "title": "适合多种场合的强力干员（傀影 / 莫斯提马）",
+      "pool_id": "CLASSIC_41_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1691611200,
+      "end_time": 1692820799,
+      "open_date": "2023-08-10",
+      "end_date": "2023-08-24",
+      "up_6": [
+        "傀影",
+        "莫斯提马"
+      ],
+      "up_5": [
+        "红",
+        "崖心",
+        "星极"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_41_0_2",
+      "title": "适合多种场合的强力干员（能天使 / 艾雅法拉 / 安洁莉娜）",
+      "pool_id": "FESCLASSIC_41_0_2",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1692820800,
+      "end_time": 1694030399,
+      "open_date": "2023-08-24",
+      "end_date": "2023-09-07",
+      "up_6": [
+        "能天使",
+        "艾雅法拉",
+        "安洁莉娜",
+        "闪灵",
+        "夜莺",
+        "星熊",
+        "斯卡蒂",
+        "陈",
+        "赫拉格",
+        "煌",
+        "阿",
+        "风笛"
+      ],
+      "up_5": [
+        "白面鸮",
+        "芙兰卡",
+        "蓝毒",
+        "天火",
+        "梅尔",
+        "赫默",
+        "临光",
+        "雷蛇",
+        "可颂",
+        "普罗旺斯",
+        "守林人",
+        "崖心",
+        "初雪",
+        "真理",
+        "食铁兽",
+        "夜魔",
+        "槐琥",
+        "苇草",
+        "布洛卡",
+        "灰喉",
+        "吽",
+        "惊蛰",
+        "慑砂",
+        "巫恋"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_42_0_1",
+      "title": "适合多种场合的强力干员（阿 / 夜莺）",
+      "pool_id": "CLASSIC_42_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1694030400,
+      "end_time": 1695239999,
+      "open_date": "2023-09-07",
+      "end_date": "2023-09-21",
+      "up_6": [
+        "阿",
+        "夜莺"
+      ],
+      "up_5": [
+        "芙兰卡",
+        "雷蛇",
+        "槐琥"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_42_0_2",
+      "title": "适合多种场合的强力干员（刻俄柏 / 银灰）",
+      "pool_id": "CLASSIC_42_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1695240000,
+      "end_time": 1696449599,
+      "open_date": "2023-09-21",
+      "end_date": "2023-10-05",
+      "up_6": [
+        "刻俄柏",
+        "银灰"
+      ],
+      "up_5": [
+        "幽灵鲨",
+        "白面鸮",
+        "守林人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_42_0_3",
+      "title": "适合多种场合的强力干员（推进之王 / 赫拉格）",
+      "pool_id": "CLASSIC_42_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1696449600,
+      "end_time": 1697659199,
+      "open_date": "2023-10-05",
+      "end_date": "2023-10-19",
+      "up_6": [
+        "推进之王",
+        "赫拉格"
+      ],
+      "up_5": [
+        "空",
+        "格劳克斯",
+        "初雪"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_43_0_1",
+      "title": "适合多种场合的强力干员（伊芙利特 / 陈）",
+      "pool_id": "CLASSIC_43_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1697659200,
+      "end_time": 1698868799,
+      "open_date": "2023-10-19",
+      "end_date": "2023-11-02",
+      "up_6": [
+        "伊芙利特",
+        "陈"
+      ],
+      "up_5": [
+        "凛冬",
+        "梅尔",
+        "送葬人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_44_0_1",
+      "title": "适合多种场合的强力干员（风笛 / 星熊）",
+      "pool_id": "CLASSIC_44_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1698868800,
+      "end_time": 1700078399,
+      "open_date": "2023-11-02",
+      "end_date": "2023-11-16",
+      "up_6": [
+        "风笛",
+        "星熊"
+      ],
+      "up_5": [
+        "天火",
+        "德克萨斯",
+        "白金"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_44_0_2",
+      "title": "适合多种场合的强力干员（推进之王 / 伊芙利特 / 塞雷娅）",
+      "pool_id": "FESCLASSIC_44_0_2",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1700078400,
+      "end_time": 1701287999,
+      "open_date": "2023-11-16",
+      "end_date": "2023-11-30",
+      "up_6": [
+        "推进之王",
+        "伊芙利特",
+        "塞雷娅",
+        "银灰",
+        "斯卡蒂",
+        "黑",
+        "赫拉格",
+        "麦哲伦",
+        "莫斯提马",
+        "阿",
+        "刻俄柏",
+        "傀影"
+      ],
+      "up_5": [
+        "凛冬",
+        "德克萨斯",
+        "芙兰卡",
+        "拉普兰德",
+        "幽灵鲨",
+        "蓝毒",
+        "白金",
+        "陨星",
+        "赫默",
+        "华法琳",
+        "红",
+        "雷蛇",
+        "可颂",
+        "空",
+        "狮蝎",
+        "食铁兽",
+        "夜魔",
+        "诗怀雅",
+        "格劳克斯",
+        "星极",
+        "送葬人",
+        "苇草",
+        "吽",
+        "巫恋"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_44_0_3",
+      "title": "适合多种场合的强力干员（煌 / 安洁莉娜）",
+      "pool_id": "CLASSIC_44_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1701288000,
+      "end_time": 1702497599,
+      "open_date": "2023-11-30",
+      "end_date": "2023-12-14",
+      "up_6": [
+        "煌",
+        "安洁莉娜"
+      ],
+      "up_5": [
+        "真理",
+        "慑砂",
+        "巫恋"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_45_0_1",
+      "title": "适合多种场合的强力干员（闪灵 / 能天使）",
+      "pool_id": "CLASSIC_45_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1702497600,
+      "end_time": 1703707199,
+      "open_date": "2023-12-14",
+      "end_date": "2023-12-28",
+      "up_6": [
+        "闪灵",
+        "能天使"
+      ],
+      "up_5": [
+        "槐琥",
+        "蓝毒",
+        "夜魔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_45_0_3",
+      "title": "适合多种场合的强力干员（黑 / 傀影）",
+      "pool_id": "CLASSIC_45_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1704916800,
+      "end_time": 1706126399,
+      "open_date": "2024-01-11",
+      "end_date": "2024-01-25",
+      "up_6": [
+        "黑",
+        "傀影"
+      ],
+      "up_5": [
+        "食铁兽",
+        "布洛卡",
+        "苇草"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_45_0_4",
+      "title": "适合多种场合的强力干员（银灰 / 刻俄柏）",
+      "pool_id": "CLASSIC_45_0_4",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1706126400,
+      "end_time": 1707335999,
+      "open_date": "2024-01-25",
+      "end_date": "2024-02-08",
+      "up_6": [
+        "银灰",
+        "刻俄柏"
+      ],
+      "up_5": [
+        "雷蛇",
+        "赫默",
+        "惊蛰"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_47_0_1",
+      "title": "适合多种场合的强力干员（斯卡蒂 / 麦哲伦）",
+      "pool_id": "CLASSIC_47_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1707336000,
+      "end_time": 1708545599,
+      "open_date": "2024-02-08",
+      "end_date": "2024-02-22",
+      "up_6": [
+        "斯卡蒂",
+        "麦哲伦"
+      ],
+      "up_5": [
+        "初雪",
+        "吽",
+        "华法琳"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_47_0_2",
+      "title": "适合多种场合的强力干员（能天使 / 推进之王 / 伊芙利特）",
+      "pool_id": "FESCLASSIC_47_0_2",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1708545600,
+      "end_time": 1709755199,
+      "open_date": "2024-02-22",
+      "end_date": "2024-03-07",
+      "up_6": [
+        "能天使",
+        "推进之王",
+        "伊芙利特",
+        "安洁莉娜",
+        "闪灵",
+        "星熊",
+        "塞雷娅",
+        "陈",
+        "黑",
+        "煌",
+        "阿",
+        "风笛"
+      ],
+      "up_5": [
+        "白面鸮",
+        "凛冬",
+        "德克萨斯",
+        "拉普兰德",
+        "幽灵鲨",
+        "蓝毒",
+        "白金",
+        "陨星",
+        "天火",
+        "赫默",
+        "华法琳",
+        "临光",
+        "红",
+        "雷蛇",
+        "守林人",
+        "崖心",
+        "初雪",
+        "空",
+        "狮蝎",
+        "食铁兽",
+        "星极",
+        "送葬人",
+        "灰喉",
+        "巫恋"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_47_0_3",
+      "title": "适合多种场合的强力干员（莫斯提马 / 艾雅法拉）",
+      "pool_id": "CLASSIC_47_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1709755200,
+      "end_time": 1710964799,
+      "open_date": "2024-03-07",
+      "end_date": "2024-03-21",
+      "up_6": [
+        "莫斯提马",
+        "艾雅法拉"
+      ],
+      "up_5": [
+        "灰喉",
+        "拉普兰德",
+        "普罗旺斯"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_48_0_1",
+      "title": "适合多种场合的强力干员（赫拉格 / 阿）",
+      "pool_id": "CLASSIC_48_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1710964800,
+      "end_time": 1712174399,
+      "open_date": "2024-03-21",
+      "end_date": "2024-04-04",
+      "up_6": [
+        "赫拉格",
+        "阿"
+      ],
+      "up_5": [
+        "守林人",
+        "星极",
+        "临光"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_48_0_2",
+      "title": "适合多种场合的强力干员（夜莺 / 塞雷娅）",
+      "pool_id": "CLASSIC_48_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1712174400,
+      "end_time": 1713383999,
+      "open_date": "2024-04-04",
+      "end_date": "2024-04-18",
+      "up_6": [
+        "夜莺",
+        "塞雷娅"
+      ],
+      "up_5": [
+        "狮蝎",
+        "陨星",
+        "诗怀雅"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_49_0_1",
+      "title": "适合多种场合的强力干员（早露 / 棘刺）",
+      "pool_id": "CLASSIC_49_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1713384000,
+      "end_time": 1714593599,
+      "open_date": "2024-04-18",
+      "end_date": "2024-05-02",
+      "up_6": [
+        "早露",
+        "棘刺"
+      ],
+      "up_5": [
+        "慑砂",
+        "红",
+        "月禾"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_50_0_1",
+      "title": "适合多种场合的强力干员（能天使 / 银灰）",
+      "pool_id": "CLASSIC_50_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1714593600,
+      "end_time": 1715803199,
+      "open_date": "2024-05-02",
+      "end_date": "2024-05-16",
+      "up_6": [
+        "能天使",
+        "银灰"
+      ],
+      "up_5": [
+        "蓝毒",
+        "芙兰卡",
+        "可颂"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_50_0_2",
+      "title": "适合多种场合的强力干员（艾雅法拉 / 夜莺 / 斯卡蒂）",
+      "pool_id": "FESCLASSIC_50_0_2",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1715803200,
+      "end_time": 1717012799,
+      "open_date": "2024-05-16",
+      "end_date": "2024-05-30",
+      "up_6": [
+        "艾雅法拉",
+        "夜莺",
+        "斯卡蒂",
+        "赫拉格",
+        "麦哲伦",
+        "莫斯提马",
+        "阿",
+        "刻俄柏",
+        "傀影",
+        "温蒂",
+        "早露",
+        "棘刺"
+      ],
+      "up_5": [
+        "白面鸮",
+        "德克萨斯",
+        "芙兰卡",
+        "拉普兰德",
+        "幽灵鲨",
+        "蓝毒",
+        "梅尔",
+        "红",
+        "可颂",
+        "普罗旺斯",
+        "真理",
+        "夜魔",
+        "诗怀雅",
+        "格劳克斯",
+        "槐琥",
+        "苇草",
+        "布洛卡",
+        "吽",
+        "惊蛰",
+        "慑砂",
+        "极境",
+        "莱恩哈特",
+        "贾维",
+        "爱丽丝"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_50_0_3",
+      "title": "适合多种场合的强力干员（星熊 / 伊芙利特）",
+      "pool_id": "CLASSIC_50_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1717012800,
+      "end_time": 1718222399,
+      "open_date": "2024-05-30",
+      "end_date": "2024-06-13",
+      "up_6": [
+        "星熊",
+        "伊芙利特"
+      ],
+      "up_5": [
+        "巫恋",
+        "幽灵鲨",
+        "格劳克斯"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_51_0_1",
+      "title": "适合多种场合的强力干员（斯卡蒂 / 风笛）",
+      "pool_id": "CLASSIC_51_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1718222400,
+      "end_time": 1719431999,
+      "open_date": "2024-06-13",
+      "end_date": "2024-06-27",
+      "up_6": [
+        "斯卡蒂",
+        "风笛"
+      ],
+      "up_5": [
+        "安哲拉",
+        "絮雨",
+        "蓝毒"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_51_0_2",
+      "title": "适合多种场合的强力干员（陈 / 煌）",
+      "pool_id": "CLASSIC_51_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1719432000,
+      "end_time": 1720641599,
+      "open_date": "2024-06-27",
+      "end_date": "2024-07-11",
+      "up_6": [
+        "陈",
+        "煌"
+      ],
+      "up_5": [
+        "崖心",
+        "空",
+        "凛冬"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_52_0_1",
+      "title": "适合多种场合的强力干员（异客 / 莫斯提马）",
+      "pool_id": "CLASSIC_52_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1720641600,
+      "end_time": 1721851199,
+      "open_date": "2024-07-11",
+      "end_date": "2024-07-25",
+      "up_6": [
+        "异客",
+        "莫斯提马"
+      ],
+      "up_5": [
+        "狮蝎",
+        "德克萨斯",
+        "送葬人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_52_0_2",
+      "title": "适合多种场合的强力干员（能天使 / 伊芙利特 / 闪灵）",
+      "pool_id": "FESCLASSIC_52_0_2",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1721851200,
+      "end_time": 1723060799,
+      "open_date": "2024-07-25",
+      "end_date": "2024-08-08",
+      "up_6": [
+        "能天使",
+        "伊芙利特",
+        "闪灵",
+        "夜莺",
+        "银灰",
+        "陈",
+        "黑",
+        "煌",
+        "风笛",
+        "瑕光",
+        "泥岩",
+        "嵯峨"
+      ],
+      "up_5": [
+        "白面鸮",
+        "凛冬",
+        "白金",
+        "陨星",
+        "天火",
+        "赫默",
+        "华法琳",
+        "临光",
+        "雷蛇",
+        "守林人",
+        "崖心",
+        "初雪",
+        "空",
+        "狮蝎",
+        "食铁兽",
+        "星极",
+        "送葬人",
+        "灰喉",
+        "巫恋",
+        "极境",
+        "蜜蜡",
+        "奥斯塔",
+        "卡夫卡",
+        "熔泉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_53_0_1",
+      "title": "适合多种场合的强力干员（傀影 / 温蒂）",
+      "pool_id": "CLASSIC_53_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1723060800,
+      "end_time": 1724270399,
+      "open_date": "2024-08-08",
+      "end_date": "2024-08-22",
+      "up_6": [
+        "傀影",
+        "温蒂"
+      ],
+      "up_5": [
+        "白面鸮",
+        "贾维",
+        "天火"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_53_0_2",
+      "title": "适合多种场合的强力干员（塞雷娅 / 闪灵）",
+      "pool_id": "CLASSIC_53_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1724270400,
+      "end_time": 1725479999,
+      "open_date": "2024-08-22",
+      "end_date": "2024-09-05",
+      "up_6": [
+        "塞雷娅",
+        "闪灵"
+      ],
+      "up_5": [
+        "临光",
+        "白金",
+        "梅尔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_54_0_1",
+      "title": "适合多种场合的强力干员（安洁莉娜 / 瑕光）",
+      "pool_id": "CLASSIC_54_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1725480000,
+      "end_time": 1726689599,
+      "open_date": "2024-09-05",
+      "end_date": "2024-09-19",
+      "up_6": [
+        "安洁莉娜",
+        "瑕光"
+      ],
+      "up_5": [
+        "惊蛰",
+        "断崖",
+        "真理"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_54_0_2",
+      "title": "适合多种场合的强力干员（麦哲伦 / 黑）",
+      "pool_id": "CLASSIC_54_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1726689600,
+      "end_time": 1727899199,
+      "open_date": "2024-09-19",
+      "end_date": "2024-10-03",
+      "up_6": [
+        "麦哲伦",
+        "黑"
+      ],
+      "up_5": [
+        "普罗旺斯",
+        "莱恩哈特",
+        "槐琥"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "SPECIAL_54_0_5",
+      "title": "定向甄选（琴柳 / 黑键 / 伊内丝）",
+      "pool_id": "SPECIAL_54_0_5",
+      "rule_type": "SPECIAL",
+      "limited": false,
+      "open_time": 1727424000,
+      "end_time": 1728590399,
+      "open_date": "2024-09-27",
+      "end_date": "2024-10-11",
+      "up_6": [
+        "琴柳",
+        "黑键",
+        "伊内丝",
+        "赫德雷",
+        "薇薇安娜",
+        "逻各斯"
+      ],
+      "up_5": [
+        "桑葚",
+        "洛洛",
+        "承曦格雷伊",
+        "玫拉",
+        "空构",
+        "阿罗玛"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_54_0_3",
+      "title": "适合多种场合的强力干员（推进之王 / 刻俄柏）",
+      "pool_id": "CLASSIC_54_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1727899200,
+      "end_time": 1729108799,
+      "open_date": "2024-10-03",
+      "end_date": "2024-10-17",
+      "up_6": [
+        "推进之王",
+        "刻俄柏"
+      ],
+      "up_5": [
+        "布洛卡",
+        "夜魔",
+        "燧石"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_55_0_1",
+      "title": "适合多种场合的强力干员（空弦 / 森蚺）",
+      "pool_id": "CLASSIC_55_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1729108800,
+      "end_time": 1730318399,
+      "open_date": "2024-10-17",
+      "end_date": "2024-10-31",
+      "up_6": [
+        "空弦",
+        "森蚺"
+      ],
+      "up_5": [
+        "陨星",
+        "食铁兽",
+        "苇草"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_55_0_2",
+      "title": "适合多种场合的强力干员（艾雅法拉 / 铃兰）",
+      "pool_id": "CLASSIC_55_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1730318400,
+      "end_time": 1731527999,
+      "open_date": "2024-10-31",
+      "end_date": "2024-11-14",
+      "up_6": [
+        "艾雅法拉",
+        "铃兰"
+      ],
+      "up_5": [
+        "拉普兰德",
+        "乌有",
+        "赫默"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_56_0_1",
+      "title": "适合多种场合的强力干员（推进之王 / 安洁莉娜 / 星熊）",
+      "pool_id": "FESCLASSIC_56_0_1",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1731528000,
+      "end_time": 1732737599,
+      "open_date": "2024-11-14",
+      "end_date": "2024-11-28",
+      "up_6": [
+        "推进之王",
+        "安洁莉娜",
+        "星熊",
+        "塞雷娅",
+        "斯卡蒂",
+        "赫拉格",
+        "莫斯提马",
+        "刻俄柏",
+        "瑕光",
+        "山",
+        "空弦",
+        "异客"
+      ],
+      "up_5": [
+        "白面鸮",
+        "德克萨斯",
+        "芙兰卡",
+        "幽灵鲨",
+        "蓝毒",
+        "梅尔",
+        "红",
+        "可颂",
+        "普罗旺斯",
+        "真理",
+        "夜魔",
+        "格劳克斯",
+        "槐琥",
+        "苇草",
+        "布洛卡",
+        "惊蛰",
+        "巫恋",
+        "极境",
+        "石棉",
+        "莱恩哈特",
+        "贾维",
+        "安哲拉",
+        "燧石",
+        "絮雨"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_56_0_2",
+      "title": "适合多种场合的强力干员（棘刺 / 史尔特尔）",
+      "pool_id": "CLASSIC_56_0_2",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1732737600,
+      "end_time": 1733947199,
+      "open_date": "2024-11-28",
+      "end_date": "2024-12-12",
+      "up_6": [
+        "棘刺",
+        "史尔特尔"
+      ],
+      "up_5": [
+        "星极",
+        "雷蛇",
+        "四月"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_57_0_1",
+      "title": "适合多种场合的强力干员（阿 / 赫拉格）",
+      "pool_id": "CLASSIC_57_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1733947200,
+      "end_time": 1735156799,
+      "open_date": "2024-12-12",
+      "end_date": "2024-12-26",
+      "up_6": [
+        "阿",
+        "赫拉格"
+      ],
+      "up_5": [
+        "吽",
+        "奥斯塔",
+        "初雪"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_57_0_3",
+      "title": "适合多种场合的强力干员（山 / 夜莺）",
+      "pool_id": "CLASSIC_57_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1736366400,
+      "end_time": 1737575999,
+      "open_date": "2025-01-09",
+      "end_date": "2025-01-23",
+      "up_6": [
+        "山",
+        "夜莺"
+      ],
+      "up_5": [
+        "格劳克斯",
+        "华法琳",
+        "蜜蜡"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_58_0_1",
+      "title": "适合多种场合的强力干员（嵯峨 / 煌）",
+      "pool_id": "CLASSIC_58_0_1",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1737576000,
+      "end_time": 1738785599,
+      "open_date": "2025-01-23",
+      "end_date": "2025-02-06",
+      "up_6": [
+        "嵯峨",
+        "煌"
+      ],
+      "up_5": [
+        "白金",
+        "熔泉",
+        "灰喉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_58_0_2",
+      "title": "适合多种场合的强力干员（能天使 / 艾雅法拉 / 银灰）",
+      "pool_id": "FESCLASSIC_58_0_2",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1738785600,
+      "end_time": 1739995199,
+      "open_date": "2025-02-06",
+      "end_date": "2025-02-20",
+      "up_6": [
+        "能天使",
+        "艾雅法拉",
+        "银灰",
+        "麦哲伦",
+        "煌",
+        "阿",
+        "温蒂",
+        "铃兰",
+        "棘刺",
+        "森蚺",
+        "史尔特尔",
+        "嵯峨"
+      ],
+      "up_5": [
+        "凛冬",
+        "拉普兰德",
+        "陨星",
+        "天火",
+        "赫默",
+        "华法琳",
+        "临光",
+        "雷蛇",
+        "守林人",
+        "崖心",
+        "初雪",
+        "空",
+        "狮蝎",
+        "食铁兽",
+        "诗怀雅",
+        "星极",
+        "送葬人",
+        "灰喉",
+        "吽",
+        "慑砂",
+        "月禾",
+        "断崖",
+        "蜜蜡",
+        "四月"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_58_0_3",
+      "title": "适合多种场合的强力干员（泥岩 / 风笛）",
+      "pool_id": "CLASSIC_58_0_3",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1739995200,
+      "end_time": 1741204799,
+      "open_date": "2025-02-20",
+      "end_date": "2025-03-06",
+      "up_6": [
+        "泥岩",
+        "风笛"
+      ],
+      "up_5": [
+        "爱丽丝",
+        "夜魔",
+        "卡夫卡"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_58_0_4",
+      "title": "适合多种场合的强力干员（刻俄柏 / 早露）",
+      "pool_id": "CLASSIC_58_0_4",
+      "rule_type": "CLASSIC",
+      "limited": false,
+      "open_time": 1741204800,
+      "end_time": 1742414399,
+      "open_date": "2025-03-06",
+      "end_date": "2025-03-20",
+      "up_6": [
+        "刻俄柏",
+        "早露"
+      ],
+      "up_5": [
+        "贾维",
+        "守林人",
+        "极境"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_59_0_1",
+      "title": "适合多种场合的强力干员（温蒂 / 能天使）",
+      "pool_id": "CLASSIC_DOUBLE_59_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1742414400,
+      "end_time": 1743623999,
+      "open_date": "2025-03-20",
+      "end_date": "2025-04-03",
+      "up_6": [
+        "温蒂",
+        "能天使"
+      ],
+      "up_5": [
+        "石棉",
+        "诗怀雅",
+        "红"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "SPECIAL_59_0_3",
+      "title": "定向甄选（焰尾 / 白铁 / 赫德雷）",
+      "pool_id": "SPECIAL_59_0_3",
+      "rule_type": "SPECIAL",
+      "limited": false,
+      "open_time": 1742457600,
+      "end_time": 1743623999,
+      "open_date": "2025-03-20",
+      "end_date": "2025-04-03",
+      "up_6": [
+        "焰尾",
+        "白铁",
+        "赫德雷",
+        "逻各斯",
+        "乌尔比安",
+        "维娜·维多利亚"
+      ],
+      "up_5": [
+        "绮良",
+        "羽毛笔",
+        "灰毫",
+        "夏栎",
+        "晓歌",
+        "海霓"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_59_0_2",
+      "title": "适合多种场合的强力干员（伊芙利特 / 银灰）",
+      "pool_id": "CLASSIC_DOUBLE_59_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1743624000,
+      "end_time": 1744833599,
+      "open_date": "2025-04-03",
+      "end_date": "2025-04-17",
+      "up_6": [
+        "伊芙利特",
+        "银灰"
+      ],
+      "up_5": [
+        "德克萨斯",
+        "慑砂",
+        "月禾"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_60_0_1",
+      "title": "适合多种场合的强力干员（闪灵 / 莫斯提马）",
+      "pool_id": "CLASSIC_DOUBLE_60_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1744833600,
+      "end_time": 1746043199,
+      "open_date": "2025-04-17",
+      "end_date": "2025-05-01",
+      "up_6": [
+        "闪灵",
+        "莫斯提马"
+      ],
+      "up_5": [
+        "莱恩哈特",
+        "芙兰卡",
+        "可颂"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_60_0_2",
+      "title": "适合多种场合的强力干员（水月 / 空弦）",
+      "pool_id": "CLASSIC_DOUBLE_60_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1746043200,
+      "end_time": 1747252799,
+      "open_date": "2025-05-01",
+      "end_date": "2025-05-15",
+      "up_6": [
+        "水月",
+        "空弦"
+      ],
+      "up_5": [
+        "赫默",
+        "幽灵鲨",
+        "安哲拉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_61_0_1",
+      "title": "适合多种场合的强力干员（伊芙利特 / 安洁莉娜 / 夜莺）",
+      "pool_id": "FESCLASSIC_61_0_1",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1747252800,
+      "end_time": 1748462399,
+      "open_date": "2025-05-15",
+      "end_date": "2025-05-29",
+      "up_6": [
+        "伊芙利特",
+        "安洁莉娜",
+        "夜莺",
+        "斯卡蒂",
+        "陈",
+        "刻俄柏",
+        "风笛",
+        "史尔特尔",
+        "泥岩",
+        "山",
+        "琴柳",
+        "灵知"
+      ],
+      "up_5": [
+        "白面鸮",
+        "德克萨斯",
+        "白金",
+        "梅尔",
+        "红",
+        "可颂",
+        "真理",
+        "格劳克斯",
+        "槐琥",
+        "苇草",
+        "布洛卡",
+        "惊蛰",
+        "极境",
+        "石棉",
+        "莱恩哈特",
+        "贾维",
+        "燧石",
+        "奥斯塔",
+        "卡夫卡",
+        "爱丽丝",
+        "乌有",
+        "熔泉",
+        "赤冬",
+        "极光"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "SPECIAL_61_0_3",
+      "title": "定向甄选（锏 / 焰影苇草 / 妮芙）",
+      "pool_id": "SPECIAL_61_0_3",
+      "rule_type": "SPECIAL",
+      "limited": false,
+      "open_time": 1747296000,
+      "end_time": 1748462399,
+      "open_date": "2025-05-15",
+      "end_date": "2025-05-29",
+      "up_6": [
+        "锏",
+        "焰影苇草",
+        "妮芙",
+        "涤火杰西卡",
+        "左乐",
+        "斥罪"
+      ],
+      "up_5": [
+        "夜半",
+        "洛洛",
+        "和弦",
+        "深律",
+        "温米",
+        "波卜"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_61_0_2",
+      "title": "适合多种场合的强力干员（傀影 / 星熊）",
+      "pool_id": "CLASSIC_DOUBLE_61_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1748462400,
+      "end_time": 1749671999,
+      "open_date": "2025-05-29",
+      "end_date": "2025-06-12",
+      "up_6": [
+        "傀影",
+        "星熊"
+      ],
+      "up_5": [
+        "絮雨",
+        "巫恋",
+        "蓝毒"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_62_0_1",
+      "title": "适合多种场合的强力干员（瑕光 / 斯卡蒂）",
+      "pool_id": "CLASSIC_DOUBLE_62_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1749672000,
+      "end_time": 1750881599,
+      "open_date": "2025-06-12",
+      "end_date": "2025-06-26",
+      "up_6": [
+        "瑕光",
+        "斯卡蒂"
+      ],
+      "up_5": [
+        "夜魔",
+        "空",
+        "凛冬"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_62_0_2",
+      "title": "适合多种场合的强力干员（煌 / 陈）",
+      "pool_id": "CLASSIC_DOUBLE_62_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1750881600,
+      "end_time": 1752091199,
+      "open_date": "2025-06-26",
+      "end_date": "2025-07-10",
+      "up_6": [
+        "煌",
+        "陈"
+      ],
+      "up_5": [
+        "熔泉",
+        "崖心",
+        "狮蝎"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_63_0_1",
+      "title": "适合多种场合的强力干员（黑 / 异客）",
+      "pool_id": "CLASSIC_DOUBLE_63_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1752091200,
+      "end_time": 1753300799,
+      "open_date": "2025-07-10",
+      "end_date": "2025-07-24",
+      "up_6": [
+        "黑",
+        "异客"
+      ],
+      "up_5": [
+        "送葬人",
+        "白面鸮",
+        "天火"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_63_0_2",
+      "title": "适合多种场合的强力干员（森蚺 / 塞雷娅）",
+      "pool_id": "CLASSIC_DOUBLE_63_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1753300800,
+      "end_time": 1754510399,
+      "open_date": "2025-07-24",
+      "end_date": "2025-08-07",
+      "up_6": [
+        "森蚺",
+        "塞雷娅"
+      ],
+      "up_5": [
+        "苇草",
+        "临光",
+        "梅尔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_64_0_1",
+      "title": "适合多种场合的强力干员（风笛 / 麦哲伦）",
+      "pool_id": "CLASSIC_DOUBLE_64_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1754510400,
+      "end_time": 1755719999,
+      "open_date": "2025-08-07",
+      "end_date": "2025-08-21",
+      "up_6": [
+        "风笛",
+        "麦哲伦"
+      ],
+      "up_5": [
+        "华法琳",
+        "断崖",
+        "惊蛰"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_64_0_2",
+      "title": "适合多种场合的强力干员（闪灵 / 星熊 / 黑）",
+      "pool_id": "FESCLASSIC_64_0_2",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1755720000,
+      "end_time": 1756929599,
+      "open_date": "2025-08-21",
+      "end_date": "2025-09-04",
+      "up_6": [
+        "闪灵",
+        "星熊",
+        "黑",
+        "赫拉格",
+        "刻俄柏",
+        "傀影",
+        "温蒂",
+        "早露",
+        "史尔特尔",
+        "瑕光",
+        "凯尔希",
+        "焰尾"
+      ],
+      "up_5": [
+        "芙兰卡",
+        "幽灵鲨",
+        "蓝毒",
+        "陨星",
+        "赫默",
+        "雷蛇",
+        "普罗旺斯",
+        "守林人",
+        "初雪",
+        "食铁兽",
+        "诗怀雅",
+        "星极",
+        "灰喉",
+        "吽",
+        "慑砂",
+        "巫恋",
+        "月禾",
+        "断崖",
+        "蜜蜡",
+        "安哲拉",
+        "四月",
+        "絮雨",
+        "绮良",
+        "蚀清"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_64_0_3",
+      "title": "适合多种场合的强力干员（铃兰 / 远牙）",
+      "pool_id": "CLASSIC_DOUBLE_64_0_3",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1756929600,
+      "end_time": 1758139199,
+      "open_date": "2025-09-04",
+      "end_date": "2025-09-18",
+      "up_6": [
+        "铃兰",
+        "远牙"
+      ],
+      "up_5": [
+        "可颂",
+        "真理",
+        "槐琥"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_65_0_1",
+      "title": "适合多种场合的强力干员（银灰 / 安洁莉娜）",
+      "pool_id": "CLASSIC_DOUBLE_65_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1758139200,
+      "end_time": 1759348799,
+      "open_date": "2025-09-18",
+      "end_date": "2025-10-02",
+      "up_6": [
+        "银灰",
+        "安洁莉娜"
+      ],
+      "up_5": [
+        "诗怀雅",
+        "普罗旺斯",
+        "布洛卡"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "SPECIAL_65_0_5",
+      "title": "定向甄选（Mon3tr / 逻各斯 / 赫德雷）",
+      "pool_id": "SPECIAL_65_0_5",
+      "rule_type": "SPECIAL",
+      "limited": false,
+      "open_time": 1758787200,
+      "end_time": 1759953599,
+      "open_date": "2025-09-25",
+      "end_date": "2025-10-09",
+      "up_6": [
+        "Mon3tr",
+        "逻各斯",
+        "赫德雷",
+        "阿斯卡纶",
+        "莱伊",
+        "黑键"
+      ],
+      "up_5": [
+        "但书",
+        "火哨",
+        "空构",
+        "海霓",
+        "诺威尔",
+        "蒂比"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_65_0_2",
+      "title": "适合多种场合的强力干员（凯尔希 / 推进之王）",
+      "pool_id": "CLASSIC_DOUBLE_65_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1759348800,
+      "end_time": 1760558399,
+      "open_date": "2025-10-02",
+      "end_date": "2025-10-16",
+      "up_6": [
+        "凯尔希",
+        "推进之王"
+      ],
+      "up_5": [
+        "四月",
+        "陨星",
+        "拉普兰德"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_66_0_1",
+      "title": "适合多种场合的强力干员（莫斯提马 / 灵知）",
+      "pool_id": "CLASSIC_DOUBLE_66_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1760558400,
+      "end_time": 1761767999,
+      "open_date": "2025-10-16",
+      "end_date": "2025-10-30",
+      "up_6": [
+        "莫斯提马",
+        "灵知"
+      ],
+      "up_5": [
+        "月禾",
+        "燧石",
+        "食铁兽"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_66_0_2",
+      "title": "适合多种场合的强力干员（赫拉格 / 艾雅法拉）",
+      "pool_id": "CLASSIC_DOUBLE_66_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1761768000,
+      "end_time": 1762977599,
+      "open_date": "2025-10-30",
+      "end_date": "2025-11-13",
+      "up_6": [
+        "赫拉格",
+        "艾雅法拉"
+      ],
+      "up_5": [
+        "红",
+        "乌有",
+        "初雪"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_67_0_1",
+      "title": "适合多种场合的强力干员（能天使 / 塞雷娅 / 煌）",
+      "pool_id": "FESCLASSIC_67_0_1",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1762977600,
+      "end_time": 1764187199,
+      "open_date": "2025-11-13",
+      "end_date": "2025-11-27",
+      "up_6": [
+        "能天使",
+        "塞雷娅",
+        "煌",
+        "棘刺",
+        "森蚺",
+        "泥岩",
+        "山",
+        "空弦",
+        "嵯峨",
+        "异客",
+        "卡涅利安",
+        "帕拉斯"
+      ],
+      "up_5": [
+        "凛冬",
+        "天火",
+        "梅尔",
+        "华法琳",
+        "临光",
+        "可颂",
+        "崖心",
+        "空",
+        "狮蝎",
+        "夜魔",
+        "格劳克斯",
+        "送葬人",
+        "苇草",
+        "惊蛰",
+        "极境",
+        "石棉",
+        "莱恩哈特",
+        "贾维",
+        "奥斯塔",
+        "卡夫卡",
+        "爱丽丝",
+        "熔泉",
+        "羽毛笔",
+        "桑葚"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "SPECIAL_67_0_3",
+      "title": "定向甄选（玛恩纳 / 白铁 / 乌尔比安）",
+      "pool_id": "SPECIAL_67_0_3",
+      "rule_type": "SPECIAL",
+      "limited": false,
+      "open_time": 1763107200,
+      "end_time": 1764273599,
+      "open_date": "2025-11-14",
+      "end_date": "2025-11-28",
+      "up_6": [
+        "玛恩纳",
+        "白铁",
+        "乌尔比安",
+        "妮芙",
+        "娜仁图亚",
+        "酒神"
+      ],
+      "up_5": [
+        "濯尘芙蓉",
+        "青枳",
+        "深律",
+        "阿罗玛",
+        "渡桥",
+        "聆音"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_67_0_2",
+      "title": "适合多种场合的强力干员（史尔特尔 / 阿）",
+      "pool_id": "CLASSIC_DOUBLE_67_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1764187200,
+      "end_time": 1765396799,
+      "open_date": "2025-11-27",
+      "end_date": "2025-12-11",
+      "up_6": [
+        "史尔特尔",
+        "阿"
+      ],
+      "up_5": [
+        "芙兰卡",
+        "雷蛇",
+        "星极"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_68_0_1",
+      "title": "适合多种场合的强力干员（夜莺 / 棘刺）",
+      "pool_id": "CLASSIC_DOUBLE_68_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1765396800,
+      "end_time": 1766606399,
+      "open_date": "2025-12-11",
+      "end_date": "2025-12-25",
+      "up_6": [
+        "夜莺",
+        "棘刺"
+      ],
+      "up_5": [
+        "幽灵鲨",
+        "绮良",
+        "奥斯塔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_68_0_3",
+      "title": "适合多种场合的强力干员（早露 / 山）",
+      "pool_id": "CLASSIC_DOUBLE_68_0_3",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1767816000,
+      "end_time": 1769025599,
+      "open_date": "2026-01-08",
+      "end_date": "2026-01-22",
+      "up_6": [
+        "早露",
+        "山"
+      ],
+      "up_5": [
+        "空",
+        "吽",
+        "格劳克斯"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_69_0_1",
+      "title": "适合多种场合的强力干员（能天使 / 伊芙利特）",
+      "pool_id": "CLASSIC_DOUBLE_69_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1769025600,
+      "end_time": 1770235199,
+      "open_date": "2026-01-22",
+      "end_date": "2026-02-05",
+      "up_6": [
+        "能天使",
+        "伊芙利特"
+      ],
+      "up_5": [
+        "蜜蜡",
+        "桑葚",
+        "白金"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_69_0_2",
+      "title": "适合多种场合的强力干员（琴柳 / 卡涅利安）",
+      "pool_id": "CLASSIC_DOUBLE_69_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1770235200,
+      "end_time": 1771444799,
+      "open_date": "2026-02-05",
+      "end_date": "2026-02-19",
+      "up_6": [
+        "琴柳",
+        "卡涅利安"
+      ],
+      "up_5": [
+        "凛冬",
+        "灰喉",
+        "极光"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_70_0_1",
+      "title": "适合多种场合的强力干员（推进之王 / 安洁莉娜 / 陈）",
+      "pool_id": "FESCLASSIC_70_0_1",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1771444800,
+      "end_time": 1772654399,
+      "open_date": "2026-02-19",
+      "end_date": "2026-03-05",
+      "up_6": [
+        "推进之王",
+        "安洁莉娜",
+        "陈",
+        "麦哲伦",
+        "风笛",
+        "傀影",
+        "早露",
+        "铃兰",
+        "泥岩",
+        "山",
+        "水月",
+        "远牙"
+      ],
+      "up_5": [
+        "芙兰卡",
+        "拉普兰德",
+        "幽灵鲨",
+        "白金",
+        "陨星",
+        "普罗旺斯",
+        "真理",
+        "诗怀雅",
+        "槐琥",
+        "布洛卡",
+        "吽",
+        "慑砂",
+        "石棉",
+        "月禾",
+        "断崖",
+        "蜜蜡",
+        "安哲拉",
+        "燧石",
+        "四月",
+        "絮雨",
+        "卡夫卡",
+        "乌有",
+        "熔泉",
+        "灰毫"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "SPECIAL_70_0_3",
+      "title": "定向甄选（遥 / Mon3tr / 逻各斯）",
+      "pool_id": "SPECIAL_70_0_3",
+      "rule_type": "SPECIAL",
+      "limited": false,
+      "open_time": 1771920000,
+      "end_time": 1773086399,
+      "open_date": "2026-02-24",
+      "end_date": "2026-03-10",
+      "up_6": [
+        "遥",
+        "Mon3tr",
+        "逻各斯",
+        "阿斯卡纶",
+        "维娜·维多利亚",
+        "艾丽妮"
+      ],
+      "up_5": [
+        "夜半",
+        "承曦格雷伊",
+        "晓歌",
+        "刺玫",
+        "录武官",
+        "折桠"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_70_0_2",
+      "title": "适合多种场合的强力干员（星熊 / 嵯峨）",
+      "pool_id": "CLASSIC_DOUBLE_70_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1772654400,
+      "end_time": 1773863999,
+      "open_date": "2026-03-05",
+      "end_date": "2026-03-19",
+      "up_6": [
+        "星熊",
+        "嵯峨"
+      ],
+      "up_5": [
+        "极境",
+        "蚀清",
+        "爱丽丝"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "RETURN_71_0_1",
+      "title": "归航寻访",
+      "pool_id": "RETURN_71_0_1",
+      "rule_type": "BACKFLOW",
+      "limited": false,
+      "open_time": 1773097200,
+      "end_time": 1903809599,
+      "open_date": "2026-03-10",
+      "end_date": "2030-05-01",
+      "up_6": [
+        "焰影苇草",
+        "仇白",
+        "提丰",
+        "圣约送葬人",
+        "莱伊",
+        "阿斯卡纶"
+      ],
+      "up_5": [
+        "晓歌",
+        "但书",
+        "明椒",
+        "子月",
+        "火哨",
+        "阿罗玛"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_71_0_1",
+      "title": "适合多种场合的强力干员（帕拉斯 / 泥岩）",
+      "pool_id": "CLASSIC_DOUBLE_71_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1773864000,
+      "end_time": 1775073599,
+      "open_date": "2026-03-19",
+      "end_date": "2026-04-02",
+      "up_6": [
+        "帕拉斯",
+        "泥岩"
+      ],
+      "up_5": [
+        "天火",
+        "卡夫卡",
+        "赤冬"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_71_0_2",
+      "title": "适合多种场合的强力干员（斯卡蒂 / 刻俄柏）",
+      "pool_id": "CLASSIC_DOUBLE_71_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1775073600,
+      "end_time": 1776283199,
+      "open_date": "2026-04-02",
+      "end_date": "2026-04-16",
+      "up_6": [
+        "斯卡蒂",
+        "刻俄柏"
+      ],
+      "up_5": [
+        "真理",
+        "贾维",
+        "守林人"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_72_0_1",
+      "title": "适合多种场合的强力干员（塞雷娅 / 温蒂）",
+      "pool_id": "CLASSIC_DOUBLE_72_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1776283200,
+      "end_time": 1777492799,
+      "open_date": "2026-04-16",
+      "end_date": "2026-04-30",
+      "up_6": [
+        "塞雷娅",
+        "温蒂"
+      ],
+      "up_5": [
+        "断崖",
+        "灰毫",
+        "羽毛笔"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_72_0_2",
+      "title": "适合多种场合的强力干员（陈 / 闪灵）",
+      "pool_id": "CLASSIC_DOUBLE_72_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1777492800,
+      "end_time": 1778702399,
+      "open_date": "2026-04-30",
+      "end_date": "2026-05-14",
+      "up_6": [
+        "陈",
+        "闪灵"
+      ],
+      "up_5": [
+        "槐琥",
+        "德克萨斯",
+        "石棉"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "FESCLASSIC_73_0_1",
+      "title": "适合多种场合的强力干员（艾雅法拉 / 星熊 / 银灰）",
+      "pool_id": "FESCLASSIC_73_0_1",
+      "rule_type": "FESCLASSIC",
+      "limited": false,
+      "open_time": 1778702400,
+      "end_time": 1779911999,
+      "open_date": "2026-05-14",
+      "end_date": "2026-05-28",
+      "up_6": [
+        "艾雅法拉",
+        "星熊",
+        "银灰",
+        "莫斯提马",
+        "温蒂",
+        "史尔特尔",
+        "凯尔希",
+        "琴柳",
+        "焰尾",
+        "灵知",
+        "澄闪",
+        "多萝西"
+      ],
+      "up_5": [
+        "德克萨斯",
+        "蓝毒",
+        "赫默",
+        "食铁兽",
+        "夜魔",
+        "星极",
+        "灰喉",
+        "惊蛰",
+        "巫恋",
+        "极境",
+        "莱恩哈特",
+        "贾维",
+        "奥斯塔",
+        "爱丽丝",
+        "乌有",
+        "赤冬",
+        "绮良",
+        "羽毛笔",
+        "桑葚",
+        "灰毫",
+        "蚀清",
+        "极光",
+        "夜半",
+        "夏栎"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "SPECIAL_73_0_3",
+      "title": "定向甄选（司霆惊蛰 / 圣聆初雪 / 仇白）",
+      "pool_id": "SPECIAL_73_0_3",
+      "rule_type": "SPECIAL",
+      "limited": false,
+      "open_time": 1778832000,
+      "end_time": 1779998399,
+      "open_date": "2026-05-15",
+      "end_date": "2026-05-29",
+      "up_6": [
+        "司霆惊蛰",
+        "圣聆初雪",
+        "仇白",
+        "提丰",
+        "烛煌",
+        "隐德来希"
+      ],
+      "up_5": [
+        "晓歌",
+        "空构",
+        "裁度",
+        "折桠",
+        "撷英调香师",
+        "风絮"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_73_0_2",
+      "title": "适合多种场合的强力干员（异客 / 瑕光）",
+      "pool_id": "CLASSIC_DOUBLE_73_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1779912000,
+      "end_time": 1781121599,
+      "open_date": "2026-05-28",
+      "end_date": "2026-06-11",
+      "up_6": [
+        "异客",
+        "瑕光"
+      ],
+      "up_5": [
+        "燧石",
+        "慑砂",
+        "莱恩哈特"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_74_0_1",
+      "title": "适合多种场合的强力干员（焰尾 / 水月）",
+      "pool_id": "CLASSIC_DOUBLE_74_0_1",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1781121600,
+      "end_time": 1782331199,
+      "open_date": "2026-06-11",
+      "end_date": "2026-06-25",
+      "up_6": [
+        "焰尾",
+        "水月"
+      ],
+      "up_5": [
+        "安哲拉",
+        "赫默",
+        "絮雨"
+      ],
+      "up_4": []
+    },
+    {
+      "key": "CLASSIC_DOUBLE_74_0_2",
+      "title": "适合多种场合的强力干员（空弦 / 傀影）",
+      "pool_id": "CLASSIC_DOUBLE_74_0_2",
+      "rule_type": "CLASSIC_DOUBLE",
+      "limited": false,
+      "open_time": 1782331200,
+      "end_time": 1783540799,
+      "open_date": "2026-06-25",
+      "end_date": "2026-07-09",
+      "up_6": [
+        "空弦",
+        "傀影"
+      ],
+      "up_5": [
+        "蓝毒",
+        "夜魔",
+        "熔泉"
+      ],
+      "up_4": []
+    }
+  ]
+}
