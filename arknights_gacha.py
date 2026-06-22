@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import html
 import random
 import re
 import threading
@@ -8,12 +10,17 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote, urljoin
 from zoneinfo import ZoneInfo
 
 
 BASE_DIR = Path(__file__).resolve().parent
 STATE_PATH = BASE_DIR / "bot_memory" / "arknights_gacha.json"
 OUTPUT_DIR = BASE_DIR / "bot_memory" / "arknights_gacha_images"
+ASSET_DIR = BASE_DIR / "assets" / "akgacha"
+PORTRAIT_DIR = BASE_DIR / "bot_memory" / "arknights_gacha_assets" / "half"
+PRTS_HALF_MAP_PATH = BASE_DIR / "bot_memory" / "arknights_prts_halves.json"
+PRTS_OPERATOR_LIST_URL = "https://prts.wiki/w/%E5%B9%B2%E5%91%98%E4%B8%80%E8%A7%88"
 CHINA_TZ = ZoneInfo("Asia/Shanghai")
 STATE_LOCK = threading.RLock()
 
@@ -626,6 +633,163 @@ def rarity_colors(rarity: int) -> tuple[tuple[int, int, int], tuple[int, int, in
     }.get(rarity, ((132, 143, 160), (47, 55, 68)))
 
 
+def safe_cache_name(name: str) -> str:
+    digest = hashlib.sha1(str(name or "").encode("utf-8")).hexdigest()[:16]
+    slug = re.sub(r"[^A-Za-z0-9_-]+", "_", str(name or "").strip())[:18].strip("_")
+    return f"{slug or 'operator'}_{digest}"
+
+
+def load_prts_half_map() -> dict[str, str]:
+    if PRTS_HALF_MAP_PATH.exists():
+        try:
+            data = json.loads(PRTS_HALF_MAP_PATH.read_text(encoding="utf-8"))
+            fetched_at = float(data.get("fetched_at") or 0)
+            halves = data.get("halves")
+            if isinstance(halves, dict) and halves and time.time() - fetched_at < 7 * 24 * 3600:
+                return {str(k): str(v) for k, v in halves.items() if v}
+        except Exception:
+            pass
+
+    try:
+        text = fetch_url_bytes(PRTS_OPERATOR_LIST_URL, timeout=20).decode("utf-8", errors="replace")
+        halves: dict[str, str] = {}
+        for tag in re.findall(r"<div[^>]+class=[\"']smwdata[\"'][^>]*>", text):
+            attrs = {
+                key: html.unescape(value)
+                for key, value in re.findall(r"([\w:-]+)=[\"'](.*?)[\"']", tag)
+            }
+            name = attrs.get("data-cn", "").strip()
+            half = attrs.get("data-half", "").strip()
+            if not name or not half:
+                continue
+            if half.startswith("//"):
+                half = "https:" + half
+            elif half.startswith("/"):
+                half = urljoin("https://prts.wiki", half)
+            halves[name] = half
+        if halves:
+            PRTS_HALF_MAP_PATH.parent.mkdir(parents=True, exist_ok=True)
+            PRTS_HALF_MAP_PATH.write_text(
+                json.dumps({"fetched_at": time.time(), "halves": halves}, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            return halves
+    except Exception:
+        pass
+
+    if PRTS_HALF_MAP_PATH.exists():
+        try:
+            data = json.loads(PRTS_HALF_MAP_PATH.read_text(encoding="utf-8"))
+            halves = data.get("halves")
+            if isinstance(halves, dict):
+                return {str(k): str(v) for k, v in halves.items() if v}
+        except Exception:
+            pass
+    return {}
+
+
+def fetch_url_bytes(url: str, timeout: int = 20) -> bytes:
+    try:
+        import requests
+
+        response = requests.get(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Wendell QQ bot)"},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        return bytes(response.content)
+    except ModuleNotFoundError:
+        from urllib.request import Request, urlopen
+
+        request = Request(url, headers={"User-Agent": "Mozilla/5.0 (Wendell QQ bot)"})
+        with urlopen(request, timeout=timeout) as response:
+            return response.read()
+
+
+def resolve_prts_file_image_url(file_name: str) -> str:
+    page_url = "https://prts.wiki/w/" + quote(f"文件:{file_name}")
+    text = fetch_url_bytes(page_url, timeout=12).decode("utf-8", errors="replace")
+    patterns = (
+        r'<div[^>]+class=["\']fullImageLink["\'][^>]*>\s*<a[^>]+href=["\']([^"\']+)["\']',
+        r'<div[^>]+id=["\']file["\'][^>]*>\s*<a[^>]+href=["\']([^"\']+)["\']',
+        r'<a[^>]+href=["\'](https://media\.prts\.wiki/[^"\']+?\.png)["\']',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return html.unescape(match.group(1)).split("?", 1)[0]
+    return ""
+
+
+def resolve_operator_portrait_url(name: str) -> str:
+    halves = load_prts_half_map()
+    url = halves.get(name)
+    if url:
+        return url
+
+    compact = re.sub(r"\s+", "", name)
+    for candidate_name, candidate_url in halves.items():
+        if compact and compact == re.sub(r"\s+", "", candidate_name):
+            return candidate_url
+
+    for file_name in (
+        f"半身像_{name}_1.png",
+        f"半身像_{name}.png",
+        f"立绘_{name}_1.png",
+    ):
+        try:
+            url = resolve_prts_file_image_url(file_name)
+            if url:
+                return url
+        except Exception:
+            continue
+    return ""
+
+
+def ensure_operator_portrait(name: str) -> Path | None:
+    value = str(name or "").strip()
+    if not value:
+        return None
+    PORTRAIT_DIR.mkdir(parents=True, exist_ok=True)
+    target = PORTRAIT_DIR / f"{safe_cache_name(value)}.png"
+    if target.exists() and target.stat().st_size > 0:
+        return target
+
+    url = resolve_operator_portrait_url(value)
+    if not url:
+        return None
+
+    try:
+        from PIL import Image
+
+        target.write_bytes(fetch_url_bytes(url, timeout=20))
+        with Image.open(target) as image:
+            image.convert("RGBA").save(target)
+        return target
+    except Exception:
+        try:
+            if target.exists():
+                target.unlink()
+        except Exception:
+            pass
+        return None
+
+
+def load_akgacha_background(rarity: int, size: tuple[int, int]):
+    from PIL import Image, ImageDraw
+
+    path = ASSET_DIR / f"back_{max(3, min(6, int(rarity)))}.png"
+    if path.exists():
+        return Image.open(path).convert("RGBA").resize(size, Image.Resampling.LANCZOS)
+
+    light, dark = rarity_colors(rarity)
+    fallback = Image.new("RGBA", size, (*dark, 255))
+    draw = ImageDraw.Draw(fallback, "RGBA")
+    draw.rectangle((0, 0, size[0], 18), fill=(*light, 255))
+    return fallback
+
+
 def draw_operator_card(draw: Any, box: tuple[int, int, int, int], result: dict[str, Any]) -> None:
     x1, y1, x2, y2 = box
     rarity = int(result.get("rarity") or 3)
@@ -666,46 +830,50 @@ def format_pull_caption(results: list[dict[str, Any]], state: dict[str, Any], ni
 
 
 def render_gacha_image(results: list[dict[str, Any]], state: dict[str, Any], nickname: str, banner_key: str) -> Path:
-    from PIL import Image, ImageDraw
+    from PIL import Image, ImageDraw, ImageFilter
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    width = 1080
-    padding = 42
-    header_h = 170
-    card_w = 312
-    card_h = 154
-    gap = 24
-    cols = 3
-
     visible = list(results)
     if len(results) > 10:
         rare = [item for item in results if int(item.get("rarity") or 0) >= 5 or item.get("limited")]
-        visible = rare[:24] if rare else results[:12]
+        visible = rare[:30] if rare else results[:10]
 
+    card_w = 132
+    card_h = 276
+    gap = 8
+    padding = 36
+    header_h = 92
+    footer_h = 64
+    cols = min(10, max(1, len(visible)))
+    if len(visible) <= 5:
+        cols = len(visible)
     rows = max(1, (len(visible) + cols - 1) // cols)
-    footer_h = 116
+    width = max(920, padding * 2 + cols * card_w + max(0, cols - 1) * gap)
     height = padding + header_h + rows * card_h + max(0, rows - 1) * gap + footer_h + padding
-    image = Image.new("RGB", (width, height), (14, 20, 33))
+    image = Image.new("RGB", (width, height), (25, 27, 31))
     draw = ImageDraw.Draw(image, "RGBA")
 
     for y in range(height):
         blend = y / max(1, height - 1)
         color = (
-            int(13 + 18 * blend),
-            int(21 + 25 * blend),
-            int(38 + 35 * blend),
+            int(20 + 20 * blend),
+            int(23 + 18 * blend),
+            int(30 + 20 * blend),
         )
         draw.line((0, y, width, y), fill=color)
 
-    title_font = load_font(48, True)
+    for x in range(-height, width, 46):
+        draw.line((x, 0, x + height, height), fill=(255, 255, 255, 10), width=1)
+
+    title_font = load_font(38, True)
     subtitle_font = load_font(21)
     small_font = load_font(17)
     badge_font = load_font(18, True)
 
     title = f"{banner_title(banner_key)} · {len(results)} 抽"
-    draw.text((padding, padding + 5), title, fill=(255, 255, 255), font=title_font)
+    draw.text((padding, padding + 2), title, fill=(255, 255, 255), font=title_font)
     now = datetime.now(CHINA_TZ).strftime("%Y-%m-%d %H:%M")
-    draw.text((padding, padding + 68), f"{nickname or '博士'} · {now}", fill=(159, 188, 218), font=subtitle_font)
+    draw.text((padding, padding + 51), f"{nickname or '博士'} · {now}", fill=(174, 184, 195), font=subtitle_font)
 
     counts = {rarity: sum(1 for result in results if int(result["rarity"]) == rarity) for rarity in (6, 5, 4, 3)}
     badges = [
@@ -715,22 +883,53 @@ def render_gacha_image(results: list[dict[str, Any]], state: dict[str, Any], nic
         f"3★ {counts[3]}",
         f"保底 {int(state.get('pity') or 0)}",
     ]
-    x = padding
-    y = padding + 110
+    x = width - padding
+    y = padding + 13
     for badge in badges:
         tw, th = text_size(draw, badge, badge_font)
-        draw.rounded_rectangle((x, y, x + tw + 26, y + 34), radius=16, fill=(33, 49, 75), outline=(85, 119, 161))
-        draw.text((x + 13, y + 6), badge, fill=(247, 222, 128), font=badge_font)
-        x += tw + 38
+        x -= tw + 28
+        draw.rounded_rectangle((x, y, x + tw + 26, y + 34), radius=3, fill=(42, 45, 52), outline=(96, 101, 113))
+        draw.text((x + 13, y + 6), badge, fill=(248, 219, 92), font=badge_font)
+        x -= 8
 
     start_y = padding + header_h
-    start_x = padding
+    row_width = cols * card_w + max(0, cols - 1) * gap
+    start_x = (width - row_width) // 2
     for index, result in enumerate(visible):
         row = index // cols
         col = index % cols
         x1 = start_x + col * (card_w + gap)
         y1 = start_y + row * (card_h + gap)
-        draw_operator_card(draw, (x1, y1, x1 + card_w, y1 + card_h), result)
+        rarity = int(result.get("rarity") or 3)
+        card = load_akgacha_background(rarity, (card_w, card_h))
+
+        portrait_path = ensure_operator_portrait(str(result.get("name") or ""))
+        if portrait_path:
+            try:
+                face = Image.open(portrait_path).convert("RGBA").resize((card_w, card_h), Image.Resampling.LANCZOS)
+                shadow = face.filter(ImageFilter.GaussianBlur(radius=4))
+                card.alpha_composite(shadow, (3, 4))
+                card.alpha_composite(face, (0, 0))
+            except Exception:
+                portrait_path = None
+
+        if not portrait_path:
+            card_draw = ImageDraw.Draw(card, "RGBA")
+            card_draw.rectangle((0, 0, card_w, card_h), fill=(0, 0, 0, 10))
+            card_draw.line((16, 62, card_w - 16, 62), fill=(255, 255, 255, 46), width=2)
+            card_draw.line((16, 72, card_w - 38, 72), fill=(255, 255, 255, 28), width=1)
+
+        image.paste(card, (x1, y1), card)
+        draw.rectangle((x1, y1 + card_h - 68, x1 + card_w, y1 + card_h), fill=(0, 0, 0, 150))
+        star_text_value = "★" * rarity
+        draw.text((x1 + 8, y1 + card_h - 62), star_text_value, fill=(255, 232, 122), font=load_font(16, True))
+        name = fit_text(draw, str(result.get("name") or "未知"), load_font(20, True), card_w - 16)
+        profession = fit_text(draw, str(result.get("profession") or ""), load_font(14), card_w - 16)
+        draw.text((x1 + 8, y1 + card_h - 40), name, fill=(255, 255, 255), font=load_font(20, True))
+        draw.text((x1 + 8, y1 + card_h - 17), profession, fill=(206, 214, 222), font=load_font(14))
+        if result.get("limited"):
+            draw.rectangle((x1 + card_w - 45, y1 + 8, x1 + card_w - 8, y1 + 31), fill=(225, 64, 83))
+            draw.text((x1 + card_w - 41, y1 + 10), "限定", fill=(255, 255, 255), font=load_font(13, True))
 
     footer_y = height - padding - footer_h + 22
     if len(results) > len(visible):
