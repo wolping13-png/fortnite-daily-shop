@@ -26,6 +26,7 @@ CHAT_HISTORY_PATH = BASE_DIR / "bot_memory" / "chat_history.json"
 USER_MEMORY_PATH = BASE_DIR / "bot_memory" / "user_memory.json"
 PROACTIVE_STATE_PATH = BASE_DIR / "bot_memory" / "proactive_topics.json"
 MEME_STATE_PATH = BASE_DIR / "bot_memory" / "meme_state.json"
+RANDOM_FOOD_STATE_PATH = BASE_DIR / "bot_memory" / "random_food_state.json"
 SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
 SHOP_ASSET_MAX_AGE_SECONDS = 6 * 60 * 60
@@ -41,6 +42,7 @@ DEEPSEEK_EMPTY_RETRY_TOKENS = 1800
 USER_MEMORY_LOCK = threading.RLock()
 PROACTIVE_STATE_LOCK = threading.RLock()
 MEME_STATE_LOCK = threading.RLock()
+RANDOM_FOOD_STATE_LOCK = threading.RLock()
 DETAILED_REPLY_KEYWORDS = (
     "详细",
     "展开",
@@ -408,6 +410,10 @@ RELATIONSHIP_TOKENS = (
     "搭档",
     "饲主",
     "宠物",
+    "爸爸",
+    "妈妈",
+    "爹",
+    "妈",
     "哥哥",
     "姐姐",
     "弟弟",
@@ -423,6 +429,10 @@ RELATIONSHIP_ALIASES: dict[str, tuple[str, ...]] = {
     "对象": ("对象", "老婆", "老公", "女朋友", "男朋友"),
     "搭档": ("搭档",),
     "宠物": ("宠物",),
+    "爸爸": ("爸爸", "爹"),
+    "妈妈": ("妈妈", "妈"),
+    "爹": ("爹", "爸爸"),
+    "妈": ("妈", "妈妈"),
     "哥哥": ("哥哥",),
     "姐姐": ("姐姐",),
     "弟弟": ("弟弟",),
@@ -1141,6 +1151,56 @@ def save_proactive_state(data: dict[str, Any]) -> None:
     tmp.replace(PROACTIVE_STATE_PATH)
 
 
+def load_random_food_state() -> dict[str, Any]:
+    if not RANDOM_FOOD_STATE_PATH.exists():
+        return {"groups": {}}
+    try:
+        data = json.loads(RANDOM_FOOD_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"groups": {}}
+    if not isinstance(data, dict):
+        return {"groups": {}}
+    groups = data.get("groups")
+    if not isinstance(groups, dict):
+        data["groups"] = {}
+    return data
+
+
+def save_random_food_state(data: dict[str, Any]) -> None:
+    RANDOM_FOOD_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = RANDOM_FOOD_STATE_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(RANDOM_FOOD_STATE_PATH)
+
+
+def record_random_food_result(group_id: int | str, caption: str, item: dict[str, Any]) -> None:
+    with RANDOM_FOOD_STATE_LOCK:
+        data = load_random_food_state()
+        groups = data.setdefault("groups", {})
+        if not isinstance(groups, dict):
+            groups = {}
+            data["groups"] = groups
+        groups[str(group_id)] = {
+            "caption": caption,
+            "kind": str(item.get("kind") or ""),
+            "name": str(item.get("name") or ""),
+            "image_url": str(item.get("image_url") or ""),
+            "source": str(item.get("source") or ""),
+            "time": datetime.now(CHINA_TZ).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        save_random_food_state(data)
+
+
+def last_random_food_result(group_id: int | str) -> dict[str, Any]:
+    with RANDOM_FOOD_STATE_LOCK:
+        data = load_random_food_state()
+        groups = data.get("groups")
+        if not isinstance(groups, dict):
+            return {}
+        entry = groups.get(str(group_id))
+        return entry if isinstance(entry, dict) else {}
+
+
 def proactive_group_state(data: dict[str, Any], group_id: int | str, now_ts: float | None = None) -> dict[str, Any]:
     groups = data.setdefault("groups", {})
     if not isinstance(groups, dict):
@@ -1633,13 +1693,22 @@ def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> str:
     return caption
 
 
-def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: str) -> str:
+def send_random_food_update(
+    config: dict[str, Any],
+    group_id: int | str,
+    kind: str,
+    preferred_name: str = "",
+) -> str:
     from random_food import build_random_food_recommendation
 
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     access_token = str(config.get("access_token") or "")
     tavily_api_key = str(config.get("tavily_api_key") or "")
-    caption, image_path, _item = build_random_food_recommendation(kind, tavily_api_key=tavily_api_key)
+    caption, image_path, item = build_random_food_recommendation(
+        kind,
+        tavily_api_key=tavily_api_key,
+        preferred_name=preferred_name,
+    )
     result = post_onebot(
         base_url=base_url,
         action="send_group_msg",
@@ -1659,6 +1728,7 @@ def send_random_food_update(config: dict[str, Any], group_id: int | str, kind: s
             access_token=access_token,
             timeout=45,
         )
+    record_random_food_result(group_id, caption, item)
     return caption
 
 
@@ -1725,6 +1795,67 @@ def random_food_kind(text: str) -> str | None:
     if compact in drink_triggers:
         return "drink"
     return None
+
+
+def parse_random_food_feedback(text: str) -> tuple[bool, str]:
+    value = text.strip()
+    compact = re.sub(r"[\s，。！？!?,：:；;]+", "", value.lower())
+    exact_feedback = {
+        "找错了",
+        "找错啦",
+        "图错了",
+        "图片错了",
+        "配错了",
+        "发错图了",
+        "这图不对",
+        "图片不对",
+        "图不对",
+        "不是这个",
+        "这不是",
+    }
+    if compact in exact_feedback:
+        return True, ""
+
+    match = re.match(r"^(?:这|那)?不(?:是|像)[（(]?([^）)\s，。！？!?,：:；;]{1,16})[）)]?$", value)
+    if match:
+        return True, match.group(1).strip()
+
+    match = re.match(r"^(?:这|那)?(?:不是|不像)[（(]?([^）)\s，。！？!?,：:；;]{1,16})[）)]?$", value)
+    if match:
+        return True, match.group(1).strip()
+
+    return False, ""
+
+
+def handle_random_food_feedback(config: dict[str, Any], group_id: int | str, text: str) -> bool:
+    is_feedback, explicit_name = parse_random_food_feedback(text)
+    if not is_feedback:
+        return False
+
+    last = last_random_food_result(group_id)
+    if not last:
+        send_group_text(config, group_id, "嗯……我没记到刚才那张吃喝图，等下次发错你再喊我。")
+        return True
+
+    kind = str(last.get("kind") or "")
+    name = str(last.get("name") or "")
+    image_url = str(last.get("image_url") or "")
+    if not kind or not name:
+        send_group_text(config, group_id, "我记到刚才那张图有点问题了，但没拿到菜名，下一次我会重新找。")
+        return True
+
+    from random_food import mark_bad_food_image
+
+    reason = explicit_name or text
+    mark_bad_food_image(kind, name, image_url, reason=reason)
+    send_group_text(config, group_id, f"嗷，记下了。刚才那张{name}图我拉黑，重新找一张。")
+    try:
+        answer = send_random_food_update(config, group_id, kind, preferred_name=name)
+        remember_group_exchange(config, group_id, text, f"标记{name}错图并重发：{answer}")
+    except Exception as exc:
+        print(f"Random food feedback resend failed: {exc}", file=sys.stderr)
+        send_group_text(config, group_id, f"我把那张{name}错图记下了，但新图暂时没找出来。")
+    return True
 
 
 def is_wolf_request(text: str, configured_command: str) -> bool:
@@ -1804,6 +1935,7 @@ def command_help_text(config: dict[str, Any]) -> str:
         f"- {game_deals_command} / Steam折扣榜 / Epic喜加一：发送游戏优惠日报\n"
         "- 吃什么：随机推荐食物并发实物图\n"
         "- 喝什么：随机推荐饮品并发实物图\n"
+        "- 找错了 / 图错了 / 这不是可乐：标记上一次吃喝图片不匹配，并重新找图\n"
         f"- {weather_command} 北京 / 今天武汉洪山区天气怎么样：查天气\n"
         "\n"
         "需要艾特我：\n"
@@ -3625,6 +3757,9 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         except Exception as exc:
             print(f"X posts update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "X 图片帖子暂时抓取失败。可能是 token 没权限、额度不足，或者 X API 暂时限制了请求。")
+        return
+
+    if handle_random_food_feedback(config, group_id, text):
         return
 
     food_kind = random_food_kind(text)

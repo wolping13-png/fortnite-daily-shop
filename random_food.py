@@ -136,6 +136,9 @@ BAD_IMAGE_TERMS = (
     "poster",
     "advertisement",
     "infographic",
+    "flag",
+    "national flag",
+    "stars and stripes",
     "packaging",
     "package",
     "brand",
@@ -149,6 +152,8 @@ BAD_IMAGE_URL_TERMS = (
     "placeholder",
     "avatar",
     "brand",
+    "flag",
+    "banner",
     "watermark",
     "trip.com",
     "tripcdn",
@@ -212,6 +217,8 @@ def recent_bucket(history: dict[str, Any], kind: str) -> dict[str, Any]:
     bucket.setdefault("items", [])
     bucket.setdefault("images", [])
     bucket.setdefault("item_images", {})
+    bucket.setdefault("bad_images", [])
+    bucket.setdefault("bad_reports", [])
     return bucket
 
 
@@ -256,6 +263,50 @@ def update_history(
     bucket["updated_at"] = int(time.time())
 
     save_history(history)
+
+
+def mark_bad_food_image(kind: str, item_name: str, image_url: str = "", reason: str = "") -> bool:
+    normalized = "drink" if kind == "drink" else "food"
+    name = str(item_name or "").strip()
+    url = str(image_url or "").strip()
+    if not name and not url:
+        return False
+
+    history = load_history()
+    bucket = recent_bucket(history, normalized)
+    now = int(time.time())
+    image_key = image_fingerprint(url) if url else ""
+
+    if image_key:
+        bad_images = [str(value) for value in bucket.get("bad_images", []) if str(value) != image_key]
+        bad_images.insert(0, image_key)
+        bucket["bad_images"] = bad_images[:RECENT_IMAGE_LIMIT]
+        bucket["images"] = [str(value) for value in bucket.get("images", []) if str(value) != image_key]
+
+    item_images = bucket.get("item_images")
+    if isinstance(item_images, dict) and name and isinstance(item_images.get(name), list):
+        item_images[name] = [
+            entry
+            for entry in item_images[name]
+            if not isinstance(entry, dict) or str(entry.get("url") or "").strip() != url
+        ]
+
+    reports = bucket.get("bad_reports")
+    if not isinstance(reports, list):
+        reports = []
+    reports.insert(
+        0,
+        {
+            "item": name,
+            "url": url,
+            "reason": reason[:120],
+            "reported_at": now,
+        },
+    )
+    bucket["bad_reports"] = reports[:50]
+    bucket["updated_at"] = now
+    save_history(history)
+    return True
 
 
 def item_terms(item: dict[str, Any]) -> tuple[str, ...]:
@@ -358,7 +409,25 @@ def dedupe_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return unique
 
 
-def ordered_items(pool: list[dict[str, Any]], kind: str, history: dict[str, Any]) -> list[dict[str, Any]]:
+def ordered_items(
+    pool: list[dict[str, Any]],
+    kind: str,
+    history: dict[str, Any],
+    preferred_name: str = "",
+) -> list[dict[str, Any]]:
+    preferred_text = normalize_match_text(preferred_name)
+    if preferred_text:
+        preferred_items = [
+            item
+            for item in pool
+            if preferred_text == normalize_match_text(str(item.get("name") or ""))
+            or any(preferred_text == normalize_match_text(term) for term in item_terms(item))
+        ]
+        if preferred_items:
+            rest = [item for item in pool if item not in preferred_items]
+            random.shuffle(rest)
+            return preferred_items + rest
+
     recent_items = set(str(value) for value in recent_bucket(history, kind).get("items", []))
     fresh = [item for item in pool if str(item.get("name") or "") not in recent_items]
     if len(fresh) >= max(4, len(pool) // 3):
@@ -370,6 +439,7 @@ def ordered_items(pool: list[dict[str, Any]], kind: str, history: dict[str, Any]
 
 def cached_image_candidates(history: dict[str, Any], kind: str, item: dict[str, Any]) -> list[dict[str, Any]]:
     bucket = recent_bucket(history, kind)
+    bad_images = set(str(value) for value in bucket.get("bad_images", []))
     item_images = bucket.get("item_images")
     if not isinstance(item_images, dict):
         return []
@@ -385,6 +455,8 @@ def cached_image_candidates(history: dict[str, Any], kind: str, item: dict[str, 
             continue
         url = str(entry.get("url") or "").strip()
         if not url:
+            continue
+        if image_fingerprint(url) in bad_images or is_bad_url_value(url):
             continue
         candidates.append(
             {
@@ -557,13 +629,20 @@ def save_real_photo(session: requests.Session, url: str, output_path: Path) -> P
     return output_path
 
 
-def build_random_food_recommendation(kind: str, tavily_api_key: str = "") -> tuple[str, Path, dict[str, Any]]:
+def build_random_food_recommendation(
+    kind: str,
+    tavily_api_key: str = "",
+    preferred_name: str = "",
+) -> tuple[str, Path, dict[str, Any]]:
     normalized = "drink" if kind == "drink" else "food"
     pool = DRINKS if normalized == "drink" else FOODS
     session = make_session()
     history = load_history()
-    candidates = ordered_items(pool, normalized, history)
-    recent_images = set(str(value) for value in recent_bucket(history, normalized).get("images", []))
+    candidates = ordered_items(pool, normalized, history, preferred_name=preferred_name)
+    bucket = recent_bucket(history, normalized)
+    recent_images = set(str(value) for value in bucket.get("images", []))
+    bad_images = set(str(value) for value in bucket.get("bad_images", []))
+    blocked_images = recent_images | bad_images
     errors: list[str] = []
 
     for item in candidates[:MAX_ITEM_ATTEMPTS]:
@@ -572,7 +651,7 @@ def build_random_food_recommendation(kind: str, tavily_api_key: str = "") -> tup
         cached = ranked_matching_candidates(cached_image_candidates(history, normalized, item), item)
         for candidate in cached:
             url = str(candidate.get("url") or "").strip()
-            if not url or image_fingerprint(url) in recent_images:
+            if not url or image_fingerprint(url) in blocked_images:
                 continue
             try:
                 key = hashlib.sha1(f"{normalized}:{item['name']}:{url}".encode("utf-8")).hexdigest()[:12]
@@ -601,7 +680,7 @@ def build_random_food_recommendation(kind: str, tavily_api_key: str = "") -> tup
 
         for candidate in matched:
             url = str(candidate.get("url") or "").strip()
-            if not url or image_fingerprint(url) in recent_images:
+            if not url or image_fingerprint(url) in blocked_images:
                 continue
             try:
                 key = hashlib.sha1(f"{normalized}:{item['name']}:{url}".encode("utf-8")).hexdigest()[:12]
