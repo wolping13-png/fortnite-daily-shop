@@ -31,7 +31,7 @@ HISTORY_LIMIT = 120
 BANNER_CATALOG_TTL_SECONDS = 30 * 60
 HIDDEN_CATALOG_RULE_TYPES = {"BACKFLOW", "CLASSIC", "CLASSIC_DOUBLE", "FESCLASSIC", "SPECIAL"}
 HIDDEN_CATALOG_TITLE_PREFIXES = ("普池#", "适合多种场合")
-HIDDEN_CATALOG_TITLE_KEYWORDS = ("联合行动", "定向甄选", "归航寻访")
+HIDDEN_CATALOG_TITLE_KEYWORDS = ("联合行动", "定向甄选", "归航寻访", "跨年欢庆", "中坚")
 
 # Operator pool adapted from https://github.com/aynuzbh/koishi-plugin-arknights-card (MIT License).
 # This module keeps the data local and framework-free so it can run inside the NapCat bot.
@@ -381,6 +381,8 @@ def catalog_up_banner_records() -> list[dict[str, Any]]:
 
 def catalog_record_priority(item: dict[str, Any]) -> int:
     rule_type = str(item.get("rule_type") or "")
+    if rule_type.startswith("PRTS"):
+        return 60
     if rule_type == "LEGACY_LIMITED":
         return 50
     if rule_type.startswith("LEGACY"):
