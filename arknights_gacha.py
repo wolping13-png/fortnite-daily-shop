@@ -29,6 +29,7 @@ STATE_LOCK = threading.RLock()
 MAX_PULLS_PER_COMMAND = 300
 HISTORY_LIMIT = 120
 BANNER_CATALOG_TTL_SECONDS = 30 * 60
+HIDDEN_CATALOG_RULE_TYPES = {"CLASSIC", "CLASSIC_DOUBLE", "FESCLASSIC"}
 
 # Operator pool adapted from https://github.com/aynuzbh/koishi-plugin-arknights-card (MIT License).
 # This module keeps the data local and framework-free so it can run inside the NapCat bot.
@@ -350,6 +351,17 @@ def official_banner_records() -> list[dict[str, Any]]:
     return records if isinstance(records, list) else []
 
 
+def is_catalog_up_banner(item: dict[str, Any]) -> bool:
+    rule_type = str(item.get("rule_type") or "")
+    if rule_type in HIDDEN_CATALOG_RULE_TYPES:
+        return False
+    return bool(item.get("key") and item.get("title"))
+
+
+def catalog_up_banner_records() -> list[dict[str, Any]]:
+    return [item for item in official_banner_records() if isinstance(item, dict) and is_catalog_up_banner(item)]
+
+
 @lru_cache(maxsize=1)
 def official_banners_by_key() -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
@@ -437,7 +449,7 @@ def banner_search_blob(item: dict[str, Any]) -> str:
 
 
 def latest_known_official_banner() -> dict[str, Any] | None:
-    records = [item for item in official_banner_records() if isinstance(item, dict)]
+    records = catalog_up_banner_records()
     if not records:
         return None
     return max(records, key=lambda item: int(item.get("open_time") or 0))
@@ -447,7 +459,7 @@ def current_or_latest_official_banner() -> dict[str, Any] | None:
     now = int(time.time())
     active = [
         item
-        for item in official_banner_records()
+        for item in catalog_up_banner_records()
         if int(item.get("open_time") or 0) <= now <= int(item.get("end_time") or 0)
     ]
     if active:
@@ -464,9 +476,7 @@ def find_official_banner_matches(query: str, limit: int = 10) -> list[dict[str, 
         return []
 
     scored: list[tuple[int, int, dict[str, Any]]] = []
-    for item in official_banner_records():
-        if not isinstance(item, dict):
-            continue
+    for item in catalog_up_banner_records():
         title = compact_text(str(item.get("title") or ""))
         blob = banner_search_blob(item)
         score = 0
@@ -554,10 +564,18 @@ def choose_up_operator(names: tuple[str, ...], rarity: int) -> dict[str, Any] | 
 
 
 def banner_catalog_entries() -> list[dict[str, Any]]:
-    entries: list[dict[str, Any]] = []
-    for key in BANNER_ORDER:
+    entries = sorted(
+        catalog_up_banner_records(),
+        key=lambda item: int(item.get("open_time") or 0),
+        reverse=True,
+    )
+    if entries:
+        return entries
+
+    fallback: list[dict[str, Any]] = []
+    for key in ("standard", "limited"):
         data = banner_config(key)
-        entries.append(
+        fallback.append(
             {
                 "key": key,
                 "title": str(data.get("title") or key),
@@ -567,14 +585,7 @@ def banner_catalog_entries() -> list[dict[str, Any]]:
                 "builtin": True,
             }
         )
-
-    records = sorted(
-        [item for item in official_banner_records() if isinstance(item, dict) and item.get("key")],
-        key=lambda item: int(item.get("open_time") or 0),
-        reverse=True,
-    )
-    entries.extend(records)
-    return entries
+    return fallback
 
 
 def banner_catalog_keys() -> list[str]:
@@ -652,7 +663,7 @@ def banner_list_text(selected_banner: str, page: int = 1, per_page: int = 15) ->
     start = (page - 1) * per_page
     shown = entries[start : start + per_page]
 
-    lines = [f"方舟卡池目录（第 {page}/{page_count} 页，共 {total} 个）", "━━━━━━"]
+    lines = [f"方舟UP池目录（第 {page}/{page_count} 页，共 {total} 个，已隐藏中坚池）", "━━━━━━"]
     for offset, item in enumerate(shown, start + 1):
         lines.append(format_catalog_entry(offset, item, selected_banner))
 
