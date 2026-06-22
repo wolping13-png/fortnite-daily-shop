@@ -29,7 +29,9 @@ STATE_LOCK = threading.RLock()
 MAX_PULLS_PER_COMMAND = 300
 HISTORY_LIMIT = 120
 BANNER_CATALOG_TTL_SECONDS = 30 * 60
-HIDDEN_CATALOG_RULE_TYPES = {"CLASSIC", "CLASSIC_DOUBLE", "FESCLASSIC"}
+HIDDEN_CATALOG_RULE_TYPES = {"BACKFLOW", "CLASSIC", "CLASSIC_DOUBLE", "FESCLASSIC", "SPECIAL"}
+HIDDEN_CATALOG_TITLE_PREFIXES = ("普池#", "适合多种场合")
+HIDDEN_CATALOG_TITLE_KEYWORDS = ("联合行动", "定向甄选", "归航寻访")
 
 # Operator pool adapted from https://github.com/aynuzbh/koishi-plugin-arknights-card (MIT License).
 # This module keeps the data local and framework-free so it can run inside the NapCat bot.
@@ -355,11 +357,37 @@ def is_catalog_up_banner(item: dict[str, Any]) -> bool:
     rule_type = str(item.get("rule_type") or "")
     if rule_type in HIDDEN_CATALOG_RULE_TYPES:
         return False
-    return bool(item.get("key") and item.get("title"))
+    title = str(item.get("title") or "")
+    if not item.get("key") or not title:
+        return False
+    if title.startswith(HIDDEN_CATALOG_TITLE_PREFIXES):
+        return False
+    if any(keyword in title for keyword in HIDDEN_CATALOG_TITLE_KEYWORDS):
+        return False
+    return True
 
 
 def catalog_up_banner_records() -> list[dict[str, Any]]:
-    return [item for item in official_banner_records() if isinstance(item, dict) and is_catalog_up_banner(item)]
+    selected: dict[tuple[str, str], dict[str, Any]] = {}
+    for item in official_banner_records():
+        if not isinstance(item, dict) or not is_catalog_up_banner(item):
+            continue
+        key = (str(item.get("open_date") or ""), str(item.get("title") or ""))
+        existing = selected.get(key)
+        if not existing or catalog_record_priority(item) > catalog_record_priority(existing):
+            selected[key] = item
+    return list(selected.values())
+
+
+def catalog_record_priority(item: dict[str, Any]) -> int:
+    rule_type = str(item.get("rule_type") or "")
+    if rule_type == "LEGACY_LIMITED":
+        return 50
+    if rule_type.startswith("LEGACY"):
+        return 40
+    if rule_type in {"LIMITED", "LINKAGE"}:
+        return 45
+    return 10
 
 
 @lru_cache(maxsize=1)
@@ -663,7 +691,7 @@ def banner_list_text(selected_banner: str, page: int = 1, per_page: int = 15) ->
     start = (page - 1) * per_page
     shown = entries[start : start + per_page]
 
-    lines = [f"方舟UP池目录（第 {page}/{page_count} 页，共 {total} 个，已隐藏中坚池）", "━━━━━━"]
+    lines = [f"方舟UP/限定池目录（第 {page}/{page_count} 页，共 {total} 个）", "━━━━━━"]
     for offset, item in enumerate(shown, start + 1):
         lines.append(format_catalog_entry(offset, item, selected_banner))
 
@@ -671,6 +699,7 @@ def banner_list_text(selected_banner: str, page: int = 1, per_page: int = 15) ->
     lines.append("想切换就回复：温德尔 4（数字换成上面的编号）。")
     if page_count > 1:
         lines.append("翻页：方舟卡池 第2页 / 方舟卡池 下一页 / 方舟卡池 上一页。")
+    lines.append("已隐藏中坚、联合、定向、归航和普池编号。")
     lines.append("也可以直接搜：方舟卡池 水月 / 方舟卡池 巨斧与笔尖 / 方舟卡池 最新。")
     return "\n".join(lines)
 
