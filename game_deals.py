@@ -72,6 +72,9 @@ FONT_CARD_TEXT = load_font(17, False)
 FONT_SMALL = load_font(15, False)
 FONT_BADGE = load_font(17, True)
 
+STEAM_CARD_H = 156
+EPIC_CARD_H = 236
+
 
 def text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
     box = draw.textbbox((0, 0), text, font=font)
@@ -464,17 +467,21 @@ def draw_steam_card(
     draw.text((tx, y + 14), f"#{rank}", fill=BLUE, font=FONT_BADGE)
     draw_badge(draw, x + w - 92, y + 12, str(deal.get("discount") or "-"), GREEN)
 
-    title_lines = wrap_text(draw, str(deal.get("title") or "未知游戏"), FONT_CARD_TITLE, w - 220, 2)
-    line_y = y + 45
+    content_w = w - 220
+    title_lines = wrap_text(draw, str(deal.get("title") or "未知游戏"), FONT_CARD_TITLE, content_w, 2)
+    line_y = y + 44
     for line in title_lines:
         draw.text((tx, line_y), line, fill=TEXT, font=FONT_CARD_TITLE)
-        line_y += 27
+        line_y += 26
 
     final_price = str(deal.get("final_price") or "价格未知")
     original_price = str(deal.get("original_price") or "")
-    draw.text((tx, y + h - 58), final_price, fill=YELLOW, font=FONT_CARD_TITLE)
+    price_y = max(line_y + 6, y + h - 58)
+    final_price = fit_text(draw, final_price, FONT_CARD_TITLE, content_w)
+    draw.text((tx, price_y), final_price, fill=YELLOW, font=FONT_CARD_TITLE)
     if original_price:
-        draw.text((tx, y + h - 31), f"原价 {original_price}", fill=MUTED, font=FONT_SMALL)
+        original_text = fit_text(draw, f"原价 {original_price}", FONT_SMALL, content_w)
+        draw.text((tx, price_y + 27), original_text, fill=MUTED, font=FONT_SMALL)
 
 
 def draw_epic_card(
@@ -518,7 +525,15 @@ def render_game_deals_image(data: dict[str, Any], output_path: Path = OUTPUT_IMA
     epic_count = min(len(epic_current) + len(epic_upcoming), 4)
     epic_rows = max(1, (epic_count + 1) // 2)
 
-    height = 150 + 74 + steam_rows * 130 + 38 + 74 + epic_rows * 254 + 70
+    height = (
+        150
+        + 74
+        + steam_rows * (STEAM_CARD_H + GAP)
+        + 38
+        + 74
+        + epic_rows * (EPIC_CARD_H + GAP)
+        + 70
+    )
     image = Image.new("RGB", (WIDTH, height), BG_BOTTOM)
     draw = ImageDraw.Draw(image)
     for y in range(height):
@@ -535,7 +550,7 @@ def render_game_deals_image(data: dict[str, Any], output_path: Path = OUTPUT_IMA
     y = draw_section_title(draw, y, "Steam 高销量折扣榜", "按 Steam 商店热销折扣结果排序，取前 12 个")
 
     card_w = (WIDTH - PADDING * 2 - GAP) // 2
-    card_h = 114
+    card_h = STEAM_CARD_H
     if steam:
         for index, deal in enumerate(steam[:12]):
             col = index % 2
@@ -552,7 +567,7 @@ def render_game_deals_image(data: dict[str, Any], output_path: Path = OUTPUT_IMA
     y = draw_section_title(draw, y, "Epic 喜加一", "包含当前免费与已公布的即将免费游戏")
 
     epic_cards = [(item, True) for item in epic_current[:2]] + [(item, False) for item in epic_upcoming[:2]]
-    epic_card_h = 236
+    epic_card_h = EPIC_CARD_H
     if epic_cards:
         for index, (item, current) in enumerate(epic_cards[:4]):
             col = index % 2
