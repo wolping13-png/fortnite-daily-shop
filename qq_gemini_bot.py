@@ -1921,6 +1921,24 @@ def is_arknights_gacha_request(text: str) -> bool:
     return looks_like_command(text)
 
 
+def arknights_user_key(group_id: int | str, sender_id: int | str | None, sender_display_name: str = "") -> str:
+    return f"qq:{sender_id}" if sender_id else f"{group_id}:{sender_display_name or 'unknown'}"
+
+
+def is_arknights_banner_number_reply(
+    text: str,
+    group_id: int | str,
+    sender_id: int | str | None,
+    sender_display_name: str = "",
+) -> bool:
+    from arknights_gacha import looks_like_banner_number_reply
+
+    return looks_like_banner_number_reply(
+        text,
+        user_key=arknights_user_key(group_id, sender_id, sender_display_name),
+    )
+
+
 def handle_arknights_gacha_request(
     text: str,
     group_id: int | str,
@@ -1929,7 +1947,7 @@ def handle_arknights_gacha_request(
 ) -> tuple[str, Path | None, str]:
     from arknights_gacha import handle_command_payload
 
-    user_key = f"qq:{sender_id}" if sender_id else f"{group_id}:{sender_display_name or 'unknown'}"
+    user_key = arknights_user_key(group_id, sender_id, sender_display_name)
     nickname = sender_display_name or "博士"
     return handle_command_payload(text, user_key=user_key, nickname=nickname)
 
@@ -1996,7 +2014,8 @@ def command_help_text(config: dict[str, Any]) -> str:
         f"- {shop_command}：发送 Fortnite 每日商店总图\n"
         f"- {game_deals_command} / Steam折扣榜 / Epic喜加一：发送游戏优惠日报\n"
         "- 方舟单抽 / 方舟十连 / 方舟抽卡50 / 方舟来一井：明日方舟模拟寻访并发结果图\n"
-        "- 方舟卡池 / 方舟卡池 水月 / 方舟卡池 最新：查看或切换历史/官方UP池\n"
+        "- 方舟卡池 / 方舟卡池 第2页 / 温德尔 1：查看目录并按编号切换UP池\n"
+        "- 方舟卡池 水月 / 方舟卡池 最新：按池名或UP干员搜索切换历史/官方UP池\n"
         "- 方舟限定十连 / 方舟中坚十连 / 方舟水月十连：按指定卡池抽卡\n"
         "- 方舟状态 / 方舟重置：查看或重置自己的寻访记录\n"
         "- 吃什么：随机推荐食物并发实物图\n"
@@ -3597,6 +3616,10 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     valorant_bind_command = str(config.get("valorant_bind_command") or "瓦")
     valorant_shop_command = str(config.get("valorant_shop_command") or "无畏商店")
+    ask_prefix = str(config.get("ask_prefix") or "温德尔")
+    arknights_text = text.strip()
+    if arknights_text.startswith(ask_prefix):
+        arknights_text = arknights_text[len(ask_prefix) :].strip().lstrip(" ：:，,")
 
     if is_help_request(text):
         help_text = (
@@ -3605,17 +3628,22 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             "- 瓦 清除：解绑\n"
             "- 无畏商店 / 瓦店 / 每日商店：查无畏每日商店\n"
             "- 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询\n"
-            "- 方舟单抽 / 方舟十连 / 方舟抽卡50 / 方舟卡池 水月 / 方舟卡池 最新 / 方舟状态\n"
+            "- 方舟单抽 / 方舟十连 / 方舟抽卡50 / 方舟卡池 / 方舟卡池 第2页 / 1 / 方舟状态\n"
             "- 其他内容：直接和我聊天"
         )
         for chunk in split_reply(help_text, limit=850):
             send_private_text(config, sender_id, chunk)
         return
 
-    if is_arknights_gacha_request(text):
+    if is_arknights_gacha_request(arknights_text) or is_arknights_banner_number_reply(
+        arknights_text,
+        "private",
+        sender_id,
+        event_sender_display_name(event),
+    ):
         try:
             sender_display_name = event_sender_display_name(event)
-            caption, image_path, fallback_text = handle_arknights_gacha_request(text, "private", sender_id, sender_display_name)
+            caption, image_path, fallback_text = handle_arknights_gacha_request(arknights_text, "private", sender_id, sender_display_name)
             send_arknights_gacha_reply(config, sender_id, caption, image_path, fallback_text, private=True)
         except Exception as exc:
             print(f"Private arknights gacha failed: {exc}", file=sys.stderr)
@@ -3724,11 +3752,13 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     sender_id = event_sender_id(event)
     sender_display_name = event_sender_display_name(event)
 
+    addressed_to_bot = bool(mentioned or text.strip().startswith(ask_prefix))
     memory_command_text = text.strip()
     if mentioned:
         memory_command_text = memory_command_text.lstrip(" ：:，,")
     elif memory_command_text.startswith(ask_prefix):
         memory_command_text = memory_command_text[len(ask_prefix) :].strip().lstrip(" ：:，,")
+    arknights_text = memory_command_text if addressed_to_bot else text
 
     memory_command = parse_personal_memory_command(memory_command_text)
     if memory_command:
@@ -3836,9 +3866,12 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_group_text(config, group_id, "X 图片帖子暂时抓取失败。可能是 token 没权限、额度不足，或者 X API 暂时限制了请求。")
         return
 
-    if is_arknights_gacha_request(text):
+    if is_arknights_gacha_request(arknights_text) or (
+        addressed_to_bot
+        and is_arknights_banner_number_reply(arknights_text, group_id, sender_id, sender_display_name)
+    ):
         try:
-            caption, image_path, fallback_text = handle_arknights_gacha_request(text, group_id, sender_id, sender_display_name)
+            caption, image_path, fallback_text = handle_arknights_gacha_request(arknights_text, group_id, sender_id, sender_display_name)
             send_arknights_gacha_reply(config, group_id, caption, image_path, fallback_text)
             remember_group_exchange(config, group_id, text, fallback_text or caption)
         except Exception as exc:

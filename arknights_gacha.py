@@ -28,6 +28,7 @@ STATE_LOCK = threading.RLock()
 
 MAX_PULLS_PER_COMMAND = 300
 HISTORY_LIMIT = 120
+BANNER_CATALOG_TTL_SECONDS = 30 * 60
 
 # Operator pool adapted from https://github.com/aynuzbh/koishi-plugin-arknights-card (MIT License).
 # This module keeps the data local and framework-free so it can run inside the NapCat bot.
@@ -552,29 +553,114 @@ def choose_up_operator(names: tuple[str, ...], rarity: int) -> dict[str, Any] | 
     return dict(random.choice(candidates))
 
 
-def banner_list_text(selected_banner: str) -> str:
-    lines = ["方舟可选卡池：", "━━━━━━"]
+def banner_catalog_entries() -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
     for key in BANNER_ORDER:
         data = banner_config(key)
-        marker = "当前" if key == selected_banner else "可选"
-        lines.append(f"- {data['title']}（{marker}）：{data['description']}")
+        entries.append(
+            {
+                "key": key,
+                "title": str(data.get("title") or key),
+                "description": str(data.get("description") or ""),
+                "open_date": "",
+                "up_6": list(data.get("six_up") or ()),
+                "builtin": True,
+            }
+        )
 
-    recent = sorted(
-        official_banner_records(),
+    records = sorted(
+        [item for item in official_banner_records() if isinstance(item, dict) and item.get("key")],
         key=lambda item: int(item.get("open_time") or 0),
         reverse=True,
-    )[:12]
-    if recent:
-        lines.append("━━━━━━")
-        lines.append("最近已知官方UP池：")
-        for item in recent:
-            marker = "当前" if str(item.get("key") or "") == selected_banner else "可选"
-            six_up = " / ".join(str(name) for name in (item.get("up_6") or [])[:4]) or "无六星UP"
-            lines.append(f"- {item.get('open_date') or '?'} {item.get('title')}（{marker}）：{six_up}")
+    )
+    entries.extend(records)
+    return entries
 
-    lines.append("用法：方舟卡池 限定 / 方舟卡池 标准 / 方舟卡池 中坚")
-    lines.append("历史UP池：方舟卡池 水月 / 方舟卡池 巨斧与笔尖 / 方舟卡池 最新")
-    lines.append("也可以直接说：方舟水月十连、方舟最新抽卡50。")
+
+def banner_catalog_keys() -> list[str]:
+    seen: set[str] = set()
+    keys: list[str] = []
+    for item in banner_catalog_entries():
+        key = str(item.get("key") or "")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        keys.append(key)
+    return keys
+
+
+def store_banner_catalog(
+    state: dict[str, Any],
+    keys: list[str],
+    page: int = 1,
+    source: str = "directory",
+) -> None:
+    state["banner_catalog"] = {
+        "keys": keys,
+        "page": int(page or 1),
+        "source": source,
+        "updated_at": int(time.time()),
+    }
+
+
+def active_banner_catalog_keys(state: dict[str, Any]) -> list[str]:
+    catalog = state.get("banner_catalog")
+    if not isinstance(catalog, dict):
+        return []
+    updated_at = int(catalog.get("updated_at") or 0)
+    if updated_at and time.time() - updated_at > BANNER_CATALOG_TTL_SECONDS:
+        return []
+    keys = catalog.get("keys")
+    if not isinstance(keys, list):
+        return []
+    return [str(key) for key in keys if str(key or "")]
+
+
+def current_banner_catalog_page(state: dict[str, Any]) -> int:
+    catalog = state.get("banner_catalog")
+    if isinstance(catalog, dict):
+        return int(catalog.get("page") or 1)
+    return 1
+
+
+def banner_catalog_page_count(per_page: int = 15) -> int:
+    return max(1, (len(banner_catalog_entries()) + per_page - 1) // per_page)
+
+
+def clamp_banner_catalog_page(page: int, per_page: int = 15) -> int:
+    return max(1, min(int(page or 1), banner_catalog_page_count(per_page=per_page)))
+
+
+def format_catalog_entry(index: int, item: dict[str, Any], selected_banner: str) -> str:
+    key = str(item.get("key") or "")
+    marker = "（当前）" if key == selected_banner else ""
+    title = str(item.get("title") or key)
+    open_date = str(item.get("open_date") or "")
+    prefix = f"{open_date} " if open_date else ""
+    up6 = " / ".join(str(name) for name in (item.get("up_6") or [])[:4])
+    detail = up6 or str(item.get("description") or "")
+    if detail:
+        return f"{index}. {prefix}{title}{marker}：{detail}"
+    return f"{index}. {prefix}{title}{marker}"
+
+
+def banner_list_text(selected_banner: str, page: int = 1, per_page: int = 15) -> str:
+    entries = banner_catalog_entries()
+    total = len(entries)
+    page = clamp_banner_catalog_page(page, per_page=per_page)
+    page_count = banner_catalog_page_count(per_page=per_page)
+    start = (page - 1) * per_page
+    shown = entries[start : start + per_page]
+
+    lines = [f"方舟卡池目录（第 {page}/{page_count} 页，共 {total} 个）", "━━━━━━"]
+    for offset, item in enumerate(shown, start + 1):
+        lines.append(format_catalog_entry(offset, item, selected_banner))
+
+    lines.append("━━━━━━")
+    lines.append("想切换就回复：温德尔 4（数字换成上面的编号）。")
+    if page_count > 1:
+        lines.append("翻页：方舟卡池 第2页 / 方舟卡池 下一页 / 方舟卡池 上一页。")
+    lines.append("也可以直接搜：方舟卡池 水月 / 方舟卡池 巨斧与笔尖 / 方舟卡池 最新。")
     return "\n".join(lines)
 
 
@@ -585,7 +671,7 @@ def banner_matches_text(matches: list[dict[str, Any]], query: str) -> str:
     for index, item in enumerate(matches[:12], 1):
         six_up = " / ".join(str(name) for name in (item.get("up_6") or [])[:5]) or "无六星UP"
         lines.append(f"{index}. {item.get('open_date') or '?'} {item.get('title')}：{six_up}")
-    lines.append("想切换就发：方舟卡池 + 上面某个池名或UP干员名。")
+    lines.append("想切换就回复：温德尔 1（数字换成上面的编号），也可以发方舟卡池 + 池名或UP干员名。")
     return "\n".join(lines)
 
 
@@ -632,6 +718,7 @@ def default_user_state() -> dict[str, Any]:
         "counts": {"6": 0, "5": 0, "4": 0, "3": 0},
         "limited_count": 0,
         "selected_banner": "standard",
+        "banner_catalog": {},
         "history": [],
         "updated_at": "",
     }
@@ -649,6 +736,7 @@ def get_user_state(data: dict[str, Any], user_key: str) -> dict[str, Any]:
     state.setdefault("counts", {"6": 0, "5": 0, "4": 0, "3": 0})
     state.setdefault("limited_count", 0)
     state.setdefault("selected_banner", "standard")
+    state.setdefault("banner_catalog", {})
     state.setdefault("history", [])
     return state
 
@@ -1173,6 +1261,28 @@ def render_gacha_image(results: list[dict[str, Any]], state: dict[str, Any], nic
     return target
 
 
+def parse_banner_selection_number(text: str) -> int | None:
+    compact = re.sub(r"\s+", "", str(text or "").strip().lower())
+    if not compact:
+        return None
+    match = re.fullmatch(r"(?:方舟|明日方舟)?(?:卡池|池子)?(?:编号|第)?(\d{1,3})(?:号|个)?", compact)
+    if not match:
+        return None
+    number = int(match.group(1))
+    return number if number > 0 else None
+
+
+def parse_banner_page_request(compact: str) -> int | str | None:
+    if "下一页" in compact or "下页" in compact:
+        return "next"
+    if "上一页" in compact or "上页" in compact:
+        return "prev"
+    match = re.search(r"(?:第)?(\d{1,3})(?:页|p)", compact)
+    if match:
+        return int(match.group(1))
+    return None
+
+
 def parse_command(text: str) -> dict[str, Any] | None:
     value = text.strip()
     compact = re.sub(r"\s+", "", value.lower())
@@ -1181,6 +1291,16 @@ def parse_command(text: str) -> dict[str, Any] | None:
 
     banner_key = resolve_banner_key_from_text(compact)
     if "卡池" in compact or "池子" in compact:
+        page = parse_banner_page_request(compact)
+        if page is not None:
+            if page == "next":
+                return {"action": "banners", "page_delta": 1}
+            if page == "prev":
+                return {"action": "banners", "page_delta": -1}
+            return {"action": "banners", "page": page}
+        number = parse_banner_selection_number(value)
+        if number:
+            return {"action": "select_banner_number", "number": number}
         if banner_key:
             return {"action": "select_banner", "banner": banner_key}
         query = clean_banner_query(value)
@@ -1219,8 +1339,25 @@ def looks_like_command(text: str) -> bool:
     return parse_command(text) is not None
 
 
+def looks_like_banner_number_reply(text: str, user_key: str) -> bool:
+    number = parse_banner_selection_number(text)
+    if not number:
+        return False
+    data = load_state()
+    users = data.get("users") if isinstance(data.get("users"), dict) else {}
+    state = users.get(user_key) if isinstance(users, dict) else None
+    if not isinstance(state, dict):
+        return False
+    keys = active_banner_catalog_keys(state)
+    return 1 <= number <= len(keys)
+
+
 def handle_command_payload(text: str, user_key: str, nickname: str = "") -> tuple[str, Path | None, str]:
     command = parse_command(text)
+    if not command:
+        number = parse_banner_selection_number(text)
+        if number:
+            command = {"action": "select_banner_number", "number": number}
     if not command:
         return "", None, ""
 
@@ -1232,11 +1369,18 @@ def handle_command_payload(text: str, user_key: str, nickname: str = "") -> tupl
         if action == "help":
             answer = (
                 "方舟寻访用法：方舟单抽 / 方舟十连 / 方舟抽卡 50 / 方舟来一井 / "
-                "方舟限定十连 / 方舟中坚抽卡50 / 方舟卡池 / 方舟卡池 水月 / 方舟卡池 最新 / 方舟状态 / 方舟重置"
+                "方舟限定十连 / 方舟中坚抽卡50 / 方舟卡池 / 方舟卡池 水月 / 方舟卡池 最新 / 温德尔 1 切换目录编号 / 方舟状态 / 方舟重置"
             )
             return answer, None, answer
         if action == "banners":
-            answer = banner_list_text(str(state.get("selected_banner") or "standard"))
+            requested_page = command.get("page")
+            if requested_page is None and command.get("page_delta"):
+                requested_page = current_banner_catalog_page(state) + int(command.get("page_delta") or 0)
+            page = clamp_banner_catalog_page(int(requested_page or current_banner_catalog_page(state) or 1))
+            keys = banner_catalog_keys()
+            store_banner_catalog(state, keys, page=page, source="directory")
+            save_state(data)
+            answer = banner_list_text(str(state.get("selected_banner") or "standard"), page=page)
             return answer, None, answer
         if action == "banner_search":
             query = str(command.get("query") or "")
@@ -1245,7 +1389,30 @@ def handle_command_payload(text: str, user_key: str, nickname: str = "") -> tupl
                 answer = select_banner_response(state, str(matches[0].get("key") or "standard"))
                 save_state(data)
             else:
+                store_banner_catalog(
+                    state,
+                    [str(item.get("key") or "") for item in matches if item.get("key")],
+                    page=1,
+                    source="search",
+                )
+                save_state(data)
                 answer = banner_matches_text(matches, query)
+            return answer, None, answer
+        if action == "select_banner_number":
+            number = int(command.get("number") or 0)
+            keys = active_banner_catalog_keys(state)
+            if not keys:
+                answer = "这个编号我现在对不上了……先发“方舟卡池”让我重新列一遍目录。"
+                return answer, None, answer
+            if number < 1 or number > len(keys):
+                answer = f"这个编号超出目录了。现在能选 1 到 {len(keys)}，可以发“方舟卡池”重新看。"
+                return answer, None, answer
+            banner_key = keys[number - 1]
+            if banner_key not in BANNERS and banner_key not in official_banners_by_key():
+                answer = "这个编号对应的卡池好像失效了……先发“方舟卡池”让我重新列一遍。"
+                return answer, None, answer
+            answer = select_banner_response(state, banner_key)
+            save_state(data)
             return answer, None, answer
         if action == "select_banner":
             banner_key = str(command.get("banner") or "standard")
