@@ -1915,6 +1915,68 @@ def is_help_request(text: str) -> bool:
     return compact in {"指令", "帮助", "菜单", "使用说明", "功能", "help", "commands"}
 
 
+def is_arknights_gacha_request(text: str) -> bool:
+    from arknights_gacha import looks_like_command
+
+    return looks_like_command(text)
+
+
+def handle_arknights_gacha_request(
+    text: str,
+    group_id: int | str,
+    sender_id: int | str | None,
+    sender_display_name: str,
+) -> tuple[str, Path | None, str]:
+    from arknights_gacha import handle_command_payload
+
+    user_key = f"qq:{sender_id}" if sender_id else f"{group_id}:{sender_display_name or 'unknown'}"
+    nickname = sender_display_name or "博士"
+    return handle_command_payload(text, user_key=user_key, nickname=nickname)
+
+
+def send_arknights_gacha_reply(
+    config: dict[str, Any],
+    target_id: int | str,
+    caption: str,
+    image_path: Path | None,
+    fallback_text: str,
+    private: bool = False,
+) -> None:
+    if not image_path:
+        for chunk in split_reply(fallback_text or caption, limit=850):
+            send_target_text(config, target_id, chunk, private=private)
+        return
+
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    action = "send_private_msg" if private else "send_group_msg"
+    id_key = "user_id" if private else "group_id"
+
+    try:
+        result = post_onebot(
+            base_url=base_url,
+            action=action,
+            payload={id_key: target_id, "message": build_message(caption=caption, image_path=choose_send_image(image_path))},
+            access_token=access_token,
+            timeout=120,
+        )
+        if not result.get("_napcat_callback_timeout"):
+            return
+
+        safe_path = make_safe_image(image_path)
+        post_onebot(
+            base_url=base_url,
+            action=action,
+            payload={id_key: target_id, "message": build_message(caption=caption, image_path=safe_path)},
+            access_token=access_token,
+            timeout=120,
+        )
+    except Exception as exc:
+        print(f"Arknights gacha image send failed: {exc}", file=sys.stderr)
+        for chunk in split_reply(fallback_text or caption, limit=850):
+            send_target_text(config, target_id, chunk, private=private)
+
+
 def command_help_text(config: dict[str, Any]) -> str:
     ask_prefix = str(config.get("ask_prefix") or "温德尔")
     shop_command = str(config.get("shop_command") or "商店")
@@ -1933,6 +1995,9 @@ def command_help_text(config: dict[str, Any]) -> str:
         "直接发：\n"
         f"- {shop_command}：发送 Fortnite 每日商店总图\n"
         f"- {game_deals_command} / Steam折扣榜 / Epic喜加一：发送游戏优惠日报\n"
+        "- 方舟单抽 / 方舟十连 / 方舟抽卡50 / 方舟来一井：明日方舟模拟寻访并发结果图\n"
+        "- 方舟卡池 / 方舟卡池 限定 / 方舟中坚十连：查看或切换模拟卡池\n"
+        "- 方舟状态 / 方舟重置：查看或重置自己的寻访记录\n"
         "- 吃什么：随机推荐食物并发实物图\n"
         "- 喝什么：随机推荐饮品并发实物图\n"
         "- 找错了 / 图错了 / 这不是可乐：标记上一次吃喝图片不匹配，并重新找图\n"
@@ -3539,10 +3604,21 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             "- 瓦 清除：解绑\n"
             "- 无畏商店 / 瓦店 / 每日商店：查无畏每日商店\n"
             "- 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询\n"
+            "- 方舟单抽 / 方舟十连 / 方舟抽卡50 / 方舟卡池 限定 / 方舟状态\n"
             "- 其他内容：直接和我聊天"
         )
         for chunk in split_reply(help_text, limit=850):
             send_private_text(config, sender_id, chunk)
+        return
+
+    if is_arknights_gacha_request(text):
+        try:
+            sender_display_name = event_sender_display_name(event)
+            caption, image_path, fallback_text = handle_arknights_gacha_request(text, "private", sender_id, sender_display_name)
+            send_arknights_gacha_reply(config, sender_id, caption, image_path, fallback_text, private=True)
+        except Exception as exc:
+            print(f"Private arknights gacha failed: {exc}", file=sys.stderr)
+            send_private_text(config, sender_id, "明日方舟寻访模拟暂时失败了，稍后再试一下。")
         return
 
     if is_valorant_bind_request(text, valorant_bind_command):
@@ -3757,6 +3833,16 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         except Exception as exc:
             print(f"X posts update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "X 图片帖子暂时抓取失败。可能是 token 没权限、额度不足，或者 X API 暂时限制了请求。")
+        return
+
+    if is_arknights_gacha_request(text):
+        try:
+            caption, image_path, fallback_text = handle_arknights_gacha_request(text, group_id, sender_id, sender_display_name)
+            send_arknights_gacha_reply(config, group_id, caption, image_path, fallback_text)
+            remember_group_exchange(config, group_id, text, fallback_text or caption)
+        except Exception as exc:
+            print(f"Arknights gacha failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "明日方舟寻访模拟暂时失败了，稍后再试一下。")
         return
 
     if handle_random_food_feedback(config, group_id, text):
