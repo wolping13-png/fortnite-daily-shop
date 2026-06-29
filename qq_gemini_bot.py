@@ -235,6 +235,87 @@ WEB_SEARCH_AUTO_KEYWORDS = (
     "资料",
 )
 
+SEMI_AGENT_DIRECT_SEARCH_HINTS = (
+    "查一下",
+    "查查",
+    "搜一下",
+    "搜下",
+    "搜搜",
+    "帮我查",
+    "帮我搜",
+    "网上查",
+    "网上搜",
+    "联网查",
+    "联网搜",
+    "去查",
+    "查资料",
+    "查新闻",
+    "搜新闻",
+    "找一下",
+    "找找",
+    "怎么回事",
+    "发生了什么",
+    "发生什么",
+    "有消息",
+    "有没有消息",
+    "最新消息",
+    "最新情报",
+)
+
+SEMI_AGENT_FRESHNESS_HINTS = (
+    "最新",
+    "最近",
+    "近期",
+    "新闻",
+    "热点",
+    "热搜",
+    "刚刚",
+    "目前",
+    "当前",
+    "本周",
+    "这周",
+    "本月",
+    "今年",
+)
+
+SEMI_AGENT_SEARCH_TOPIC_HINTS = (
+    "版本",
+    "更新",
+    "补丁",
+    "改动",
+    "发售",
+    "发布",
+    "上线",
+    "下架",
+    "价格",
+    "折扣",
+    "免费",
+    "喜加一",
+    "销量",
+    "排行",
+    "榜单",
+    "评分",
+    "评价",
+    "赛事",
+    "比赛",
+    "活动",
+    "赛季",
+    "爆料",
+    "泄露",
+    "官方",
+)
+
+SEMI_AGENT_NO_SEARCH_PREFIXES = (
+    "我觉得",
+    "我想",
+    "我喜欢",
+    "我今天",
+    "我现在",
+    "你觉得我",
+    "陪我",
+    "叫我",
+)
+
 WEB_SEARCH_GAME_SOURCES = (
     "steam",
     "epic",
@@ -2033,7 +2114,8 @@ def command_help_text(config: dict[str, Any]) -> str:
         f"- @我 {wolf_command}：随机发一张狼图\n"
         f"- @我 {x_search_command} 关键词 / 帮我在 X 搜索 关键词：搜索 X 公开图片帖子并生成卡片\n"
         f"- @我 {x_timeline_command} / X关注：抓取你 X 账号关注时间线里的图片帖子\n"
-        f"- @我 {web_search_command} 最近有什么游戏新闻：联网搜索，文字和图片尽量合在一条消息里\n"
+        f"- @我 {web_search_command} 最近有什么游戏新闻：明确要求联网搜索\n"
+        "- @我 问需要实时资料的问题：我会自己判断要不要先去查一下\n"
         "- @我 今天几号 / 推荐几个游戏 / 你想问的问题：普通聊天\n"
         f"- {ask_prefix} 你的问题：旧版前缀聊天，也还能用"
     )
@@ -2536,6 +2618,165 @@ def should_use_web_search(question: str, configured_command: str, config: dict[s
     if not value:
         return False
     return is_explicit_web_search_command(value, configured_command)
+
+
+def semi_agent_enabled(config: dict[str, Any] | None) -> bool:
+    if config is None:
+        return True
+    return config_bool(config.get("semi_agent_enabled"), True)
+
+
+def semi_agent_include_images(config: dict[str, Any] | None) -> bool:
+    if config is None:
+        return False
+    return config_bool(config.get("semi_agent_include_images"), False)
+
+
+def semi_agent_model_decision_enabled(config: dict[str, Any] | None) -> bool:
+    if config is None:
+        return True
+    return config_bool(config.get("semi_agent_model_decision"), True)
+
+
+def semi_agent_ack_text(question: str) -> str:
+    compact = re.sub(r"\s+", "", question.strip())
+    if any(word in compact for word in ("新闻", "热点", "热搜", "最新")):
+        return "我去翻一下新消息，等我一下。"
+    if any(word in compact for word in ("价格", "折扣", "免费", "喜加一", "销量")):
+        return "我看看现在的情况，稍等。"
+    return "我看看，等我一下。"
+
+
+def parse_json_object_from_text(text: str) -> dict[str, Any]:
+    value = str(text or "").strip()
+    if not value:
+        return {}
+    try:
+        data = json.loads(value)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        pass
+
+    match = re.search(r"\{.*\}", value, re.S)
+    if not match:
+        return {}
+    try:
+        data = json.loads(match.group(0))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def decide_web_search_with_model(config: dict[str, Any], question: str) -> bool | None:
+    prompt = (
+        f"{current_time_context()}\n\n"
+        "你只负责判断 QQ 群里这句话是否需要联网搜索后再回答。\n"
+        "需要联网的情况：问题依赖最新/当前/最近信息；需要核实外部事实；涉及价格、新闻、版本、活动、发布日期、赛程、政策、实时状态；用户明确要求查、搜、确认。\n"
+        "不需要联网的情况：普通闲聊、情绪陪伴、角色扮演、主观偏好、一般常识、创作、解释概念、让你陪聊。\n"
+        "如果只是继续上文、要求详细一点、比较两个已知事物、让你换种说法，也通常不需要联网。\n"
+        "天气问题不归你判断，外层代码会单独处理。\n"
+        "如果不确定，倾向 false，避免普通聊天乱联网。\n"
+        "只返回 JSON，不要解释，不要 Markdown。格式：{\"need_search\": true, \"reason\": \"短原因\"}\n\n"
+        f"用户消息：{question}"
+    )
+    provider = str(config.get("provider") or "gemini").lower()
+
+    if provider == "deepseek":
+        api_key = str(config.get("deepseek_api_key") or "")
+        if not api_key:
+            return None
+        base_url = str(config.get("deepseek_base_url") or "https://api.deepseek.com").rstrip("/")
+        response = requests.post(
+            f"{base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": str(config.get("model") or "deepseek-chat"),
+                "messages": [
+                    {"role": "system", "content": "你是一个严格的工具调用决策器，只输出 JSON。"},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0,
+                "max_tokens": 120,
+            },
+            timeout=25,
+        )
+        response.raise_for_status()
+        data = response.json()
+        choices = data.get("choices")
+        choice = choices[0] if isinstance(choices, list) and choices else {}
+        message = choice.get("message") if isinstance(choice, dict) else {}
+        parsed = parse_json_object_from_text(extract_deepseek_answer(message if isinstance(message, dict) else {}))
+        if isinstance(parsed.get("need_search"), bool):
+            return bool(parsed["need_search"])
+        return None
+
+    api_key = str(config.get("gemini_api_key") or "")
+    if not api_key:
+        return None
+    model = str(config.get("model") or "gemini-2.0-flash")
+    endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    response = requests.post(
+        endpoint,
+        headers={
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key,
+        },
+        json={
+            "systemInstruction": {"parts": [{"text": "你是一个严格的工具调用决策器，只输出 JSON。"}]},
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0,
+                "maxOutputTokens": 120,
+            },
+        },
+        timeout=25,
+    )
+    response.raise_for_status()
+    data = response.json()
+    candidates = data.get("candidates")
+    candidate = candidates[0] if isinstance(candidates, list) and candidates else {}
+    parts = candidate.get("content", {}).get("parts", []) if isinstance(candidate, dict) else []
+    text = "\n".join(str(part.get("text") or "") for part in parts if isinstance(part, dict))
+    parsed = parse_json_object_from_text(text)
+    if isinstance(parsed.get("need_search"), bool):
+        return bool(parsed["need_search"])
+    return None
+
+
+def should_use_semi_agent_search(question: str, configured_command: str, config: dict[str, Any] | None = None) -> bool:
+    value = question.strip()
+    if not value or not semi_agent_enabled(config):
+        return False
+    if is_explicit_web_search_command(value, configured_command):
+        return True
+    if is_casual_no_search_question(value):
+        return False
+
+    if config is not None and semi_agent_model_decision_enabled(config):
+        try:
+            decision = decide_web_search_with_model(config, value)
+            if decision is not None:
+                return decision
+        except Exception as exc:
+            print(f"Semi-agent web decision failed: {exc}", file=sys.stderr)
+
+    compact = re.sub(r"\s+", "", value.lower())
+    if any(compact.startswith(prefix) for prefix in SEMI_AGENT_NO_SEARCH_PREFIXES):
+        return False
+    if any(keyword in value or keyword in compact for keyword in SEMI_AGENT_DIRECT_SEARCH_HINTS):
+        return True
+
+    has_freshness = any(keyword in value or keyword in compact for keyword in SEMI_AGENT_FRESHNESS_HINTS)
+    if not has_freshness:
+        return False
+    has_topic = (
+        any(keyword in value or keyword in compact for keyword in SEMI_AGENT_SEARCH_TOPIC_HINTS)
+        or any(keyword in compact for keyword in WEB_SEARCH_GAME_SOURCES)
+    )
+    return has_topic and looks_substantive_question(value)
 
 
 def strip_web_search_command(question: str, configured_command: str) -> str:
@@ -3910,6 +4151,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     if is_explicit_web_search_command(text, web_search_command):
+        send_group_text(config, group_id, semi_agent_ack_text(text))
         try:
             answer, image_urls = ask_model_with_web_search(config, text, include_images=True)
         except ValueError as exc:
@@ -3985,9 +4227,16 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     image_urls: list[str] = []
+    use_agent_search = should_use_semi_agent_search(question, web_search_command, config)
+    if use_agent_search:
+        send_group_text(config, group_id, semi_agent_ack_text(question))
     try:
-        if should_use_web_search(question, web_search_command, config):
-            answer, image_urls = ask_model_with_web_search(config, question, include_images=False)
+        if use_agent_search:
+            answer, image_urls = ask_model_with_web_search(
+                config,
+                question,
+                include_images=semi_agent_include_images(config),
+            )
         else:
             history = get_group_history(group_id, chat_history_limit(config))
             answer = ask_model(config, question, history=history, private_memory_context=private_context)
