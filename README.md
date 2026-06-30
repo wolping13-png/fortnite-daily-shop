@@ -289,9 +289,10 @@ nano gemini_bot_config.json
 
 把 `provider` 设为 `openrouter`，填写 `openrouter_api_key`，并把 `model` 设为 `thedrummer/cydonia-24b-v4.1`。如果要继续使用 DeepSeek，也可以把 `provider` 改回 `deepseek` 并填写 `deepseek_api_key`。如果要让机器人联网搜索，再填写 `tavily_api_key`。API Key 不要提交到 GitHub。
 
-联网搜索默认使用 Tavily `basic` 搜索，每次大约消耗 1 个 credit。机器人会先自行判断问题是否需要联网；你明确说 `联网查` 时会强制联网。
+OpenRouter 默认开启 `openrouter_plain_chat`，普通聊天会尽量按 OpenRouter Playground 的形式发送：只发送 `system_prompt` 和当前用户消息，不额外注入时间、人设、群聊历史、私有记忆或短回复规则，方便调试提示词。
+
+联网搜索默认使用 Tavily `basic` 搜索，每次大约消耗 1 个 credit。关闭 `openrouter_plain_chat` 并开启 `semi_agent_enabled` 后，机器人可以自行判断问题是否需要联网；你明确说 `联网查` 时会强制联网。
 联网搜索默认会请求 Tavily 图片结果，最多在同一条消息里附带 2 张相关图片。可以在 `gemini_bot_config.json` 里用 `web_search_include_images` 和 `web_search_image_limit` 调整。
-机器人每次回答都会注入当前中国内地北京时间，以及今天/昨天/明天的具体日期，减少日期和“最新/最近”判断错误。
 
 如果不想手动编辑配置，可以在服务器上运行：
 
@@ -300,6 +301,12 @@ bash set_openrouter_key.sh
 ```
 
 粘贴 OpenRouter API Key 后，脚本会自动切到 `thedrummer/cydonia-24b-v4.1` 并重启机器人。
+
+如果已经配置过 OpenRouter Key，只想切回最普通的 OpenRouter 聊天模式，可以运行：
+
+```bash
+bash set_openrouter_plain_chat.sh
+```
 
 如果只是配置 Tavily 联网搜索，可以运行：
 

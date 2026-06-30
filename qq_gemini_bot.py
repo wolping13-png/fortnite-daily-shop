@@ -2800,6 +2800,10 @@ def openrouter_headers(config: dict[str, Any]) -> dict[str, str]:
     return headers
 
 
+def openrouter_plain_chat_enabled(config: dict[str, Any]) -> bool:
+    return config_bool(config.get("openrouter_plain_chat"), True)
+
+
 def parse_json_object_from_text(text: str) -> dict[str, Any]:
     value = str(text or "").strip()
     if not value:
@@ -3469,7 +3473,9 @@ def ask_deepseek(
         return "DeepSeek 没有返回文字内容。"
     answer = extract_deepseek_answer(message)
     finish_reason = deepseek_finish_reason(data)
-    should_retry = not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
+    should_retry = (not plain_chat) and (
+        not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
+    )
     if should_retry:
         print(f"DeepSeek answer retry triggered: {deepseek_empty_detail(data)}", file=sys.stderr)
         retry_messages = list(messages)
@@ -3501,23 +3507,32 @@ def ask_openrouter(
 ) -> str:
     base_url = openrouter_base_url(config)
     model = str(config.get("model") or "thedrummer/cydonia-24b-v4.1")
-    system_prompt = str(
-        config.get("system_prompt")
-        or default_system_prompt()
-    )
-    system_prompt = add_time_context_to_system(system_prompt)
-    if private_memory_context:
-        system_prompt = f"{system_prompt}\n\n{private_memory_context}"
+    plain_chat = openrouter_plain_chat_enabled(config)
+    if plain_chat:
+        system_prompt = str(config.get("system_prompt") or "").strip()
+        user_question = str(question or "").strip()
+        messages: list[dict[str, str]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": user_question})
+    else:
+        system_prompt = str(
+            config.get("system_prompt")
+            or default_system_prompt()
+        )
+        system_prompt = add_time_context_to_system(system_prompt)
+        if private_memory_context:
+            system_prompt = f"{system_prompt}\n\n{private_memory_context}"
 
-    user_question = add_time_context_to_prompt(enrich_question(question))
+        user_question = add_time_context_to_prompt(enrich_question(question))
 
-    messages = [{"role": "system", "content": system_prompt}]
-    for message in history or []:
-        role = message.get("role")
-        content = str(message.get("content") or "").strip()
-        if role in {"user", "assistant"} and content:
-            messages.append({"role": role, "content": content})
-    messages.append({"role": "user", "content": user_question})
+        messages = [{"role": "system", "content": system_prompt}]
+        for message in history or []:
+            role = message.get("role")
+            content = str(message.get("content") or "").strip()
+            if role in {"user", "assistant"} and content:
+                messages.append({"role": role, "content": content})
+        messages.append({"role": "user", "content": user_question})
 
     headers = openrouter_headers(config)
 
@@ -3537,7 +3552,7 @@ def ask_openrouter(
         response.raise_for_status()
         return response.json()
 
-    max_tokens = model_token_limit(config, question)
+    max_tokens = int(config.get("max_output_tokens") or 800) if plain_chat else model_token_limit(config, question)
     data = request_completion(messages, max_tokens)
     choices = data.get("choices")
     if not isinstance(choices, list) or not choices:
