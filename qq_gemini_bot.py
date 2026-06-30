@@ -2823,6 +2823,14 @@ def openrouter_plain_chat_enabled(config: dict[str, Any]) -> bool:
     return config_bool(config.get("openrouter_plain_chat"), True)
 
 
+def openrouter_plain_history_enabled(config: dict[str, Any]) -> bool:
+    return config_bool(config.get("openrouter_plain_history"), True)
+
+
+def openrouter_plain_memory_enabled(config: dict[str, Any]) -> bool:
+    return config_bool(config.get("openrouter_plain_memory"), True)
+
+
 def parse_json_object_from_text(text: str) -> dict[str, Any]:
     value = str(text or "").strip()
     if not value:
@@ -3527,6 +3535,14 @@ def ask_openrouter(
         messages: list[dict[str, str]] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
+        if private_memory_context and openrouter_plain_memory_enabled(config):
+            messages.append({"role": "system", "content": private_memory_context})
+        if openrouter_plain_history_enabled(config):
+            for message in history or []:
+                role = message.get("role")
+                content = str(message.get("content") or "").strip()
+                if role in {"user", "assistant"} and content:
+                    messages.append({"role": role, "content": content})
         messages.append({"role": "user", "content": user_question})
     else:
         system_prompt = configured_system_prompt(config)
@@ -3573,7 +3589,9 @@ def ask_openrouter(
         return "OpenRouter 没有返回文字内容。"
     answer = extract_deepseek_answer(message)
     finish_reason = deepseek_finish_reason(data)
-    should_retry = not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
+    should_retry = (not plain_chat) and (
+        not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
+    )
     if should_retry:
         print(f"OpenRouter answer retry triggered: {deepseek_empty_detail(data)}", file=sys.stderr)
         retry_messages = list(messages)

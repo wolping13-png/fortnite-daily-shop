@@ -289,7 +289,7 @@ nano gemini_bot_config.json
 
 把 `provider` 设为 `openrouter`，填写 `openrouter_api_key`，并把 `model` 设为 `thedrummer/cydonia-24b-v4.1`。如果要继续使用 DeepSeek，也可以把 `provider` 改回 `deepseek` 并填写 `deepseek_api_key`。如果要让机器人联网搜索，再填写 `tavily_api_key`。API Key 不要提交到 GitHub。
 
-OpenRouter 默认开启 `openrouter_plain_chat`，普通聊天会尽量按 OpenRouter Playground 的形式发送：只发送 `system_prompt` 和当前用户消息，不额外注入时间、人设、群聊历史、私有记忆或短回复规则，方便调试提示词。
+OpenRouter 默认开启 `openrouter_plain_chat`，普通聊天会按 OpenRouter 原生 messages 形式发送：人设卡作为 system prompt，个人记忆作为单独背景消息，短期上下文作为历史 user/assistant 消息，最后是当前用户消息。不额外注入时间或短回复规则，尽量不改变人设卡里的说话方式。
 当前温德尔人设卡保存在 `wendell_persona.txt`。配置里使用 `system_prompt_file: "wendell_persona.txt"` 时，机器人会把这个文件内容作为 OpenRouter 的 system prompt。
 
 联网搜索默认使用 Tavily `basic` 搜索，每次大约消耗 1 个 credit。关闭 `openrouter_plain_chat` 并开启 `semi_agent_enabled` 后，机器人可以自行判断问题是否需要联网；你明确说 `联网查` 时会强制联网。
