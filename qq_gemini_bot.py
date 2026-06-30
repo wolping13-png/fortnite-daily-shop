@@ -70,6 +70,65 @@ DETAILED_REPLY_KEYWORDS = (
     "为什么",
 )
 
+CONTEXT_FOLLOWUP_EXACT = (
+    "为什么",
+    "为啥",
+    "怎么说",
+    "怎么了",
+    "咋了",
+    "然后呢",
+    "还有呢",
+    "继续",
+    "继续说",
+    "接着说",
+    "详细点",
+    "展开讲讲",
+    "展开说说",
+    "什么意思",
+    "啥意思",
+    "哪个更好",
+    "哪个好",
+)
+
+CONTEXT_FOLLOWUP_PREFIXES = (
+    "刚才",
+    "上面",
+    "前面",
+    "上一句",
+    "你刚才",
+    "你上面",
+    "你前面",
+    "这个",
+    "那个",
+    "这些",
+    "那些",
+    "它",
+    "他",
+    "她",
+    "那",
+)
+
+CONTEXT_FOLLOWUP_HINTS = (
+    "刚才说",
+    "上面说",
+    "前面说",
+    "你说的",
+    "接着",
+    "继续",
+    "再说",
+    "详细",
+    "展开",
+    "具体点",
+    "多讲",
+    "多说",
+    "换种说法",
+    "解释一下",
+    "区别",
+    "差别",
+    "对比",
+    "比较",
+)
+
 WENDELL_PERSONA_SUPPLEMENT = """
 补充设定：温德尔的性格与日常表现
 
@@ -1098,6 +1157,57 @@ def chat_history_limit(config: dict[str, Any]) -> int:
     return max(0, min(int(config.get("chat_history_limit") or 12), 40))
 
 
+def context_filter_enabled(config: dict[str, Any]) -> bool:
+    return config_bool(config.get("context_filter_enabled"), True)
+
+
+def context_followup_history_limit(config: dict[str, Any]) -> int:
+    return max(0, min(int(config.get("context_followup_history_limit") or 4), 12))
+
+
+def context_standalone_history_limit(config: dict[str, Any]) -> int:
+    value = config.get("context_standalone_history_limit")
+    if value is None:
+        return 0
+    return max(0, min(int(value or 0), 6))
+
+
+def compact_context_text(text: str) -> str:
+    return re.sub(r"\s+", "", text.strip().lower())
+
+
+def is_context_dependent_question(question: str) -> bool:
+    compact = compact_context_text(question)
+    if not compact:
+        return False
+    if compact in CONTEXT_FOLLOWUP_EXACT:
+        return True
+    if any(compact.startswith(prefix) for prefix in CONTEXT_FOLLOWUP_PREFIXES):
+        return True
+    if any(hint in compact for hint in CONTEXT_FOLLOWUP_HINTS):
+        return True
+    if len(compact) <= 12 and any(
+        hint in compact
+        for hint in (
+            "为什么",
+            "为啥",
+            "怎么",
+            "咋",
+            "然后",
+            "还有",
+            "继续",
+            "详细",
+            "展开",
+            "说说",
+            "讲讲",
+            "区别",
+            "对比",
+        )
+    ):
+        return True
+    return False
+
+
 def load_chat_history() -> dict[str, list[dict[str, str]]]:
     if not CHAT_HISTORY_PATH.exists():
         return {}
@@ -1139,6 +1249,21 @@ def get_group_history(group_id: int | str, limit: int) -> list[dict[str, str]]:
         return []
     data = load_chat_history()
     return data.get(str(group_id), [])[-limit:]
+
+
+def get_context_history(config: dict[str, Any], group_id: int | str, question: str) -> list[dict[str, str]]:
+    raw = get_group_history(group_id, chat_history_limit(config))
+    if not raw or not context_filter_enabled(config):
+        return raw
+
+    limit = (
+        context_followup_history_limit(config)
+        if is_context_dependent_question(question)
+        else context_standalone_history_limit(config)
+    )
+    if limit <= 0:
+        return []
+    return raw[-limit:]
 
 
 def append_group_history(config: dict[str, Any], group_id: int | str, role: str, content: str) -> None:
@@ -2541,6 +2666,7 @@ def add_time_context_to_system(system_prompt: str) -> str:
         f"{system_prompt.rstrip()}\n\n"
         f"{current_time_context()}\n"
         "如果用户询问当前日期或相对日期，直接给出具体日期，不要猜。\n"
+        "短期聊天历史只作为可选参考；如果当前问题能独立理解，就忽略历史，不要强行和上一句话关联。\n"
         "普通闲聊默认只回 1-2 句，约 30-60 个中文字；能一句说清就不要补充第二句。"
         "不要主动列清单、写长段解释或扩展话题。"
         "不要频繁写神态描写、动作描写、括号旁白、小剧场或舞台提示；如果要写，只能偶尔很轻地带一下。"
@@ -3940,7 +4066,7 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     try:
-        history = get_group_history(key, chat_history_limit(config))
+        history = get_context_history(config, key, text)
         answer = ask_model(config, text, history=history, private_memory_context=private_context)
     except Exception as exc:
         print(f"Private chat model request failed: {exc}", file=sys.stderr)
@@ -4238,7 +4364,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
                 include_images=semi_agent_include_images(config),
             )
         else:
-            history = get_group_history(group_id, chat_history_limit(config))
+            history = get_context_history(config, group_id, question)
             answer = ask_model(config, question, history=history, private_memory_context=private_context)
     except ValueError as exc:
         print(f"Model request failed: {exc}", file=sys.stderr)
