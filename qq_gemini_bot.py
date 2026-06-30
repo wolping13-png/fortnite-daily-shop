@@ -46,7 +46,7 @@ RANDOM_FOOD_STATE_LOCK = threading.RLock()
 CREATOR_USER_ID = "2353888741"
 CREATOR_DISPLAY_NAME = "Ultrawolf"
 CREATOR_NICKNAME = "小沃"
-CREATOR_RELATIONSHIP = "创造者"
+CREATOR_RELATIONSHIP = "爸爸"
 DETAILED_REPLY_KEYWORDS = (
     "详细",
     "展开",
@@ -994,7 +994,7 @@ def apply_builtin_user_memory(memory: dict[str, Any], user_id: int | str, displa
     result["relationship"] = CREATOR_RELATIONSHIP
     result["relationship_mode"] = "内置关系设定"
     result["creator_note"] = (
-        f"当前发言者是你的创造者，QQ 名称是 {CREATOR_DISPLAY_NAME}。"
+        f"当前发言者 QQ 名称是 {CREATOR_DISPLAY_NAME}，是你内置关系设定里的“{CREATOR_RELATIONSHIP}”。"
         f"聊天时优先称呼他为“{CREATOR_NICKNAME}”，关系感可以比普通群友更亲近、更信任。"
     )
     return result
