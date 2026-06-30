@@ -17,6 +17,7 @@ data["provider"] = "openrouter"
 data["model"] = "thedrummer/cydonia-24b-v4.1"
 data["openrouter_plain_chat"] = True
 data["system_prompt"] = ""
+data["system_prompt_file"] = "wendell_persona.txt"
 data["max_output_tokens"] = 800
 data["chat_history_limit"] = 0
 data["context_followup_history_limit"] = 0

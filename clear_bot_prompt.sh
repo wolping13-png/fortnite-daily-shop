@@ -14,6 +14,7 @@ from pathlib import Path
 path = Path("gemini_bot_config.json")
 data = json.loads(path.read_text(encoding="utf-8"))
 data["system_prompt"] = ""
+data["system_prompt_file"] = ""
 path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 

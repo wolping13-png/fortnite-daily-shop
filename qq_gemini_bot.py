@@ -2665,6 +2665,25 @@ def default_system_prompt() -> str:
     return ""
 
 
+def configured_system_prompt(config: dict[str, Any]) -> str:
+    prompt = str(config.get("system_prompt") or "").strip()
+    if prompt:
+        return prompt
+
+    prompt_file = str(config.get("system_prompt_file") or "").strip()
+    if not prompt_file:
+        return default_system_prompt()
+
+    path = Path(prompt_file)
+    if not path.is_absolute():
+        path = BASE_DIR / path
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except Exception as exc:
+        print(f"Failed to read system prompt file {path}: {exc}", file=sys.stderr)
+        return default_system_prompt()
+
+
 def add_wendell_persona_supplement(system_prompt: str) -> str:
     return system_prompt.rstrip()
 
@@ -3310,10 +3329,7 @@ def ask_gemini(
 ) -> str:
     model = str(config.get("model") or "gemini-2.0-flash")
     endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    system_prompt = str(
-        config.get("system_prompt")
-        or default_system_prompt()
-    )
+    system_prompt = configured_system_prompt(config)
     system_prompt = add_time_context_to_system(system_prompt)
     if private_memory_context:
         system_prompt = f"{system_prompt}\n\n{private_memory_context}"
@@ -3423,10 +3439,7 @@ def ask_deepseek(
 ) -> str:
     base_url = str(config.get("deepseek_base_url") or "https://api.deepseek.com").rstrip("/")
     model = str(config.get("model") or "deepseek-v4-flash")
-    system_prompt = str(
-        config.get("system_prompt")
-        or default_system_prompt()
-    )
+    system_prompt = configured_system_prompt(config)
     system_prompt = add_time_context_to_system(system_prompt)
     if private_memory_context:
         system_prompt = f"{system_prompt}\n\n{private_memory_context}"
@@ -3509,17 +3522,14 @@ def ask_openrouter(
     model = str(config.get("model") or "thedrummer/cydonia-24b-v4.1")
     plain_chat = openrouter_plain_chat_enabled(config)
     if plain_chat:
-        system_prompt = str(config.get("system_prompt") or "").strip()
+        system_prompt = configured_system_prompt(config)
         user_question = str(question or "").strip()
         messages: list[dict[str, str]] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": user_question})
     else:
-        system_prompt = str(
-            config.get("system_prompt")
-            or default_system_prompt()
-        )
+        system_prompt = configured_system_prompt(config)
         system_prompt = add_time_context_to_system(system_prompt)
         if private_memory_context:
             system_prompt = f"{system_prompt}\n\n{private_memory_context}"
