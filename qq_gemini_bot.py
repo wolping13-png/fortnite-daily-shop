@@ -382,6 +382,7 @@ WEB_SEARCH_GAME_SOURCES = (
     "堡垒之夜",
     "deepseek",
     "gemini",
+    "openrouter",
     "openai",
     "xbox",
     "playstation",
@@ -482,6 +483,7 @@ WEB_SEARCH_TRUSTED_DOMAINS: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] 
     (("epic", "喜加一"), ("store.epicgames.com", "epicgames.com")),
     (("steam",), ("store.steampowered.com", "steamcommunity.com", "steamdb.info")),
     (("deepseek",), ("deepseek.com", "api-docs.deepseek.com", "status.deepseek.com")),
+    (("openrouter",), ("openrouter.ai",)),
     (("openai", "chatgpt"), ("openai.com", "help.openai.com", "status.openai.com")),
     (("xbox",), ("xbox.com", "news.xbox.com")),
     (("playstation", "ps5"), ("playstation.com", "blog.playstation.com")),
@@ -644,6 +646,11 @@ def load_config() -> dict[str, Any]:
         if not api_key or api_key == "PASTE_YOUR_DEEPSEEK_API_KEY_HERE":
             raise ValueError("DeepSeek API key is missing.")
         data["deepseek_api_key"] = api_key
+    elif provider == "openrouter":
+        api_key = os.environ.get("OPENROUTER_API_KEY") or str(data.get("openrouter_api_key") or "")
+        if not api_key or api_key == "PASTE_YOUR_OPENROUTER_API_KEY_HERE":
+            raise ValueError("OpenRouter API key is missing.")
+        data["openrouter_api_key"] = api_key
     else:
         api_key = os.environ.get("GEMINI_API_KEY") or str(data.get("gemini_api_key") or "")
         if not api_key or api_key == "PASTE_YOUR_GEMINI_API_KEY_HERE":
@@ -2773,6 +2780,24 @@ def semi_agent_ack_text(question: str) -> str:
     return "我看看，等我一下。"
 
 
+def openrouter_base_url(config: dict[str, Any]) -> str:
+    return str(config.get("openrouter_base_url") or "https://openrouter.ai/api/v1").rstrip("/")
+
+
+def openrouter_headers(config: dict[str, Any]) -> dict[str, str]:
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config['openrouter_api_key']}",
+    }
+    site_url = str(config.get("openrouter_site_url") or "").strip()
+    app_name = str(config.get("openrouter_app_name") or "").strip()
+    if site_url:
+        headers["HTTP-Referer"] = site_url
+    if app_name:
+        headers["X-Title"] = app_name
+    return headers
+
+
 def parse_json_object_from_text(text: str) -> dict[str, Any]:
     value = str(text or "").strip()
     if not value:
@@ -2807,19 +2832,29 @@ def decide_web_search_with_model(config: dict[str, Any], question: str) -> bool 
     )
     provider = str(config.get("provider") or "gemini").lower()
 
-    if provider == "deepseek":
-        api_key = str(config.get("deepseek_api_key") or "")
-        if not api_key:
-            return None
-        base_url = str(config.get("deepseek_base_url") or "https://api.deepseek.com").rstrip("/")
-        response = requests.post(
-            f"{base_url}/chat/completions",
-            headers={
+    if provider in {"deepseek", "openrouter"}:
+        if provider == "openrouter":
+            api_key = str(config.get("openrouter_api_key") or "")
+            if not api_key:
+                return None
+            base_url = openrouter_base_url(config)
+            headers = openrouter_headers(config)
+            model = str(config.get("model") or "thedrummer/cydonia-24b-v4.1")
+        else:
+            api_key = str(config.get("deepseek_api_key") or "")
+            if not api_key:
+                return None
+            base_url = str(config.get("deepseek_base_url") or "https://api.deepseek.com").rstrip("/")
+            headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
-            },
+            }
+            model = str(config.get("model") or "deepseek-chat")
+        response = requests.post(
+            f"{base_url}/chat/completions",
+            headers=headers,
             json={
-                "model": str(config.get("model") or "deepseek-chat"),
+                "model": model,
                 "messages": [
                     {"role": "system", "content": "你是一个严格的工具调用决策器，只输出 JSON。"},
                     {"role": "user", "content": prompt},
@@ -3456,6 +3491,85 @@ def ask_deepseek(
     return answer or "DeepSeek 没有返回文字内容。"
 
 
+def ask_openrouter(
+    config: dict[str, Any],
+    question: str,
+    history: list[dict[str, str]] | None = None,
+    private_memory_context: str = "",
+) -> str:
+    base_url = openrouter_base_url(config)
+    model = str(config.get("model") or "thedrummer/cydonia-24b-v4.1")
+    system_prompt = str(
+        config.get("system_prompt")
+        or default_system_prompt()
+    )
+    system_prompt = add_time_context_to_system(system_prompt)
+    if private_memory_context:
+        system_prompt = f"{system_prompt}\n\n{private_memory_context}"
+
+    user_question = add_time_context_to_prompt(enrich_question(question))
+
+    messages = [{"role": "system", "content": system_prompt}]
+    for message in history or []:
+        role = message.get("role")
+        content = str(message.get("content") or "").strip()
+        if role in {"user", "assistant"} and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": user_question})
+
+    headers = openrouter_headers(config)
+
+    def request_completion(request_messages: list[dict[str, str]], max_tokens: int) -> dict[str, Any]:
+        response = requests.post(
+            f"{base_url}/chat/completions",
+            headers=headers,
+            json={
+                "model": model,
+                "messages": request_messages,
+                "temperature": float(config.get("temperature", 0.7)),
+                "max_tokens": max_tokens,
+                "stream": False,
+            },
+            timeout=60,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    max_tokens = model_token_limit(config, question)
+    data = request_completion(messages, max_tokens)
+    choices = data.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return "OpenRouter 没有返回内容。"
+
+    message = choices[0].get("message") if isinstance(choices[0], dict) else {}
+    if not isinstance(message, dict):
+        return "OpenRouter 没有返回文字内容。"
+    answer = extract_deepseek_answer(message)
+    finish_reason = deepseek_finish_reason(data)
+    should_retry = not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
+    if should_retry:
+        print(f"OpenRouter answer retry triggered: {deepseek_empty_detail(data)}", file=sys.stderr)
+        retry_messages = list(messages)
+        retry_messages[-1] = {
+            "role": "user",
+            "content": deepseek_retry_prompt(user_question, question, answer),
+        }
+        data = request_completion(retry_messages, max(max_tokens, DEEPSEEK_EMPTY_RETRY_TOKENS))
+        retry_choices = data.get("choices")
+        retry_message = (
+            retry_choices[0].get("message")
+            if isinstance(retry_choices, list) and retry_choices and isinstance(retry_choices[0], dict)
+            else {}
+        )
+        if isinstance(retry_message, dict):
+            retry_answer = extract_deepseek_answer(retry_message)
+            if retry_answer:
+                answer = retry_answer
+        if not answer:
+            print(f"OpenRouter retry also returned empty content: {deepseek_empty_detail(data)}", file=sys.stderr)
+    return answer or "OpenRouter 没有返回文字内容。"
+
+
 def ask_model(
     config: dict[str, Any],
     question: str,
@@ -3465,6 +3579,8 @@ def ask_model(
     provider = str(config.get("provider") or "gemini").lower()
     if provider == "deepseek":
         return ask_deepseek(config, question, history=history, private_memory_context=private_memory_context)
+    if provider == "openrouter":
+        return ask_openrouter(config, question, history=history, private_memory_context=private_memory_context)
     return ask_gemini(config, question, history=history, private_memory_context=private_memory_context)
 
 
