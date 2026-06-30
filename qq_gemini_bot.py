@@ -3405,7 +3405,7 @@ def ask_gemini(
     parts = candidates[0].get("content", {}).get("parts", [])
     texts = [str(part.get("text") or "") for part in parts if isinstance(part, dict)]
     answer = "\n".join(text for text in texts if text.strip()).strip()
-    return answer or "Gemini 没有返回文字内容。"
+    return collapse_repetitive_answer(answer) or "Gemini 没有返回文字内容。"
 
 
 def extract_deepseek_answer(message: dict[str, Any]) -> str:
@@ -3448,6 +3448,62 @@ def answer_looks_cut_off(answer: str) -> bool:
     if stripped.endswith(("。", "！", "？", "!", "?", ".", "…", "）", "】", "」", "』", "”", "’")):
         return False
     return True
+
+
+def split_answer_units(answer: str) -> list[str]:
+    units: list[str] = []
+    for line in str(answer or "").splitlines():
+        value = line.strip()
+        if not value:
+            continue
+        parts = re.findall(r"[^。！？!?…]+[。！？!?…]*", value)
+        units.extend(part.strip() for part in parts if part.strip())
+    return units
+
+
+def normalize_repeat_unit(unit: str) -> str:
+    value = re.sub(r"^\s*[（(][^）)]{0,60}[）)]", "", str(unit or "")).strip()
+    value = re.sub(r"\s+", "", value)
+    value = value.strip("。！？!?…，,；;：:\"'“”‘’（）()[]【】")
+    return value
+
+
+def collapse_repetitive_answer(answer: str) -> str:
+    units = split_answer_units(answer)
+    if len(units) < 5:
+        return answer.strip()
+
+    output: list[str] = []
+    normalized: list[str] = []
+    counts: dict[str, int] = {}
+    trimmed = False
+
+    for unit in units:
+        norm = normalize_repeat_unit(unit)
+        if norm:
+            counts[norm] = counts.get(norm, 0) + 1
+            if counts[norm] >= 3 and len(norm) >= 4:
+                trimmed = True
+                break
+
+        output.append(unit)
+        normalized.append(norm)
+
+        for width in range(2, min(6, len(normalized) // 2) + 1):
+            latest = normalized[-width:]
+            previous = normalized[-2 * width : -width]
+            if latest == previous and any(len(item) >= 4 for item in latest):
+                del output[-width:]
+                del normalized[-width:]
+                trimmed = True
+                break
+        if trimmed:
+            break
+
+    cleaned = "\n".join(output).strip() if output else answer.strip()
+    if trimmed and cleaned and "卡住" not in cleaned[-30:]:
+        cleaned = f"{cleaned}\n……我刚刚有点卡住了。"
+    return cleaned
 
 
 def deepseek_retry_prompt(user_question: str, question: str, answer: str) -> str:
@@ -3519,9 +3575,7 @@ def ask_deepseek(
         return "DeepSeek 没有返回文字内容。"
     answer = extract_deepseek_answer(message)
     finish_reason = deepseek_finish_reason(data)
-    should_retry = (not plain_chat) and (
-        not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
-    )
+    should_retry = not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
     if should_retry:
         print(f"DeepSeek answer retry triggered: {deepseek_empty_detail(data)}", file=sys.stderr)
         retry_messages = list(messages)
@@ -3542,7 +3596,7 @@ def ask_deepseek(
                 answer = retry_answer
         if not answer:
             print(f"DeepSeek retry also returned empty content: {deepseek_empty_detail(data)}", file=sys.stderr)
-    return answer or "DeepSeek 没有返回文字内容。"
+    return collapse_repetitive_answer(answer) or "DeepSeek 没有返回文字内容。"
 
 
 def ask_openrouter(
@@ -3637,7 +3691,7 @@ def ask_openrouter(
                 answer = retry_answer
         if not answer:
             print(f"OpenRouter retry also returned empty content: {deepseek_empty_detail(data)}", file=sys.stderr)
-    return answer or "OpenRouter 没有返回文字内容。"
+    return collapse_repetitive_answer(answer) or "OpenRouter 没有返回文字内容。"
 
 
 def ask_model(
