@@ -43,6 +43,10 @@ USER_MEMORY_LOCK = threading.RLock()
 PROACTIVE_STATE_LOCK = threading.RLock()
 MEME_STATE_LOCK = threading.RLock()
 RANDOM_FOOD_STATE_LOCK = threading.RLock()
+CREATOR_USER_ID = "2353888741"
+CREATOR_DISPLAY_NAME = "Ultrawolf"
+CREATOR_NICKNAME = "小沃"
+CREATOR_RELATIONSHIP = "创造者"
 DETAILED_REPLY_KEYWORDS = (
     "详细",
     "展开",
@@ -979,7 +983,25 @@ def is_personal_memory_like_text(text: str) -> bool:
     return parse_personal_memory_command(text) is not None
 
 
+def apply_builtin_user_memory(memory: dict[str, Any], user_id: int | str, display_name: str = "") -> dict[str, Any]:
+    result = dict(memory) if isinstance(memory, dict) else {}
+    if str(user_id or "").strip() != CREATOR_USER_ID:
+        return result
+
+    result["user_id"] = CREATOR_USER_ID
+    result["display_name"] = display_name or CREATOR_DISPLAY_NAME
+    result["nickname"] = CREATOR_NICKNAME
+    result["relationship"] = CREATOR_RELATIONSHIP
+    result["relationship_mode"] = "内置关系设定"
+    result["creator_note"] = (
+        f"当前发言者是你的创造者，QQ 名称是 {CREATOR_DISPLAY_NAME}。"
+        f"聊天时优先称呼他为“{CREATOR_NICKNAME}”，关系感可以比普通群友更亲近、更信任。"
+    )
+    return result
+
+
 def user_memory_context(memory: dict[str, Any], user_id: int | str, display_name: str) -> str:
+    memory = apply_builtin_user_memory(memory, user_id, display_name)
     nickname = str(memory.get("nickname") or "").strip()
     relationship = str(memory.get("relationship") or "").strip()
     relationship_mode = str(memory.get("relationship_mode") or "聊天/角色扮演设定").strip()
@@ -996,6 +1018,9 @@ def user_memory_context(memory: dict[str, Any], user_id: int | str, display_name
         lines.append(f"- 只对当前发言者生效的关系设定：{relationship}（{relationship_mode}，不是现实关系）。")
     else:
         lines.append("- 当前发言者没有设置私有关系设定。")
+    creator_note = str(memory.get("creator_note") or "").strip()
+    if creator_note:
+        lines.append(f"- 内置特殊关系：{creator_note}")
     lines.extend(
         [
             "- 这些私有记忆按“群号 + 用户 QQ”隔离，只能用于当前发言者。",
@@ -3651,6 +3676,7 @@ def answer_user_memory_question(memory: dict[str, Any], question: str) -> str | 
     compact = re.sub(r"\s+", "", question.strip())
     nickname = str(memory.get("nickname") or "").strip()
     relationship = str(memory.get("relationship") or "").strip()
+    creator_note = str(memory.get("creator_note") or "").strip()
 
     if any(token in compact for token in ("你叫我什么", "你喊我什么", "你怎么叫我", "你应该叫我什么")):
         if nickname:
@@ -3663,6 +3689,8 @@ def answer_user_memory_question(memory: dict[str, Any], question: str) -> str | 
 
     if relation == "__self_relation__":
         if relationship:
+            if creator_note:
+                return f"你是我的“{relationship}”，小沃。这个我不会认错。"
             return f"在这个群的聊天设定里，你是我的“{relationship}”。"
         return "嗷，你还没有给本狼设置专属关系设定。"
 
@@ -4220,6 +4248,7 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     sender_display_name = event_sender_display_name(event)
     current_memory = get_user_memory(key, sender_id)
+    current_memory = apply_builtin_user_memory(current_memory, sender_id, sender_display_name)
     private_context = user_memory_context(current_memory, sender_id, sender_display_name)
     memory_answer = answer_user_memory_question(current_memory, text)
     if memory_answer:
@@ -4497,6 +4526,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         return
 
     current_memory = get_user_memory(group_id, sender_id)
+    current_memory = apply_builtin_user_memory(current_memory, sender_id, sender_display_name)
     private_context = user_memory_context(current_memory, sender_id, sender_display_name)
     memory_answer = answer_user_memory_question(current_memory, question)
     if memory_answer:

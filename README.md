@@ -292,7 +292,7 @@ nano gemini_bot_config.json
 OpenRouter 默认开启 `openrouter_plain_chat`，普通聊天会按 OpenRouter 原生 messages 形式发送：人设卡作为 system prompt，个人记忆作为单独背景消息，短期上下文作为历史 user/assistant 消息，最后是当前用户消息。不额外注入时间或短回复规则，尽量不改变人设卡里的说话方式。
 当前温德尔人设卡保存在 `wendell_persona.txt`。配置里使用 `system_prompt_file: "wendell_persona.txt"` 时，机器人会把这个文件内容作为 OpenRouter 的 system prompt。
 
-联网搜索默认使用 Tavily `basic` 搜索，每次大约消耗 1 个 credit。关闭 `openrouter_plain_chat` 并开启 `semi_agent_enabled` 后，机器人可以自行判断问题是否需要联网；你明确说 `联网查` 时会强制联网。
+联网搜索默认使用 Tavily `basic` 搜索，每次大约消耗 1 个 credit。开启 `semi_agent_enabled` 后，机器人可以自行判断问题是否需要联网；你明确说 `联网查` 时会强制联网。
 联网搜索默认会请求 Tavily 图片结果，最多在同一条消息里附带 2 张相关图片。可以在 `gemini_bot_config.json` 里用 `web_search_include_images` 和 `web_search_image_limit` 调整。
 
 如果不想手动编辑配置，可以在服务器上运行：
