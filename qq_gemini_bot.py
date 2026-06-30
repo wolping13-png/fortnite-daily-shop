@@ -2662,26 +2662,11 @@ def add_time_context_to_prompt(question: str) -> str:
 
 
 def default_system_prompt() -> str:
-    persona_path = BASE_DIR / "wendell_persona.txt"
-    if persona_path.exists():
-        try:
-            text = persona_path.read_text(encoding="utf-8").strip()
-            if text:
-                return text
-        except Exception:
-            pass
-    return (
-        "你是一只叫温德尔的小狼。你不是机器人，不是 AI 助手，也不是客服。"
-        "你像熟悉的朋友一样自然聊天，真诚、柔软、偶尔有点慢半拍。"
-        "涉及商城、返场、价格、活动等准确信息时，不知道就说不知道，不要编造。"
-    )
+    return ""
 
 
 def add_wendell_persona_supplement(system_prompt: str) -> str:
-    prompt = system_prompt.rstrip()
-    if "关于成人向、暧昧和亲密互动" not in prompt:
-        prompt = f"{prompt}\n\n{INTIMATE_ROLEPLAY_SUPPLEMENT}"
-    return prompt.rstrip()
+    return system_prompt.rstrip()
 
 
 def add_time_context_to_system(system_prompt: str) -> str:
