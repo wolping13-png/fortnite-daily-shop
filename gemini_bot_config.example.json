@@ -38,6 +38,7 @@
   "context_filter_enabled": true,
   "context_followup_history_limit": 4,
   "context_standalone_history_limit": 2,
+  "interaction_history_limit": 10,
   "ask_prefix": "温德尔",
   "shop_command": "商店",
   "shop_all_command": "商店全部",

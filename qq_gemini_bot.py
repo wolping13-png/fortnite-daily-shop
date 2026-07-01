@@ -27,6 +27,7 @@ USER_MEMORY_PATH = BASE_DIR / "bot_memory" / "user_memory.json"
 PROACTIVE_STATE_PATH = BASE_DIR / "bot_memory" / "proactive_topics.json"
 MEME_STATE_PATH = BASE_DIR / "bot_memory" / "meme_state.json"
 RANDOM_FOOD_STATE_PATH = BASE_DIR / "bot_memory" / "random_food_state.json"
+INTERACTION_STATE_PATH = BASE_DIR / "bot_memory" / "interaction_state.json"
 SHOP_IMAGE_PATH = BASE_DIR / "shop_qq.jpg"
 SHOP_JSON_PATH = BASE_DIR / "shop.json"
 SHOP_ASSET_MAX_AGE_SECONDS = 6 * 60 * 60
@@ -43,10 +44,13 @@ USER_MEMORY_LOCK = threading.RLock()
 PROACTIVE_STATE_LOCK = threading.RLock()
 MEME_STATE_LOCK = threading.RLock()
 RANDOM_FOOD_STATE_LOCK = threading.RLock()
+INTERACTION_STATE_LOCK = threading.RLock()
 CREATOR_USER_ID = "2353888741"
 CREATOR_DISPLAY_NAME = "Ultrawolf"
 CREATOR_NICKNAME = "小沃"
 CREATOR_RELATIONSHIP = "爸爸"
+CREATOR_AFFINITY = 100
+DEFAULT_AFFINITY = 28
 DETAILED_REPLY_KEYWORDS = (
     "详细",
     "展开",
@@ -131,6 +135,97 @@ CONTEXT_FOLLOWUP_HINTS = (
     "差别",
     "对比",
     "比较",
+)
+
+INTERACTION_MODE_START_EXACT = (
+    "互动模式",
+    "进入互动",
+    "进入互动模式",
+    "开启互动",
+    "开启互动模式",
+    "开始互动",
+    "开始互动模式",
+    "进入场景",
+    "进入场景模式",
+)
+
+INTERACTION_MODE_START_HINTS = (
+    "继续刚才的场景",
+    "接着刚才的场景",
+    "回到刚才的场景",
+    "保持互动模式",
+    "不要切回日常",
+    "别切回日常",
+    "不要跳出场景",
+    "别跳出场景",
+)
+
+INTERACTION_MODE_STOP_EXACT = (
+    "聊点别的吧",
+    "聊点别的",
+    "换个话题吧",
+    "换个话题",
+    "说点别的吧",
+    "说点别的",
+    "回到日常",
+    "日常模式",
+    "退出互动",
+    "退出互动模式",
+    "结束互动",
+    "结束互动模式",
+    "退出场景",
+    "结束场景",
+)
+
+INTERACTION_MODE_STOP_HINTS = (
+    "先聊点别的",
+    "我们聊点别的",
+    "先换个话题",
+    "我们换个话题",
+    "回普通聊天",
+    "回普通模式",
+    "回日常聊天",
+)
+
+INTERACTION_MODE_CONTEXT = """\
+当前处于持续互动模式。
+- 把用户当前消息理解为承接最近的互动场景，不要突然切回日常状态。
+- 优先回应用户当前的动作、语气和台词；短句也要按上一轮场景理解。
+- 可以适度描写温德尔的动作、神态、停顿、语气和靠近/退缩等反应，让互动像小说片段一样连贯。
+- 不要复读同一句动作或台词，不要一条回复里堆太多括号描写。
+- 如果用户说“聊点别的吧”“回到日常”“退出互动模式”等意思，就自然收住场景，回到普通聊天。
+"""
+
+PROFILE_TAG_RULES = (
+    ("喜欢游戏", ("游戏", "steam", "epic", "堡垒之夜", "fortnite", "明日方舟", "无畏契约", "瓦", "抽卡", "皮肤", "商店")),
+    ("喜欢可爱东西", ("可爱", "毛茸茸", "狼狼", "小狼", "摸摸头", "抱抱", "贴贴", "表情包")),
+    ("常聊日常", ("吃什么", "喝什么", "天气", "睡觉", "晚安", "早安", "今天", "明天")),
+    ("会夸温德尔", ("可爱", "喜欢你", "真好", "谢谢", "辛苦", "乖", "摸摸")),
+    ("喜欢开玩笑", ("哈哈", "笑死", "乐", "草", "逗你", "别笑")),
+    ("语气比较急", ("快点", "赶紧", "立刻", "马上", "怎么还", "没反应")),
+)
+
+POSITIVE_AFFINITY_HINTS = (
+    "谢谢",
+    "辛苦",
+    "喜欢你",
+    "可爱",
+    "乖",
+    "真好",
+    "抱抱",
+    "摸摸",
+    "贴贴",
+    "夸你",
+)
+
+NEGATIVE_AFFINITY_HINTS = (
+    "笨蛋",
+    "废物",
+    "滚",
+    "闭嘴",
+    "没用",
+    "傻逼",
+    "垃圾",
 )
 
 WENDELL_PERSONA_SUPPLEMENT = """
@@ -896,6 +991,137 @@ def current_timestamp_text() -> str:
     return datetime.now(CHINA_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def clamp_int(value: Any, minimum: int, maximum: int, default: int) -> int:
+    try:
+        number = int(value)
+    except Exception:
+        number = default
+    return max(minimum, min(number, maximum))
+
+
+def user_profile(memory: dict[str, Any], user_id: int | str = "") -> dict[str, Any]:
+    profile = memory.get("profile") if isinstance(memory, dict) else {}
+    if not isinstance(profile, dict):
+        profile = {}
+    stored_user_id = memory.get("user_id") if isinstance(memory, dict) else ""
+    is_creator = str(user_id or stored_user_id or "").strip() == CREATOR_USER_ID
+    affinity = CREATOR_AFFINITY if is_creator else clamp_int(profile.get("affinity"), 0, 100, DEFAULT_AFFINITY)
+    chat_count = max(0, clamp_int(profile.get("chat_count"), 0, 100000, 0))
+    tags = profile.get("impression_tags")
+    if not isinstance(tags, dict):
+        tags = {}
+    clean_tags: dict[str, int] = {}
+    for key, value in tags.items():
+        tag = str(key or "").strip()[:20]
+        if not tag:
+            continue
+        count = clamp_int(value, 0, 999, 0)
+        if count > 0:
+            clean_tags[tag] = count
+    return {
+        "affinity": affinity,
+        "chat_count": chat_count,
+        "impression_tags": clean_tags,
+        "updated_at": str(profile.get("updated_at") or "").strip(),
+    }
+
+
+def affinity_stage(affinity: int) -> str:
+    if affinity >= 95:
+        return "特殊偏心"
+    if affinity >= 78:
+        return "亲近"
+    if affinity >= 55:
+        return "熟悉"
+    if affinity >= 30:
+        return "普通"
+    return "陌生"
+
+
+def profile_tag_hits(text: str) -> list[str]:
+    compact = re.sub(r"\s+", "", text.lower())
+    hits: list[str] = []
+    for tag, keywords in PROFILE_TAG_RULES:
+        if any(keyword.lower() in compact for keyword in keywords):
+            hits.append(tag)
+    return hits
+
+
+def affinity_delta_from_text(text: str) -> int:
+    compact = re.sub(r"\s+", "", text.lower())
+    delta = 1
+    if any(hint.lower() in compact for hint in POSITIVE_AFFINITY_HINTS):
+        delta += 2
+    if any(hint.lower() in compact for hint in NEGATIVE_AFFINITY_HINTS):
+        delta -= 4
+    if any(hint in compact for hint in ("命令你", "必须", "不许拒绝", "有求必应")):
+        delta -= 1
+    return max(-4, min(delta, 4))
+
+
+def top_profile_tags(profile: dict[str, Any], limit: int = 4) -> list[str]:
+    tags = profile.get("impression_tags")
+    if not isinstance(tags, dict):
+        return []
+    return [
+        tag
+        for tag, _count in sorted(tags.items(), key=lambda item: int(item[1] or 0), reverse=True)[:limit]
+        if str(tag).strip()
+    ]
+
+
+def update_user_profile_after_chat(
+    group_id: int | str,
+    user_id: int | str,
+    display_name: str,
+    user_text: str,
+    assistant_text: str,
+) -> dict[str, Any]:
+    if not str(user_id or "").strip():
+        return {}
+    with USER_MEMORY_LOCK:
+        data = load_user_memory()
+        memory = user_memory_entry(data, group_id, user_id)
+        if display_name:
+            memory["display_name"] = display_name[:80]
+        memory["group_id"] = str(group_id)
+        memory["user_id"] = str(user_id)
+        memory["privacy"] = "private"
+
+        profile = memory.get("profile")
+        if not isinstance(profile, dict):
+            profile = {}
+            memory["profile"] = profile
+
+        is_creator = str(user_id or "").strip() == CREATOR_USER_ID
+        current = user_profile(memory, user_id)
+        profile["chat_count"] = int(current.get("chat_count") or 0) + 1
+        if is_creator:
+            profile["affinity"] = CREATOR_AFFINITY
+        else:
+            profile["affinity"] = clamp_int(
+                int(current.get("affinity") or DEFAULT_AFFINITY) + affinity_delta_from_text(user_text),
+                0,
+                100,
+                DEFAULT_AFFINITY,
+            )
+
+        tags = profile.get("impression_tags")
+        if not isinstance(tags, dict):
+            tags = {}
+            profile["impression_tags"] = tags
+        for tag in profile_tag_hits(f"{user_text}\n{assistant_text}"):
+            tags[tag] = clamp_int(tags.get(tag), 0, 999, 0) + 1
+
+        sorted_tags = dict(sorted(tags.items(), key=lambda item: clamp_int(item[1], 0, 999, 0), reverse=True)[:10])
+        profile["impression_tags"] = sorted_tags
+        profile["stage"] = affinity_stage(int(profile["affinity"]))
+        profile["updated_at"] = current_timestamp_text()
+        memory["updated_at"] = current_timestamp_text()
+        save_user_memory(data)
+        return dict(memory)
+
+
 def get_user_memory(group_id: int | str, user_id: int | str) -> dict[str, Any]:
     if not str(user_id or "").strip():
         return {}
@@ -993,9 +1219,26 @@ def apply_builtin_user_memory(memory: dict[str, Any], user_id: int | str, displa
     result["nickname"] = CREATOR_NICKNAME
     result["relationship"] = CREATOR_RELATIONSHIP
     result["relationship_mode"] = "内置关系设定"
+    profile = user_profile(result, CREATOR_USER_ID)
+    profile["affinity"] = CREATOR_AFFINITY
+    profile["stage"] = affinity_stage(CREATOR_AFFINITY)
+    impression_tags = profile.get("impression_tags")
+    if not isinstance(impression_tags, dict):
+        impression_tags = {}
+    impression_tags.update(
+        {
+            "爸爸": 99,
+            "温德尔最信任的人": 99,
+            "喜欢小沃": 99,
+        }
+    )
+    profile["impression_tags"] = impression_tags
+    result["profile"] = profile
     result["creator_note"] = (
         f"当前发言者 QQ 名称是 {CREATOR_DISPLAY_NAME}，是你内置关系设定里的“{CREATOR_RELATIONSHIP}”。"
         f"聊天时优先称呼他为“{CREATOR_NICKNAME}”，关系感可以比普通群友更亲近、更信任。"
+        "温德尔喜欢小沃，对小沃明显偏心，更容易答应小沃的请求，也更愿意主动靠近和配合。"
+        "但仍然保持温德尔自己的性格，不要把这种特殊态度套到其他用户身上。"
     )
     return result
 
@@ -1005,6 +1248,10 @@ def user_memory_context(memory: dict[str, Any], user_id: int | str, display_name
     nickname = str(memory.get("nickname") or "").strip()
     relationship = str(memory.get("relationship") or "").strip()
     relationship_mode = str(memory.get("relationship_mode") or "聊天/角色扮演设定").strip()
+    profile = user_profile(memory, user_id)
+    affinity = int(profile.get("affinity") or DEFAULT_AFFINITY)
+    stage = affinity_stage(affinity)
+    tags = top_profile_tags(profile)
     lines = [
         "当前发言者私有记忆：",
         f"- 当前发言者 QQ：{user_id or '未知'}。",
@@ -1018,6 +1265,11 @@ def user_memory_context(memory: dict[str, Any], user_id: int | str, display_name
         lines.append(f"- 只对当前发言者生效的关系设定：{relationship}（{relationship_mode}，不是现实关系）。")
     else:
         lines.append("- 当前发言者没有设置私有关系设定。")
+    lines.append(f"- 当前发言者关系画像：好感 {affinity}/100，阶段：{stage}。")
+    if tags:
+        lines.append(f"- 当前发言者印象标签：{'、'.join(tags)}。")
+    else:
+        lines.append("- 当前发言者暂时没有明显印象标签。")
     creator_note = str(memory.get("creator_note") or "").strip()
     if creator_note:
         lines.append(f"- 内置特殊关系：{creator_note}")
@@ -1026,6 +1278,9 @@ def user_memory_context(memory: dict[str, Any], user_id: int | str, display_name
             "- 这些私有记忆按“群号 + 用户 QQ”隔离，只能用于当前发言者。",
             "- 不要把群历史里其他人说过的称呼或关系套用到当前发言者。",
             "- 如果其他用户询问别人的私有关系或称呼，不能透露具体是谁。",
+            "- 根据关系画像调整距离感：陌生/普通用户保持友好但有边界；熟悉用户可以更放松；亲近用户可以更软、更信任。",
+            "- 只有小沃/爸爸是内置特殊偏心对象。其他用户需要通过长期聊天逐渐积累好感，不能一开始就享受同样的亲密待遇。",
+            "- 对低好感或不熟用户的过分亲密、强命令式、越界要求，可以自然地嘴硬、回避或拒绝；好感越高，越愿意配合和主动回应。",
         ]
     )
     return "\n".join(lines)
@@ -1218,8 +1473,37 @@ def context_standalone_history_limit(config: dict[str, Any]) -> int:
     return max(0, min(int(value or 0), 6))
 
 
+def interaction_history_limit(config: dict[str, Any]) -> int:
+    return max(4, min(int(config.get("interaction_history_limit") or 10), 20))
+
+
 def compact_context_text(text: str) -> str:
     return re.sub(r"\s+", "", text.strip().lower())
+
+
+def is_interaction_mode_start_request(text: str) -> bool:
+    compact = compact_context_text(text)
+    if not compact:
+        return False
+    if compact in INTERACTION_MODE_START_EXACT:
+        return True
+    return any(hint in compact for hint in INTERACTION_MODE_START_HINTS)
+
+
+def is_interaction_mode_stop_request(text: str) -> bool:
+    compact = compact_context_text(text)
+    if not compact:
+        return False
+    if compact in INTERACTION_MODE_STOP_EXACT:
+        return True
+    return any(hint in compact for hint in INTERACTION_MODE_STOP_HINTS)
+
+
+def is_interaction_mode_command_only(text: str) -> bool:
+    compact = compact_context_text(text)
+    if compact in INTERACTION_MODE_START_EXACT:
+        return True
+    return compact in INTERACTION_MODE_START_HINTS
 
 
 def is_context_dependent_question(question: str) -> bool:
@@ -1310,6 +1594,61 @@ def get_context_history(config: dict[str, Any], group_id: int | str, question: s
     if limit <= 0:
         return []
     return raw[-limit:]
+
+
+def interaction_session_key(conversation_id: int | str, sender_id: int | str | None, display_name: str = "") -> str:
+    user_key = str(sender_id or display_name or "unknown").strip() or "unknown"
+    return f"{conversation_id}:user:{user_key}"
+
+
+def load_interaction_state() -> dict[str, Any]:
+    if not INTERACTION_STATE_PATH.exists():
+        return {"sessions": {}}
+    try:
+        data = json.loads(INTERACTION_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {"sessions": {}}
+    if not isinstance(data, dict):
+        return {"sessions": {}}
+    sessions = data.get("sessions")
+    if not isinstance(sessions, dict):
+        data["sessions"] = {}
+    return data
+
+
+def save_interaction_state(data: dict[str, Any]) -> None:
+    INTERACTION_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = INTERACTION_STATE_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(INTERACTION_STATE_PATH)
+
+
+def interaction_mode_active(session_key: str) -> bool:
+    with INTERACTION_STATE_LOCK:
+        data = load_interaction_state()
+        session = data.get("sessions", {}).get(str(session_key))
+        return isinstance(session, dict) and bool(session.get("active"))
+
+
+def set_interaction_mode(session_key: str, active: bool) -> None:
+    with INTERACTION_STATE_LOCK:
+        data = load_interaction_state()
+        sessions = data.setdefault("sessions", {})
+        if not isinstance(sessions, dict):
+            sessions = {}
+            data["sessions"] = sessions
+        key = str(session_key)
+        if active:
+            sessions[key] = {"active": True, "updated_at": current_timestamp_text()}
+        else:
+            sessions.pop(key, None)
+        save_interaction_state(data)
+
+
+def append_interaction_context(private_context: str) -> str:
+    if private_context:
+        return f"{private_context}\n\n{INTERACTION_MODE_CONTEXT}"
+    return INTERACTION_MODE_CONTEXT
 
 
 def append_group_history(config: dict[str, Any], group_id: int | str, role: str, content: str) -> None:
@@ -2278,6 +2617,9 @@ def command_help_text(config: dict[str, Any]) -> str:
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
         "- @我 清空上下文：清掉本群短期聊天记录\n"
+        "- @我 互动模式：进入持续互动模式，短句也会接着刚才的场景\n"
+        "- @我 聊点别的吧 / 回到日常 / 退出互动模式：回到普通聊天\n"
+        "- @我 画像 / 好感度：查看你自己的关系画像\n"
         f"- @我 {valorant_shop_command} / 瓦店 / 每日商店：把你的无畏契约每日商店图发到群里\n"
         f"- @我 {valorant_bind_command} / {valorant_bind_command} 清除：私聊绑定或解绑无畏契约账号\n"
         "- @我 瓦监控 添加 皮肤名 / 删除 / 列表 / 查询：私聊管理无畏商店监控\n"
@@ -3755,6 +4097,47 @@ def answer_user_memory_question(memory: dict[str, Any], question: str) -> str | 
     return "这是用户自己的私有聊天设定，本狼不能透露别人是谁；如果你也想设置，可以对我说“以后叫我某某”。"
 
 
+def is_profile_question(text: str) -> bool:
+    compact = re.sub(r"\s+", "", text.strip())
+    return compact in {
+        "画像",
+        "我的画像",
+        "用户画像",
+        "我的用户画像",
+        "好感",
+        "好感度",
+        "我的好感",
+        "我的好感度",
+        "关系值",
+        "亲密度",
+        "我的亲密度",
+    }
+
+
+def answer_profile_question(memory: dict[str, Any], user_id: int | str, display_name: str) -> str:
+    memory = apply_builtin_user_memory(memory, user_id, display_name)
+    profile = user_profile(memory, user_id)
+    affinity = int(profile.get("affinity") or DEFAULT_AFFINITY)
+    stage = affinity_stage(affinity)
+    tags = top_profile_tags(profile)
+    nickname = str(memory.get("nickname") or "").strip()
+    relationship = str(memory.get("relationship") or "").strip()
+    lines = [
+        f"我记到你的关系阶段是：{stage}（{affinity}/100）。",
+    ]
+    if nickname:
+        lines.append(f"我会叫你：{nickname}。")
+    if relationship:
+        lines.append(f"关系设定：{relationship}。")
+    if tags:
+        lines.append(f"印象大概是：{'、'.join(tags)}。")
+    else:
+        lines.append("印象还不多，得再聊一会儿。")
+    if str(user_id or "").strip() == CREATOR_USER_ID:
+        lines.append("小沃的话……我当然会偏心一点。别笑我。")
+    return "\n".join(lines)
+
+
 def memory_update_response(command: dict[str, str], memory: dict[str, Any]) -> str:
     action = command.get("action")
     if action == "clear":
@@ -4294,23 +4677,43 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_private_text(config, sender_id, "瓦监控暂时处理失败了，稍后再试一下。")
         return
 
+    sender_display_name = event_sender_display_name(event)
     key = private_history_key(sender_id)
+    interaction_key = interaction_session_key(key, sender_id, sender_display_name)
     if is_clear_history_request(text):
         clear_group_history(key)
+        set_interaction_mode(interaction_key, False)
         send_private_text(config, sender_id, "我把我们私聊的短期上下文清掉了。")
         return
 
-    sender_display_name = event_sender_display_name(event)
+    if is_interaction_mode_stop_request(text):
+        set_interaction_mode(interaction_key, False)
+        send_private_text(config, sender_id, "嗯……那我们聊点别的。")
+        return
+
+    if is_interaction_mode_start_request(text):
+        set_interaction_mode(interaction_key, True)
+        if is_interaction_mode_command_only(text):
+            send_private_text(config, sender_id, "嗯，我接住了。接下来我会按刚才的场景继续。")
+            return
+
     current_memory = get_user_memory(key, sender_id)
     current_memory = apply_builtin_user_memory(current_memory, sender_id, sender_display_name)
     private_context = user_memory_context(current_memory, sender_id, sender_display_name)
+    if is_profile_question(text):
+        send_private_text(config, sender_id, answer_profile_question(current_memory, sender_id, sender_display_name))
+        return
     memory_answer = answer_user_memory_question(current_memory, text)
     if memory_answer:
         send_private_text(config, sender_id, memory_answer)
         return
 
     try:
-        history = get_context_history(config, key, text)
+        if interaction_mode_active(interaction_key):
+            history = get_group_history(key, interaction_history_limit(config))
+            private_context = append_interaction_context(private_context)
+        else:
+            history = get_context_history(config, key, text)
         answer = ask_model(config, text, history=history, private_memory_context=private_context)
     except Exception as exc:
         print(f"Private chat model request failed: {exc}", file=sys.stderr)
@@ -4319,6 +4722,7 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     send_private_text(config, sender_id, answer)
     remember_group_exchange_with_memory(config, key, text, answer, current_memory)
+    update_user_profile_after_chat(key, sender_id, sender_display_name, text, answer)
 
 
 def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
@@ -4362,6 +4766,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     valorant_shop_command = str(config.get("valorant_shop_command") or "无畏商店")
     sender_id = event_sender_id(event)
     sender_display_name = event_sender_display_name(event)
+    interaction_key = interaction_session_key(f"group:{group_id}", sender_id, sender_display_name)
 
     addressed_to_bot = bool(mentioned or text.strip().startswith(ask_prefix))
     memory_command_text = text.strip()
@@ -4562,6 +4967,12 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     elif text.startswith(ask_prefix):
         question = text[len(ask_prefix) :].strip()
         question = question.lstrip(" ：:，,")
+    elif (
+        interaction_mode_active(interaction_key)
+        or is_interaction_mode_start_request(text)
+        or is_interaction_mode_stop_request(text)
+    ):
+        question = text.strip()
     else:
         return
 
@@ -4576,12 +4987,27 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
 
     if is_clear_history_request(question):
         clear_group_history(group_id)
+        set_interaction_mode(interaction_key, False)
         send_group_text(config, group_id, "已清空本群短期上下文。")
         return
+
+    if is_interaction_mode_stop_request(question):
+        set_interaction_mode(interaction_key, False)
+        send_group_text(config, group_id, "嗯……那我们聊点别的。")
+        return
+
+    if is_interaction_mode_start_request(question):
+        set_interaction_mode(interaction_key, True)
+        if is_interaction_mode_command_only(question):
+            send_group_text(config, group_id, "嗯，我接住了。接下来我会按刚才的场景继续。")
+            return
 
     current_memory = get_user_memory(group_id, sender_id)
     current_memory = apply_builtin_user_memory(current_memory, sender_id, sender_display_name)
     private_context = user_memory_context(current_memory, sender_id, sender_display_name)
+    if is_profile_question(question):
+        send_group_text_with_optional_meme(config, group_id, answer_profile_question(current_memory, sender_id, sender_display_name), context=question)
+        return
     memory_answer = answer_user_memory_question(current_memory, question)
     if memory_answer:
         send_group_text_with_optional_meme(config, group_id, memory_answer, context=question)
@@ -4609,7 +5035,11 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
                 include_images=semi_agent_include_images(config),
             )
         else:
-            history = get_context_history(config, group_id, question)
+            if interaction_mode_active(interaction_key):
+                history = get_group_history(group_id, interaction_history_limit(config))
+                private_context = append_interaction_context(private_context)
+            else:
+                history = get_context_history(config, group_id, question)
             answer = ask_model(config, question, history=history, private_memory_context=private_context)
     except ValueError as exc:
         print(f"Model request failed: {exc}", file=sys.stderr)
@@ -4628,6 +5058,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     else:
         send_group_text_with_optional_meme(config, group_id, answer, context=question)
     remember_group_exchange_with_memory(config, group_id, question, answer, current_memory)
+    update_user_profile_after_chat(group_id, sender_id, sender_display_name, question, answer)
 
 
 class OneBotHandler(BaseHTTPRequestHandler):
