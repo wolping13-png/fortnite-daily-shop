@@ -51,6 +51,8 @@ CREATOR_NICKNAME = "小沃"
 CREATOR_RELATIONSHIP = "爸爸"
 CREATOR_AFFINITY = 100
 DEFAULT_AFFINITY = 28
+INTIMATE_AFFINITY_REQUIRED = 72
+INTERACTION_MODE_AFFINITY_REQUIRED = 72
 DETAILED_REPLY_KEYWORDS = (
     "详细",
     "展开",
@@ -226,6 +228,64 @@ NEGATIVE_AFFINITY_HINTS = (
     "没用",
     "傻逼",
     "垃圾",
+)
+
+INTIMATE_REQUEST_HINTS = (
+    "暧昧",
+    "调情",
+    "亲密",
+    "主动一点",
+    "靠近我",
+    "抱抱",
+    "贴贴",
+    "亲亲",
+    "亲我",
+    "吻我",
+    "摸摸",
+    "摸头",
+    "摸摸头",
+    "抱住",
+    "搂住",
+    "靠近",
+    "蹭蹭",
+    "撒娇",
+    "老婆",
+    "老公",
+    "宝贝",
+    "亲爱的",
+    "喜欢我",
+    "爱我",
+    "过来",
+    "坐腿上",
+)
+
+EXPLICIT_INTIMATE_REQUEST_HINTS = (
+    "脱衣",
+    "脱掉",
+    "裸",
+    "上床",
+    "做爱",
+    "性交",
+    "性行为",
+    "插入",
+    "鸡巴",
+    "几把",
+    "阴茎",
+    "射",
+    "舔",
+)
+
+INTIMATE_ACTION_HINTS = (
+    "抱",
+    "亲",
+    "吻",
+    "摸",
+    "蹭",
+    "贴",
+    "搂",
+    "压",
+    "靠近",
+    "坐腿",
 )
 
 WENDELL_PERSONA_SUPPLEMENT = """
@@ -1038,6 +1098,57 @@ def affinity_stage(affinity: int) -> str:
     return "陌生"
 
 
+def is_creator_user(user_id: int | str) -> bool:
+    return str(user_id or "").strip() == CREATOR_USER_ID
+
+
+def profile_affinity(memory: dict[str, Any], user_id: int | str) -> int:
+    return int(user_profile(memory, user_id).get("affinity") or DEFAULT_AFFINITY)
+
+
+def can_use_intimate_interaction(memory: dict[str, Any], user_id: int | str) -> bool:
+    if is_creator_user(user_id):
+        return True
+    return profile_affinity(memory, user_id) >= INTIMATE_AFFINITY_REQUIRED
+
+
+def can_start_interaction_mode(memory: dict[str, Any], user_id: int | str) -> bool:
+    if is_creator_user(user_id):
+        return True
+    return profile_affinity(memory, user_id) >= INTERACTION_MODE_AFFINITY_REQUIRED
+
+
+def is_intimate_request(text: str) -> bool:
+    compact = re.sub(r"\s+", "", text.lower())
+    if not compact:
+        return False
+    if any(hint.lower() in compact for hint in INTIMATE_REQUEST_HINTS):
+        return True
+    if any(hint.lower() in compact for hint in EXPLICIT_INTIMATE_REQUEST_HINTS):
+        return True
+    if ("(" in text or ")" in text or "（" in text or "）" in text) and any(
+        hint in compact for hint in INTIMATE_ACTION_HINTS
+    ):
+        return True
+    return False
+
+
+def intimacy_boundary_text(memory: dict[str, Any], user_id: int | str, display_name: str = "") -> str:
+    affinity = profile_affinity(memory, user_id)
+    stage = affinity_stage(affinity)
+    if affinity < 35:
+        return "唔……我们还没那么熟吧。先正常聊一会儿，可以吗。"
+    if affinity < INTIMATE_AFFINITY_REQUIRED:
+        return f"这个有点太近了。现在我对你的感觉还是“{stage}”啦，先慢慢熟起来。"
+    return "等下，这个我有点接不住。先换个轻一点的说法吧。"
+
+
+def interaction_mode_boundary_text(memory: dict[str, Any], user_id: int | str, display_name: str = "") -> str:
+    affinity = profile_affinity(memory, user_id)
+    stage = affinity_stage(affinity)
+    return f"互动模式现在还不能随便开。我们现在是“{stage}”（{affinity}/100），再熟一点我会更放松。"
+
+
 def profile_tag_hits(text: str) -> list[str]:
     compact = re.sub(r"\s+", "", text.lower())
     hits: list[str] = []
@@ -1279,8 +1390,9 @@ def user_memory_context(memory: dict[str, Any], user_id: int | str, display_name
             "- 不要把群历史里其他人说过的称呼或关系套用到当前发言者。",
             "- 如果其他用户询问别人的私有关系或称呼，不能透露具体是谁。",
             "- 根据关系画像调整距离感：陌生/普通用户保持友好但有边界；熟悉用户可以更放松；亲近用户可以更软、更信任。",
+            f"- 亲密/暧昧互动门槛：除小沃/爸爸外，好感低于 {INTIMATE_AFFINITY_REQUIRED}/100 的用户不能直接进入亲密互动。",
             "- 只有小沃/爸爸是内置特殊偏心对象。其他用户需要通过长期聊天逐渐积累好感，不能一开始就享受同样的亲密待遇。",
-            "- 对低好感或不熟用户的过分亲密、强命令式、越界要求，可以自然地嘴硬、回避或拒绝；好感越高，越愿意配合和主动回应。",
+            "- 对低好感或不熟用户的亲密、强命令式、越界要求，要自然地嘴硬、回避或拒绝；好感越高，才越愿意配合和主动回应。",
         ]
     )
     return "\n".join(lines)
@@ -1601,6 +1713,20 @@ def interaction_session_key(conversation_id: int | str, sender_id: int | str | N
     return f"{conversation_id}:user:{user_key}"
 
 
+def history_item_fingerprint(message: dict[str, str]) -> str:
+    role = str(message.get("role") or "")
+    content = str(message.get("content") or "")
+    return f"{role}\n{content}"
+
+
+def current_history_anchor(conversation_id: int | str) -> str:
+    data = load_chat_history()
+    messages = data.get(str(conversation_id), [])
+    if not messages:
+        return ""
+    return history_item_fingerprint(messages[-1])
+
+
 def load_interaction_state() -> dict[str, Any]:
     if not INTERACTION_STATE_PATH.exists():
         return {"sessions": {}}
@@ -1630,7 +1756,14 @@ def interaction_mode_active(session_key: str) -> bool:
         return isinstance(session, dict) and bool(session.get("active"))
 
 
-def set_interaction_mode(session_key: str, active: bool) -> None:
+def interaction_mode_session(session_key: str) -> dict[str, Any]:
+    with INTERACTION_STATE_LOCK:
+        data = load_interaction_state()
+        session = data.get("sessions", {}).get(str(session_key))
+        return dict(session) if isinstance(session, dict) else {}
+
+
+def set_interaction_mode(session_key: str, active: bool, history_anchor: str = "") -> None:
     with INTERACTION_STATE_LOCK:
         data = load_interaction_state()
         sessions = data.setdefault("sessions", {})
@@ -1639,10 +1772,33 @@ def set_interaction_mode(session_key: str, active: bool) -> None:
             data["sessions"] = sessions
         key = str(session_key)
         if active:
-            sessions[key] = {"active": True, "updated_at": current_timestamp_text()}
+            sessions[key] = {
+                "active": True,
+                "updated_at": current_timestamp_text(),
+                "history_anchor": history_anchor,
+            }
         else:
             sessions.pop(key, None)
         save_interaction_state(data)
+
+
+def get_interaction_history(config: dict[str, Any], conversation_id: int | str, session_key: str) -> list[dict[str, str]]:
+    limit = interaction_history_limit(config)
+    raw = get_group_history(conversation_id, chat_history_limit(config))
+    if not raw:
+        return []
+
+    session = interaction_mode_session(session_key)
+    if "history_anchor" not in session:
+        set_interaction_mode(session_key, True, current_history_anchor(conversation_id))
+        return []
+    anchor = str(session.get("history_anchor") or "")
+    if anchor:
+        for index, message in enumerate(raw):
+            if history_item_fingerprint(message) == anchor:
+                return raw[index + 1 :][-limit:]
+
+    return raw[-limit:]
 
 
 def append_interaction_context(private_context: str) -> str:
@@ -4691,15 +4847,21 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_private_text(config, sender_id, "嗯……那我们聊点别的。")
         return
 
-    if is_interaction_mode_start_request(text):
-        set_interaction_mode(interaction_key, True)
-        if is_interaction_mode_command_only(text):
-            send_private_text(config, sender_id, "嗯，我接住了。接下来我会按刚才的场景继续。")
-            return
-
     current_memory = get_user_memory(key, sender_id)
     current_memory = apply_builtin_user_memory(current_memory, sender_id, sender_display_name)
     private_context = user_memory_context(current_memory, sender_id, sender_display_name)
+    if interaction_mode_active(interaction_key) and not can_start_interaction_mode(current_memory, sender_id):
+        set_interaction_mode(interaction_key, False)
+
+    if is_interaction_mode_start_request(text):
+        if not can_start_interaction_mode(current_memory, sender_id):
+            send_private_text(config, sender_id, interaction_mode_boundary_text(current_memory, sender_id, sender_display_name))
+            return
+        set_interaction_mode(interaction_key, True, current_history_anchor(key))
+        if is_interaction_mode_command_only(text):
+            send_private_text(config, sender_id, "嗯，我接住了。从现在开始，我会按接下来的场景继续。")
+            return
+
     if is_profile_question(text):
         send_private_text(config, sender_id, answer_profile_question(current_memory, sender_id, sender_display_name))
         return
@@ -4708,9 +4870,13 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_private_text(config, sender_id, memory_answer)
         return
 
+    if is_intimate_request(text) and not can_use_intimate_interaction(current_memory, sender_id):
+        send_private_text(config, sender_id, intimacy_boundary_text(current_memory, sender_id, sender_display_name))
+        return
+
     try:
         if interaction_mode_active(interaction_key):
-            history = get_group_history(key, interaction_history_limit(config))
+            history = get_interaction_history(config, key, interaction_key)
             private_context = append_interaction_context(private_context)
         else:
             history = get_context_history(config, key, text)
@@ -4996,21 +5162,32 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_group_text(config, group_id, "嗯……那我们聊点别的。")
         return
 
-    if is_interaction_mode_start_request(question):
-        set_interaction_mode(interaction_key, True)
-        if is_interaction_mode_command_only(question):
-            send_group_text(config, group_id, "嗯，我接住了。接下来我会按刚才的场景继续。")
-            return
-
     current_memory = get_user_memory(group_id, sender_id)
     current_memory = apply_builtin_user_memory(current_memory, sender_id, sender_display_name)
     private_context = user_memory_context(current_memory, sender_id, sender_display_name)
+    if interaction_mode_active(interaction_key) and not can_start_interaction_mode(current_memory, sender_id):
+        set_interaction_mode(interaction_key, False)
+
+    if is_interaction_mode_start_request(question):
+        if not can_start_interaction_mode(current_memory, sender_id):
+            send_group_text(config, group_id, interaction_mode_boundary_text(current_memory, sender_id, sender_display_name))
+            return
+        set_interaction_mode(interaction_key, True, current_history_anchor(group_id))
+        if is_interaction_mode_command_only(question):
+            send_group_text(config, group_id, "嗯，我接住了。从现在开始，我会按接下来的场景继续。")
+            return
+
     if is_profile_question(question):
         send_group_text_with_optional_meme(config, group_id, answer_profile_question(current_memory, sender_id, sender_display_name), context=question)
         return
     memory_answer = answer_user_memory_question(current_memory, question)
     if memory_answer:
         send_group_text_with_optional_meme(config, group_id, memory_answer, context=question)
+        return
+
+    if is_intimate_request(question) and not can_use_intimate_interaction(current_memory, sender_id):
+        set_interaction_mode(interaction_key, False)
+        send_group_text(config, group_id, intimacy_boundary_text(current_memory, sender_id, sender_display_name))
         return
 
     if is_weather_question(question):
@@ -5036,7 +5213,7 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             )
         else:
             if interaction_mode_active(interaction_key):
-                history = get_group_history(group_id, interaction_history_limit(config))
+                history = get_interaction_history(config, group_id, interaction_key)
                 private_context = append_interaction_context(private_context)
             else:
                 history = get_context_history(config, group_id, question)
