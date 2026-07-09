@@ -40,6 +40,9 @@ BRIEF_REPLY_MAX_TOKENS = 320
 BRIEF_REPLY_TOKEN_CEILING = 420
 DETAILED_REPLY_MAX_TOKENS = 1400
 DEEPSEEK_EMPTY_RETRY_TOKENS = 1800
+MODEL_HISTORY_MESSAGE_CHAR_LIMIT = 900
+MODEL_HISTORY_TOTAL_CHAR_LIMIT = 5200
+MODEL_HISTORY_FALLBACK_STATUS_CODES = {400, 413, 422, 500, 502, 503, 504}
 USER_MEMORY_LOCK = threading.RLock()
 PROACTIVE_STATE_LOCK = threading.RLock()
 MEME_STATE_LOCK = threading.RLock()
@@ -1587,6 +1590,121 @@ def context_standalone_history_limit(config: dict[str, Any]) -> int:
 
 def interaction_history_limit(config: dict[str, Any]) -> int:
     return max(4, min(int(config.get("interaction_history_limit") or 10), 20))
+
+
+def model_history_message_char_limit(config: dict[str, Any]) -> int:
+    return clamp_int(
+        config.get("model_history_message_char_limit"),
+        200,
+        2000,
+        MODEL_HISTORY_MESSAGE_CHAR_LIMIT,
+    )
+
+
+def model_history_total_char_limit(config: dict[str, Any]) -> int:
+    return clamp_int(
+        config.get("model_history_total_char_limit"),
+        1000,
+        20000,
+        MODEL_HISTORY_TOTAL_CHAR_LIMIT,
+    )
+
+
+def model_history_fallback_enabled(config: dict[str, Any]) -> bool:
+    return config_bool(config.get("model_history_fallback_enabled"), True)
+
+
+def prepare_model_history(
+    config: dict[str, Any],
+    history: list[dict[str, str]] | None,
+    *,
+    max_items: int | None = None,
+    total_char_limit: int | None = None,
+) -> list[dict[str, str]]:
+    if not history:
+        return []
+
+    per_message_limit = model_history_message_char_limit(config)
+    total_limit = total_char_limit if total_char_limit is not None else model_history_total_char_limit(config)
+    total_limit = max(0, total_limit)
+    source = list(history)
+    if max_items is not None:
+        source = source[-max_items:] if max_items > 0 else []
+
+    prepared: list[dict[str, str]] = []
+    total = 0
+    for message in reversed(source):
+        role = str(message.get("role") or "")
+        content = str(message.get("content") or "").strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        if len(content) > per_message_limit:
+            content = content[-per_message_limit:].strip()
+        remaining = total_limit - total
+        if remaining <= 0:
+            break
+        if len(content) > remaining:
+            if remaining < 80:
+                break
+            content = content[-remaining:].strip()
+        if not content:
+            continue
+        prepared.append({"role": role, "content": content})
+        total += len(content)
+
+    return list(reversed(prepared))
+
+
+def model_messages_have_history(messages: list[dict[str, str]]) -> bool:
+    chat_messages = [message for message in messages if message.get("role") in {"user", "assistant"}]
+    return len(chat_messages) > 1
+
+
+def model_messages_without_history(messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    system_messages = [message for message in messages if message.get("role") == "system"]
+    last_user: dict[str, str] | None = None
+    for message in messages:
+        if message.get("role") == "user":
+            last_user = message
+    return system_messages + ([last_user] if last_user else [])
+
+
+def model_request_status_code(exc: Exception) -> int | None:
+    if not isinstance(exc, requests.HTTPError):
+        return None
+    response = getattr(exc, "response", None)
+    status_code = getattr(response, "status_code", None)
+    return status_code if isinstance(status_code, int) else None
+
+
+def should_retry_model_request_without_history(config: dict[str, Any], exc: Exception) -> bool:
+    if not model_history_fallback_enabled(config):
+        return False
+    if isinstance(exc, (requests.Timeout, requests.ConnectionError)):
+        return True
+    status_code = model_request_status_code(exc)
+    return status_code in MODEL_HISTORY_FALLBACK_STATUS_CODES
+
+
+def request_completion_with_history_fallback(
+    config: dict[str, Any],
+    label: str,
+    request_func: Any,
+    messages: list[dict[str, str]],
+    max_tokens: int,
+) -> dict[str, Any]:
+    try:
+        return request_func(messages, max_tokens)
+    except Exception as exc:
+        if not model_messages_have_history(messages) or not should_retry_model_request_without_history(config, exc):
+            raise
+        fallback_messages = model_messages_without_history(messages)
+        print(f"{label} request failed with chat history; retrying without history: {exc}", file=sys.stderr)
+        try:
+            return request_func(fallback_messages, max_tokens)
+        except Exception as retry_exc:
+            print(f"{label} history-free retry failed: {retry_exc}", file=sys.stderr)
+            raise exc
 
 
 def compact_context_text(text: str) -> str:
@@ -3868,7 +3986,7 @@ def ask_gemini(
     user_question = add_time_context_to_prompt(enrich_question(question))
 
     contents: list[dict[str, Any]] = []
-    for message in history or []:
+    for message in prepare_model_history(config, history):
         role = "model" if message.get("role") == "assistant" else "user"
         content = str(message.get("content") or "").strip()
         if content:
@@ -4034,7 +4152,7 @@ def ask_deepseek(
     user_question = add_time_context_to_prompt(enrich_question(question))
 
     messages = [{"role": "system", "content": system_prompt}]
-    for message in history or []:
+    for message in prepare_model_history(config, history):
         role = message.get("role")
         content = str(message.get("content") or "").strip()
         if role in {"user", "assistant"} and content:
@@ -4063,7 +4181,7 @@ def ask_deepseek(
         return response.json()
 
     max_tokens = model_token_limit(config, question)
-    data = request_completion(messages, max_tokens)
+    data = request_completion_with_history_fallback(config, "DeepSeek", request_completion, messages, max_tokens)
     choices = data.get("choices")
     if not isinstance(choices, list) or not choices:
         return "DeepSeek 没有返回内容。"
@@ -4115,7 +4233,7 @@ def ask_openrouter(
         if private_memory_context and openrouter_plain_memory_enabled(config):
             messages.append({"role": "system", "content": private_memory_context})
         if openrouter_plain_history_enabled(config):
-            for message in history or []:
+            for message in prepare_model_history(config, history):
                 role = message.get("role")
                 content = str(message.get("content") or "").strip()
                 if role in {"user", "assistant"} and content:
@@ -4130,7 +4248,7 @@ def ask_openrouter(
         user_question = add_time_context_to_prompt(enrich_question(question))
 
         messages = [{"role": "system", "content": system_prompt}]
-        for message in history or []:
+        for message in prepare_model_history(config, history):
             role = message.get("role")
             content = str(message.get("content") or "").strip()
             if role in {"user", "assistant"} and content:
@@ -4156,7 +4274,7 @@ def ask_openrouter(
         return response.json()
 
     max_tokens = int(config.get("max_output_tokens") or 800) if plain_chat else model_token_limit(config, question)
-    data = request_completion(messages, max_tokens)
+    data = request_completion_with_history_fallback(config, "OpenRouter", request_completion, messages, max_tokens)
     choices = data.get("choices")
     if not isinstance(choices, list) or not choices:
         return "OpenRouter 没有返回内容。"
