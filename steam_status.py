@@ -435,9 +435,10 @@ def build_status_overview_image(
     columns = 2
     gap = 18
     card_width = (WIDTH - PADDING * 2 - gap) // columns
-    card_height = 118
+    cover_height = 196
+    card_height = 300
     grid_rows = max(1, (len(display_rows) + columns - 1) // columns)
-    height = 166 + grid_rows * (card_height + gap) + 38
+    height = 330 if not display_rows else 166 + grid_rows * (card_height + gap) + 38
     image = gradient_background(WIDTH, height)
     draw = ImageDraw.Draw(image)
     draw.text((PADDING, 28), "Steam 正在游戏", fill=TEXT, font=FONT_TITLE)
@@ -485,30 +486,42 @@ def build_status_overview_image(
             width=2,
         )
 
+        game_name = str(row.get("game_name") or "未知游戏")
+        header = fetch_app_header(session, str(row.get("game_id") or ""))
+        header = header or placeholder_image(card_width - 4, cover_height, game_name)
+        paste_rounded(
+            image,
+            header,
+            (x + 2, y + 2),
+            (card_width - 4, cover_height),
+            14,
+        )
+        draw.line(
+            (x + 2, y + cover_height, x + card_width - 2, y + cover_height),
+            fill=GREEN,
+            width=2,
+        )
+
         avatar = None
         try:
             avatar = image_from_url(session, str(row.get("avatar") or ""))
         except Exception:
             avatar = None
         avatar = avatar or placeholder_image(82, 82, "S")
-        paste_rounded(image, avatar, (x + 16, y + 18), (76, 76), 38)
+        paste_rounded(image, avatar, (x + 18, y + 216), (68, 68), 34)
 
-        text_x = x + 108
-        name_width = card_width - 244
+        text_x = x + 104
+        text_width = card_width - 124
         draw.text(
-            (text_x, y + 15),
-            fit_text(draw, str(row.get("name") or "Steam 玩家"), FONT_CARD_TITLE, name_width),
+            (text_x, y + 207),
+            fit_text(draw, str(row.get("name") or "Steam 玩家"), FONT_CARD_TITLE, text_width),
             fill=TEXT,
             font=FONT_CARD_TITLE,
         )
 
-        header = fetch_app_header(session, str(row.get("game_id") or ""))
-        if header:
-            paste_rounded(image, header, (x + card_width - 126, y + 14), (110, 52), 9)
-        game_name = str(row.get("game_name") or "未知游戏")
         draw.text(
-            (text_x, y + 62),
-            fit_text(draw, game_name, FONT_CARD_TEXT, card_width - 128),
+            (text_x, y + 251),
+            fit_text(draw, game_name, FONT_CARD_TEXT, text_width),
             fill=GREEN,
             font=FONT_CARD_TEXT,
         )
