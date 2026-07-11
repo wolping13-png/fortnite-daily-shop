@@ -546,40 +546,53 @@ def build_status_card(event: dict[str, Any], output_path: Path = STATUS_IMAGE_PA
     game_name = str(event.get("game_name") or "正在玩游戏")
     appid = str(event.get("game_id") or "")
     action = str(event.get("action") or "start")
-    verb = "换到了" if action == "switch" else "打开了"
+    verb = "切换到了" if action == "switch" else "打开了"
+    action_text = "切换游戏" if action == "switch" else "开始游戏"
 
-    image = gradient_background(WIDTH, 520)
+    image = gradient_background(WIDTH, 720)
     draw = ImageDraw.Draw(image)
-    draw.text((PADDING, 34), "Steam 状态", fill=TEXT, font=FONT_TITLE)
-    draw_badge(draw, (PADDING, 92, PADDING + 128, 126), "正在游玩", GREEN)
+    draw.text((PADDING, 28), "Steam 好友动态", fill=TEXT, font=FONT_TITLE)
+    draw.text((PADDING, 84), f"{name} · {action_text}", fill=MUTED, font=FONT_SUBTITLE)
 
-    header = fetch_app_header(session, appid) or placeholder_image(560, 262, game_name)
-    paste_rounded(image, header, (PADDING, 152), (560, 262), 18)
-    draw.rounded_rectangle((PADDING, 152, PADDING + 560, 414), radius=18, outline=LINE, width=2)
+    cover_y = 132
+    cover_width = WIDTH - PADDING * 2
+    cover_height = 418
+    header = fetch_app_header(session, appid) or placeholder_image(cover_width, cover_height, game_name)
+    paste_rounded(image, header, (PADDING, cover_y), (cover_width, cover_height), 18)
+    draw.rounded_rectangle(
+        (PADDING, cover_y, WIDTH - PADDING, cover_y + cover_height),
+        radius=18,
+        outline=GREEN,
+        width=3,
+    )
 
     avatar = None
     try:
         avatar = image_from_url(session, str(player.get("avatarfull") or player.get("avatarmedium") or ""))
     except Exception:
         avatar = None
-    avatar = avatar or placeholder_image(104, 104, "S")
-    paste_rounded(image, avatar, (650, 160), (104, 104), 52)
+    avatar = avatar or placeholder_image(84, 84, "S")
+    paste_rounded(image, avatar, (PADDING + 18, 582), (84, 84), 42)
 
-    draw.text((775, 158), fit_text(draw, name, FONT_CARD_TITLE, 160), fill=TEXT, font=FONT_CARD_TITLE)
-    draw.text((775, 198), verb, fill=MUTED, font=FONT_CARD_TEXT)
-    game_lines = wrap_text(draw, game_name, FONT_SECTION, 260, 3)
-    y = 248
-    for line in game_lines:
-        draw.text((650, y), line, fill=TEXT, font=FONT_SECTION)
-        y += 38
-    if appid:
-        draw.text((650, 372), f"AppID {appid}", fill=MUTED, font=FONT_SMALL)
+    text_x = PADDING + 126
+    draw.text(
+        (text_x, 580),
+        fit_text(draw, name, FONT_CARD_TITLE, WIDTH - text_x - PADDING),
+        fill=TEXT,
+        font=FONT_CARD_TITLE,
+    )
+    draw.text(
+        (text_x, 624),
+        fit_text(draw, f"{verb}《{game_name}》", FONT_CARD_TEXT, WIDTH - text_x - PADDING),
+        fill=GREEN,
+        font=FONT_CARD_TEXT,
+    )
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    draw.text((PADDING, 456), f"{now} 监控到状态变化", fill=MUTED, font=FONT_SMALL)
+    now = datetime.now().strftime("%H:%M")
+    draw.text((WIDTH - PADDING, 682), f"{now} 检测到 Steam 状态变化", fill=MUTED, font=FONT_SMALL, anchor="ra")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, quality=88, optimize=True)
-    caption = f"{name} {verb}《{game_name}》"
+    caption = f"{name} 刚刚{verb}《{game_name}》，现在正在游戏中。"
     return caption, output_path
 
 
@@ -608,13 +621,19 @@ def collect_status_events(config: dict[str, Any]) -> list[dict[str, Any]]:
         current_game_name = str(player.get("gameextrainfo") or "").strip()
         previous_game_id = str(player_state.get("game_id") or "").strip()
         previous_announce_at = float(player_state.get("last_announce_at") or 0)
+        previous_announce_game_id = str(player_state.get("last_announce_game_id") or "").strip()
         action = ""
         if current_game_id:
             if previous_game_id and previous_game_id != current_game_id:
                 action = "switch"
             elif not previous_game_id and (initialized or announce_initial):
                 action = "start"
-            if action and repeat_seconds and now_ts - previous_announce_at < repeat_seconds:
+            if (
+                action
+                and current_game_id == previous_announce_game_id
+                and repeat_seconds
+                and now_ts - previous_announce_at < repeat_seconds
+            ):
                 action = ""
 
         player_state.update(
@@ -628,6 +647,7 @@ def collect_status_events(config: dict[str, Any]) -> list[dict[str, Any]]:
         )
         if action:
             player_state["last_announce_at"] = int(now_ts)
+            player_state["last_announce_game_id"] = current_game_id
             events.append(
                 {
                     "action": action,
