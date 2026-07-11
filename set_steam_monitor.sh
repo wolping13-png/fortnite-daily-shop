@@ -7,22 +7,12 @@ if [ ! -f gemini_bot_config.json ]; then
   cp gemini_bot_config.example.json gemini_bot_config.json
 fi
 
-printf "Paste Steam Web API Key: "
+printf "Paste Steam Web API Key, or press Enter to keep the current value: "
 read -rs STEAM_API_KEY
 printf "\n"
 
-if [ -z "$STEAM_API_KEY" ]; then
-  echo "Steam Web API Key is empty."
-  exit 1
-fi
-
-printf "Paste SteamID64 list, separated by comma: "
+printf "Paste SteamID64 list separated by comma, or press Enter to keep the current list: "
 read -r STEAM_IDS
-
-if [ -z "$STEAM_IDS" ]; then
-  echo "SteamID64 list is empty."
-  exit 1
-fi
 
 printf "Automatically read the public friend lists of these accounts? [Y/n]: "
 read -r STEAM_AUTO_FRIENDS
@@ -50,9 +40,24 @@ def ids_from_env(name):
 
 steam_ids = ids_from_env("STEAM_IDS")
 group_ids = ids_from_env("STEAM_GROUP_IDS")
+if not steam_ids:
+    for item in data.get("steam_players", []):
+        steam_id = str(item.get("steam_id", "") if isinstance(item, dict) else item).strip()
+        if steam_id.isdigit() and steam_id not in steam_ids:
+            steam_ids.append(steam_id)
+    for item in data.get("steam_player_ids", []):
+        steam_id = str(item).strip()
+        if steam_id.isdigit() and steam_id not in steam_ids:
+            steam_ids.append(steam_id)
+
+steam_api_key = os.environ.get("STEAM_API_KEY", "").strip() or str(data.get("steam_api_key") or "").strip()
+if not steam_api_key:
+    raise SystemExit("Steam Web API Key is empty.")
+if not steam_ids:
+    raise SystemExit("SteamID64 list is empty.")
 
 data["steam_status_enabled"] = True
-data["steam_api_key"] = os.environ["STEAM_API_KEY"].strip()
+data["steam_api_key"] = steam_api_key
 data["steam_players"] = [{"steam_id": steam_id, "name": ""} for steam_id in steam_ids]
 auto_friends = os.environ.get("STEAM_AUTO_FRIENDS", "").strip().lower()
 if auto_friends not in {"n", "no", "0", "false"}:
@@ -61,7 +66,10 @@ else:
     data["steam_friend_source_steam_ids"] = []
 data.setdefault("steam_friend_limit", 50)
 data.setdefault("steam_status_overview_limit", 24)
-data["steam_group_ids"] = group_ids
+if group_ids:
+    data["steam_group_ids"] = group_ids
+else:
+    data.setdefault("steam_group_ids", [])
 data.setdefault("steam_status_command", "Steam状态")
 data.setdefault("steam_rank_command", "Steam排行")
 data.setdefault("steam_status_check_seconds", 120)
