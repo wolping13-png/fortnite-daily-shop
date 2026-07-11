@@ -43,6 +43,7 @@ DEEPSEEK_EMPTY_RETRY_TOKENS = 1800
 MODEL_HISTORY_MESSAGE_CHAR_LIMIT = 900
 MODEL_HISTORY_TOTAL_CHAR_LIMIT = 5200
 MODEL_HISTORY_FALLBACK_STATUS_CODES = {400, 413, 422, 500, 502, 503, 504}
+OPENROUTER_TRANSIENT_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 USER_MEMORY_LOCK = threading.RLock()
 PROACTIVE_STATE_LOCK = threading.RLock()
 MEME_STATE_LOCK = threading.RLock()
@@ -1675,6 +1676,36 @@ def model_request_status_code(exc: Exception) -> int | None:
     response = getattr(exc, "response", None)
     status_code = getattr(response, "status_code", None)
     return status_code if isinstance(status_code, int) else None
+
+
+def model_request_error_detail(exc: Exception) -> str:
+    status_code = model_request_status_code(exc)
+    response = getattr(exc, "response", None)
+    detail = ""
+    if response is not None:
+        try:
+            data = response.json()
+            error = data.get("error") if isinstance(data, dict) else None
+            if isinstance(error, dict):
+                detail = str(error.get("message") or error.get("code") or "")
+        except Exception:
+            detail = ""
+    prefix = f"HTTP {status_code}: " if status_code is not None else ""
+    return f"{prefix}{detail or str(exc)}"[:800]
+
+
+def model_failure_reply(exc: Exception) -> str:
+    detail = model_request_error_detail(exc).lower()
+    status_code = model_request_status_code(exc)
+    if status_code == 402 or any(word in detail for word in ("insufficient credits", "payment required")):
+        return "我这边的模型余额好像用完了……得补一点额度才能继续聊。"
+    if status_code in {401, 403} or any(word in detail for word in ("invalid api key", "authentication")):
+        return "我这边连接模型的凭据失效了，得重新检查一下 OpenRouter Key。"
+    if status_code == 429 or "rate limit" in detail:
+        return "那边现在有点挤，我试了几次都没接上……等一小会儿再叫我。"
+    if isinstance(exc, (requests.Timeout, requests.ConnectionError)) or status_code in {408, 502, 503, 504}:
+        return "我刚刚没接到那边的回复……网络有点晃，再叫我一次吧。"
+    return "我刚刚卡了一下，没把话接住……再叫我一次吧。"
 
 
 def should_retry_model_request_without_history(config: dict[str, Any], exc: Exception) -> bool:
@@ -3541,6 +3572,42 @@ def openrouter_plain_memory_enabled(config: dict[str, Any]) -> bool:
     return config_bool(config.get("openrouter_plain_memory"), True)
 
 
+def openrouter_request_timeout(config: dict[str, Any]) -> int:
+    return clamp_int(config.get("openrouter_request_timeout_seconds"), 30, 180, 90)
+
+
+def openrouter_retry_count(config: dict[str, Any]) -> int:
+    return clamp_int(config.get("openrouter_retry_count"), 0, 3, 1)
+
+
+def openrouter_embedded_error(data: dict[str, Any]) -> dict[str, Any]:
+    error = data.get("error")
+    if isinstance(error, dict):
+        return error
+    choices = data.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices else {}
+    if isinstance(choice, dict) and isinstance(choice.get("error"), dict):
+        return choice["error"]
+    return {}
+
+
+def openrouter_error_code(error: dict[str, Any]) -> int | None:
+    try:
+        return int(error.get("code"))
+    except (TypeError, ValueError):
+        return None
+
+
+def openrouter_retry_delay(response: requests.Response | None, attempt: int) -> float:
+    retry_after = ""
+    if response is not None:
+        retry_after = str(response.headers.get("Retry-After") or "").strip()
+    try:
+        return max(0.5, min(float(retry_after), 8.0))
+    except (TypeError, ValueError):
+        return min(1.5 * (attempt + 1), 5.0)
+
+
 def parse_json_object_from_text(text: str) -> dict[str, Any]:
     value = str(text or "").strip()
     if not value:
@@ -4110,6 +4177,13 @@ def extract_deepseek_answer(message: dict[str, Any]) -> str:
     return ""
 
 
+def chat_completion_answer(data: dict[str, Any]) -> str:
+    choices = data.get("choices")
+    choice = choices[0] if isinstance(choices, list) and choices else {}
+    message = choice.get("message") if isinstance(choice, dict) else {}
+    return extract_deepseek_answer(message) if isinstance(message, dict) else ""
+
+
 def deepseek_empty_detail(data: dict[str, Any]) -> str:
     choices = data.get("choices")
     choice = choices[0] if isinstance(choices, list) and choices else {}
@@ -4327,53 +4401,86 @@ def ask_openrouter(
     headers = openrouter_headers(config)
 
     def request_completion(request_messages: list[dict[str, str]], max_tokens: int) -> dict[str, Any]:
-        response = requests.post(
-            f"{base_url}/chat/completions",
-            headers=headers,
-            json={
-                "model": model,
-                "messages": request_messages,
-                "temperature": float(config.get("temperature", 0.7)),
-                "max_tokens": max_tokens,
-                "stream": False,
-            },
-            timeout=60,
-        )
-        response.raise_for_status()
-        return response.json()
+        retry_count = openrouter_retry_count(config)
+        timeout = openrouter_request_timeout(config)
+        for attempt in range(retry_count + 1):
+            response: requests.Response | None = None
+            try:
+                response = requests.post(
+                    f"{base_url}/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": model,
+                        "messages": request_messages,
+                        "temperature": float(config.get("temperature", 0.7)),
+                        "max_tokens": max_tokens,
+                        "stream": False,
+                        "provider": {"allow_fallbacks": True},
+                    },
+                    timeout=timeout,
+                )
+                try:
+                    data = response.json()
+                except ValueError:
+                    response.raise_for_status()
+                    raise RuntimeError("OpenRouter returned a non-JSON response.")
+                if not isinstance(data, dict):
+                    raise RuntimeError("OpenRouter returned an invalid response body.")
+
+                if response.status_code >= 400:
+                    if response.status_code in OPENROUTER_TRANSIENT_STATUS_CODES and attempt < retry_count:
+                        delay = openrouter_retry_delay(response, attempt)
+                        print(
+                            f"OpenRouter HTTP {response.status_code}; retrying in {delay:.1f}s.",
+                            file=sys.stderr,
+                        )
+                        time.sleep(delay)
+                        continue
+                    response.raise_for_status()
+
+                embedded_error = openrouter_embedded_error(data)
+                embedded_code = openrouter_error_code(embedded_error)
+                if embedded_error:
+                    detail = str(embedded_error.get("message") or embedded_error)[:500]
+                    if embedded_code in OPENROUTER_TRANSIENT_STATUS_CODES and attempt < retry_count:
+                        delay = openrouter_retry_delay(response, attempt)
+                        print(
+                            f"OpenRouter provider error {embedded_code}: {detail}; retrying in {delay:.1f}s.",
+                            file=sys.stderr,
+                        )
+                        time.sleep(delay)
+                        continue
+                    raise RuntimeError(f"OpenRouter provider error {embedded_code or 'unknown'}: {detail}")
+                return data
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                if attempt >= retry_count:
+                    raise
+                delay = openrouter_retry_delay(response, attempt)
+                print(f"OpenRouter connection error; retrying in {delay:.1f}s: {exc}", file=sys.stderr)
+                time.sleep(delay)
+        raise RuntimeError("OpenRouter request retries were exhausted.")
 
     max_tokens = int(config.get("max_output_tokens") or 800) if plain_chat else model_token_limit(config, question)
     data = request_completion_with_history_fallback(config, "OpenRouter", request_completion, messages, max_tokens)
-    choices = data.get("choices")
-    if not isinstance(choices, list) or not choices:
-        return "OpenRouter 没有返回内容。"
-
-    message = choices[0].get("message") if isinstance(choices[0], dict) else {}
-    if not isinstance(message, dict):
-        return "OpenRouter 没有返回文字内容。"
-    answer = extract_deepseek_answer(message)
+    answer = chat_completion_answer(data)
     finish_reason = deepseek_finish_reason(data)
-    should_retry = (not plain_chat) and (
-        not answer or finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer)
+    should_retry = not answer or finish_reason == "error" or (
+        not plain_chat and (finish_reason in {"length", "max_tokens"} or answer_looks_cut_off(answer))
     )
     if should_retry:
         print(f"OpenRouter answer retry triggered: {deepseek_empty_detail(data)}", file=sys.stderr)
-        retry_messages = list(messages)
-        retry_messages[-1] = {
-            "role": "user",
-            "content": deepseek_retry_prompt(user_question, question, answer),
-        }
+        if plain_chat and not answer:
+            retry_messages = model_messages_without_history(messages)
+        else:
+            retry_messages = list(messages)
+            retry_messages[-1] = {
+                "role": "user",
+                "content": deepseek_retry_prompt(user_question, question, answer),
+            }
         data = request_completion(retry_messages, max(max_tokens, DEEPSEEK_EMPTY_RETRY_TOKENS))
-        retry_choices = data.get("choices")
-        retry_message = (
-            retry_choices[0].get("message")
-            if isinstance(retry_choices, list) and retry_choices and isinstance(retry_choices[0], dict)
-            else {}
-        )
-        if isinstance(retry_message, dict):
-            retry_answer = extract_deepseek_answer(retry_message)
-            if retry_answer:
-                answer = retry_answer
+        retry_answer = chat_completion_answer(data)
+        if retry_answer:
+            answer = retry_answer
         if not answer:
             print(f"OpenRouter retry also returned empty content: {deepseek_empty_detail(data)}", file=sys.stderr)
     return collapse_repetitive_answer(answer) or "OpenRouter 没有返回文字内容。"
@@ -5134,8 +5241,8 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             history = get_context_history(config, key, text)
         answer = ask_model(config, text, history=history, private_memory_context=private_context)
     except Exception as exc:
-        print(f"Private chat model request failed: {exc}", file=sys.stderr)
-        send_private_text(config, sender_id, "我这边刚刚没想出来……等一下再试试。")
+        print(f"Private chat model request failed: {model_request_error_detail(exc)}", file=sys.stderr)
+        send_private_text(config, sender_id, model_failure_reply(exc))
         return
 
     send_private_text(config, sender_id, answer)
@@ -5495,15 +5602,15 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
                 history = get_context_history(config, group_id, question)
             answer = ask_model(config, question, history=history, private_memory_context=private_context)
     except ValueError as exc:
-        print(f"Model request failed: {exc}", file=sys.stderr)
+        print(f"Model request failed: {model_request_error_detail(exc)}", file=sys.stderr)
         if "Tavily API key" in str(exc):
             send_group_text(config, group_id, "联网搜索还没配置 Tavily API Key。把 tavily_api_key 填进 gemini_bot_config.json 后重启我就能搜了。")
         else:
-            send_group_text(config, group_id, "AI 暂时没有回复成功，稍后再试一下。")
+            send_group_text(config, group_id, model_failure_reply(exc))
         return
     except Exception as exc:
-        print(f"Model request failed: {exc}", file=sys.stderr)
-        send_group_text(config, group_id, "AI 暂时没有回复成功，稍后再试一下。")
+        print(f"Model request failed: {model_request_error_detail(exc)}", file=sys.stderr)
+        send_group_text(config, group_id, model_failure_reply(exc))
         return
 
     if image_urls:

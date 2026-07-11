@@ -341,6 +341,7 @@ nano gemini_bot_config.json
 把 `provider` 设为 `openrouter`，填写 `openrouter_api_key`，并把 `model` 设为 `thedrummer/cydonia-24b-v4.1`。如果要继续使用 DeepSeek，也可以把 `provider` 改回 `deepseek` 并填写 `deepseek_api_key`。如果要让机器人联网搜索，再填写 `tavily_api_key`。API Key 不要提交到 GitHub。
 
 OpenRouter 默认开启 `openrouter_plain_chat`，普通聊天会按 OpenRouter 原生 messages 形式发送：人设卡作为 system prompt，个人记忆作为单独背景消息，短期上下文作为历史 user/assistant 消息，最后是当前用户消息。不额外注入时间或短回复规则，尽量不改变人设卡里的说话方式。
+OpenRouter 请求遇到临时限流、上游不可用、连接超时或正文内的 provider error 时会自动重试；返回空文字时会保留人设和当前问题、去掉旧上下文再请求一次。可用 `openrouter_request_timeout_seconds` 和 `openrouter_retry_count` 调整超时与重试次数。
 当前温德尔人设卡保存在 `wendell_persona.txt`。配置里使用 `system_prompt_file: "wendell_persona.txt"` 时，机器人会把这个文件内容作为 OpenRouter 的 system prompt。
 
 为避免聊久后旧上下文过长导致模型请求失败，机器人会在发送给模型前自动压缩历史消息：`model_history_message_char_limit` 控制单条历史字数，`model_history_total_char_limit` 控制历史总字数。若 OpenRouter/DeepSeek 因上下文失败，`model_history_fallback_enabled` 会让机器人保留人设和当前问题、丢掉旧历史自动重试一次，不需要手动清空上下文。
