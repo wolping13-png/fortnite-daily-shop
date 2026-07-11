@@ -405,20 +405,11 @@ def status_overview_rows(config: dict[str, Any], session: requests.Session | Non
     for steam_id in steam_ids:
         player = summaries.get(steam_id)
         if not player:
-            rows.append(
-                {
-                    "steam_id": steam_id,
-                    "name": aliases.get(steam_id) or steam_id,
-                    "state": 0,
-                    "state_text": "资料不可见",
-                    "game_id": "",
-                    "game_name": "",
-                    "avatar": "",
-                }
-            )
             continue
         state = int(player.get("personastate") or 0)
         game_id = str(player.get("gameid") or "").strip()
+        if not game_id:
+            continue
         rows.append(
             {
                 "steam_id": steam_id,
@@ -430,12 +421,7 @@ def status_overview_rows(config: dict[str, Any], session: requests.Session | Non
                 "avatar": str(player.get("avatarfull") or player.get("avatarmedium") or ""),
             }
         )
-    rows.sort(
-        key=lambda item: (
-            0 if item.get("game_id") else 1 if int(item.get("state") or 0) > 0 else 2,
-            str(item.get("name") or "").casefold(),
-        )
-    )
+    rows.sort(key=lambda item: str(item.get("name") or "").casefold())
     return rows
 
 
@@ -449,18 +435,15 @@ def build_status_overview_image(
     columns = 2
     gap = 18
     card_width = (WIDTH - PADDING * 2 - gap) // columns
-    card_height = 142
+    card_height = 118
     grid_rows = max(1, (len(display_rows) + columns - 1) // columns)
     height = 166 + grid_rows * (card_height + gap) + 38
     image = gradient_background(WIDTH, height)
     draw = ImageDraw.Draw(image)
-    playing_count = sum(1 for row in rows if row.get("game_id"))
-    online_count = sum(1 for row in rows if int(row.get("state") or 0) > 0)
-
-    draw.text((PADDING, 28), "Steam 好友状态", fill=TEXT, font=FONT_TITLE)
+    draw.text((PADDING, 28), "Steam 正在游戏", fill=TEXT, font=FONT_TITLE)
     draw.text(
         (PADDING, 84),
-        f"正在游戏 {playing_count} 人 · 在线 {online_count} 人 · 已读取 {len(rows)} 人",
+        f"{len(rows)} 位好友正在游戏",
         fill=MUTED,
         font=FONT_SUBTITLE,
     )
@@ -473,20 +456,33 @@ def build_status_overview_image(
             anchor="ra",
         )
 
+    if not display_rows:
+        draw.rounded_rectangle(
+            (PADDING, 132, WIDTH - PADDING, 250),
+            radius=16,
+            fill=PANEL,
+            outline=LINE,
+            width=1,
+        )
+        draw.text(
+            (WIDTH // 2, 191),
+            "现在没有好友在游戏",
+            fill=MUTED,
+            font=FONT_SECTION,
+            anchor="mm",
+        )
+
     for index, row in enumerate(display_rows):
         column = index % columns
         line = index // columns
         x = PADDING + column * (card_width + gap)
         y = 132 + line * (card_height + gap)
-        playing = bool(row.get("game_id"))
-        online = int(row.get("state") or 0) > 0
-        border = GREEN if playing else BLUE if online else LINE
         draw.rounded_rectangle(
             (x, y, x + card_width, y + card_height),
             radius=16,
             fill=PANEL if column == 0 else PANEL_2,
-            outline=border,
-            width=2 if playing else 1,
+            outline=GREEN,
+            width=2,
         )
 
         avatar = None
@@ -495,40 +491,26 @@ def build_status_overview_image(
         except Exception:
             avatar = None
         avatar = avatar or placeholder_image(82, 82, "S")
-        paste_rounded(image, avatar, (x + 16, y + 18), (82, 82), 41)
+        paste_rounded(image, avatar, (x + 16, y + 18), (76, 76), 38)
 
-        text_x = x + 116
-        name_width = card_width - 136
-        if playing:
-            name_width -= 132
+        text_x = x + 108
+        name_width = card_width - 244
         draw.text(
-            (text_x, y + 17),
+            (text_x, y + 15),
             fit_text(draw, str(row.get("name") or "Steam 玩家"), FONT_CARD_TITLE, name_width),
             fill=TEXT,
             font=FONT_CARD_TITLE,
         )
 
-        if playing:
-            header = fetch_app_header(session, str(row.get("game_id") or ""))
-            if header:
-                paste_rounded(image, header, (x + card_width - 132, y + 14), (116, 54), 9)
-            game_name = str(row.get("game_name") or "未知游戏")
-            draw.text(
-                (text_x, y + 58),
-                fit_text(draw, game_name, FONT_CARD_TEXT, card_width - 136),
-                fill=GREEN,
-                font=FONT_CARD_TEXT,
-            )
-            state_text = "正在游戏"
-        else:
-            state_text = str(row.get("state_text") or "离线")
-            draw.text((text_x, y + 58), state_text, fill=BLUE if online else MUTED, font=FONT_CARD_TEXT)
-
+        header = fetch_app_header(session, str(row.get("game_id") or ""))
+        if header:
+            paste_rounded(image, header, (x + card_width - 126, y + 14), (110, 52), 9)
+        game_name = str(row.get("game_name") or "未知游戏")
         draw.text(
-            (text_x, y + 101),
-            fit_text(draw, f"{state_text} · {row.get('steam_id') or ''}", FONT_SMALL, card_width - 136),
-            fill=MUTED,
-            font=FONT_SMALL,
+            (text_x, y + 62),
+            fit_text(draw, game_name, FONT_CARD_TEXT, card_width - 128),
+            fill=GREEN,
+            font=FONT_CARD_TEXT,
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -540,9 +522,7 @@ def build_status_overview_update(config: dict[str, Any]) -> tuple[str, Path, lis
     rows = status_overview_rows(config)
     display_limit = int(config.get("steam_status_overview_limit") or 24)
     image_path = build_status_overview_image(rows, display_limit=display_limit)
-    playing_count = sum(1 for row in rows if row.get("game_id"))
-    online_count = sum(1 for row in rows if int(row.get("state") or 0) > 0)
-    caption = f"Steam 好友状态：{playing_count} 人正在游戏，{online_count} 人在线"
+    caption = f"Steam：当前 {len(rows)} 位好友正在游戏"
     return caption, image_path, rows
 
 
