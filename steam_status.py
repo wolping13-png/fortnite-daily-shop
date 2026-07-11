@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 import re
 import time
 from datetime import datetime
@@ -539,6 +540,25 @@ def build_status_overview_update(config: dict[str, Any]) -> tuple[str, Path, lis
     return caption, image_path, rows
 
 
+def personal_activity_caption(name: str, game_name: str, action: str) -> str:
+    if action == "switch":
+        templates = (
+            "等下，{name} 换到《{game}》了。动作还挺快。",
+            "我刚看到 {name} 换游戏了，现在在《{game}》里。",
+            "{name} 刚把游戏切到《{game}》。看来是想换个口味。",
+            "不是，我再看一眼……{name} 现在跑去玩《{game}》了。",
+        )
+    else:
+        templates = (
+            "我刚看到 {name} 打开《{game}》了。看来已经玩上了。",
+            "等下，{name} 跑去玩《{game}》了。我刚好看见。",
+            "{name} 刚打开《{game}》啦。我来报个信。",
+            "我瞄到 {name} 进了《{game}》。这次没看漏。",
+            "嗷，{name} 跑去玩《{game}》了。",
+        )
+    return random.choice(templates).format(name=name, game=game_name)
+
+
 def build_status_card(event: dict[str, Any], output_path: Path = STATUS_IMAGE_PATH) -> tuple[str, Path]:
     session = make_session()
     player = event.get("player") if isinstance(event.get("player"), dict) else {}
@@ -592,7 +612,7 @@ def build_status_card(event: dict[str, Any], output_path: Path = STATUS_IMAGE_PA
     draw.text((WIDTH - PADDING, 682), f"{now} 检测到 Steam 状态变化", fill=MUTED, font=FONT_SMALL, anchor="ra")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, quality=88, optimize=True)
-    caption = f"{name} 刚刚{verb}《{game_name}》，现在正在游戏中。"
+    caption = personal_activity_caption(name, game_name, action)
     return caption, output_path
 
 
