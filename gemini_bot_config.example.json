@@ -84,7 +84,7 @@
   "steam_rank_command": "Steam排行",
   "steam_status_check_seconds": 120,
   "steam_status_repeat_minutes": 120,
-  "steam_status_announce_initial": false,
+  "steam_status_announce_initial": true,
   "steam_rank_enabled": true,
   "steam_rank_hour": 22,
   "steam_rank_minute": 0,

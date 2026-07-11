@@ -74,12 +74,24 @@ data.setdefault("steam_status_command", "Steam状态")
 data.setdefault("steam_rank_command", "Steam排行")
 data.setdefault("steam_status_check_seconds", 120)
 data.setdefault("steam_status_repeat_minutes", 120)
-data.setdefault("steam_status_announce_initial", False)
+data["steam_status_announce_initial"] = True
 data.setdefault("steam_rank_enabled", True)
 data.setdefault("steam_rank_hour", 22)
 data.setdefault("steam_rank_minute", 0)
 
 path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+state_path = Path("bot_memory/steam_status.json")
+if state_path.exists():
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception:
+        state = {}
+    if not isinstance(state, dict):
+        state = {}
+    state["players"] = {}
+    state["status_initialized"] = False
+    state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 PY
 
 pkill -f qq_gemini_bot.py 2>/dev/null || true

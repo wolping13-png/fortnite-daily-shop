@@ -4940,7 +4940,7 @@ def steam_monitor_enabled(config: dict[str, Any]) -> bool:
 
 def steam_target_groups(config: dict[str, Any]) -> list[str]:
     configured = config.get("steam_group_ids")
-    if configured is None:
+    if not configured:
         configured = config.get("allowed_group_ids")
     groups = configured if isinstance(configured, list) else [configured]
     result: list[str] = []
