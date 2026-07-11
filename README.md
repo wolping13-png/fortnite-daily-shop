@@ -270,7 +270,7 @@ https://steamcommunity.com/dev/apikey
 "steam_rank_minute": 0
 ```
 
-如果 `steam_group_ids` 留空，会默认发到 `allowed_group_ids`。如果想从某个公开好友列表自动读取好友，可以把那个账号的 SteamID64 加进 `steam_friend_source_steam_ids`，但对方好友列表或游戏详情是私密时，Steam API 可能读不到。
+如果 `steam_group_ids` 留空，会默认发到 `allowed_group_ids`。一键配置脚本会询问是否自动读取好友，直接按回车就会把你填写的 SteamID64 放进 `steam_friend_source_steam_ids`。Steam 的“好友列表”和“游戏详情”必须设为公开，否则 Steam API 只能读到本人，或者看不到好友正在玩的游戏。
 
 服务器上一键配置：
 
@@ -284,6 +284,8 @@ bash set_steam_monitor.sh
 Steam状态
 Steam排行
 ```
+
+`Steam状态` 会发送一张好友状态总览图，包含 Steam 昵称、头像、在线状态和正在玩的游戏封面。图片默认展示前 24 人，后台状态监控仍会读取配置范围内的全部好友。
 
 第一次启用排行榜时只会建立基准；下一次运行后才会显示新增游玩时长。
 

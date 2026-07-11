@@ -24,10 +24,13 @@ if [ -z "$STEAM_IDS" ]; then
   exit 1
 fi
 
+printf "Automatically read the public friend lists of these accounts? [Y/n]: "
+read -r STEAM_AUTO_FRIENDS
+
 printf "Optional QQ group IDs for Steam messages, separated by comma. Leave empty to use allowed_group_ids: "
 read -r STEAM_GROUP_IDS
 
-export STEAM_API_KEY STEAM_IDS STEAM_GROUP_IDS
+export STEAM_API_KEY STEAM_IDS STEAM_AUTO_FRIENDS STEAM_GROUP_IDS
 python3 - <<'PY'
 import json
 import os
@@ -51,8 +54,13 @@ group_ids = ids_from_env("STEAM_GROUP_IDS")
 data["steam_status_enabled"] = True
 data["steam_api_key"] = os.environ["STEAM_API_KEY"].strip()
 data["steam_players"] = [{"steam_id": steam_id, "name": ""} for steam_id in steam_ids]
-data.setdefault("steam_friend_source_steam_ids", [])
+auto_friends = os.environ.get("STEAM_AUTO_FRIENDS", "").strip().lower()
+if auto_friends not in {"n", "no", "0", "false"}:
+    data["steam_friend_source_steam_ids"] = steam_ids
+else:
+    data["steam_friend_source_steam_ids"] = []
 data.setdefault("steam_friend_limit", 50)
+data.setdefault("steam_status_overview_limit", 24)
 data["steam_group_ids"] = group_ids
 data.setdefault("steam_status_command", "Steam状态")
 data.setdefault("steam_rank_command", "Steam排行")
@@ -71,4 +79,4 @@ nohup bash run_qq_gemini_bot.sh > gemini_bot.log 2>&1 &
 
 sleep 3
 tail -n 30 gemini_bot.log
-echo "Steam monitor is configured. Try: Steam状态"
+echo "Steam monitor is configured. Public friend lists will be read automatically when enabled. Try: Steam状态"

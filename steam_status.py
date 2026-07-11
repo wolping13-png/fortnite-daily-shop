@@ -16,6 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent
 CACHE_DIR = BASE_DIR / ".cache" / "steam_status"
 STATE_PATH = BASE_DIR / "bot_memory" / "steam_status.json"
 STATUS_IMAGE_PATH = BASE_DIR / "steam_status.jpg"
+STATUS_OVERVIEW_IMAGE_PATH = BASE_DIR / "steam_status_overview.jpg"
 RANK_IMAGE_PATH = BASE_DIR / "steam_playtime_rank.jpg"
 
 PLAYER_SUMMARIES_URL = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
@@ -374,6 +375,175 @@ def format_minutes(minutes: int) -> str:
 def draw_badge(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], text: str, fill: tuple[int, int, int]) -> None:
     draw.rounded_rectangle(box, radius=12, fill=fill)
     draw.text((box[0] + 14, box[1] + 6), text, fill=(8, 14, 24), font=FONT_BADGE)
+
+
+def persona_state_text(value: Any) -> str:
+    states = {
+        0: "离线",
+        1: "在线",
+        2: "忙碌",
+        3: "离开",
+        4: "暂离",
+        5: "想交易",
+        6: "想一起玩",
+    }
+    try:
+        return states.get(int(value or 0), "未知")
+    except (TypeError, ValueError):
+        return "未知"
+
+
+def status_overview_rows(config: dict[str, Any], session: requests.Session | None = None) -> list[dict[str, Any]]:
+    key = require_api_key(config)
+    session = session or make_session()
+    steam_ids = monitored_steam_ids(config, session=session)
+    if not steam_ids:
+        raise ValueError("还没配置 SteamID64。")
+    aliases = configured_player_aliases(config)
+    summaries = fetch_player_summaries(session, key, steam_ids)
+    rows: list[dict[str, Any]] = []
+    for steam_id in steam_ids:
+        player = summaries.get(steam_id)
+        if not player:
+            rows.append(
+                {
+                    "steam_id": steam_id,
+                    "name": aliases.get(steam_id) or steam_id,
+                    "state": 0,
+                    "state_text": "资料不可见",
+                    "game_id": "",
+                    "game_name": "",
+                    "avatar": "",
+                }
+            )
+            continue
+        state = int(player.get("personastate") or 0)
+        game_id = str(player.get("gameid") or "").strip()
+        rows.append(
+            {
+                "steam_id": steam_id,
+                "name": display_name(player, aliases),
+                "state": state,
+                "state_text": persona_state_text(state),
+                "game_id": game_id,
+                "game_name": str(player.get("gameextrainfo") or "").strip(),
+                "avatar": str(player.get("avatarfull") or player.get("avatarmedium") or ""),
+            }
+        )
+    rows.sort(
+        key=lambda item: (
+            0 if item.get("game_id") else 1 if int(item.get("state") or 0) > 0 else 2,
+            str(item.get("name") or "").casefold(),
+        )
+    )
+    return rows
+
+
+def build_status_overview_image(
+    rows: list[dict[str, Any]],
+    output_path: Path = STATUS_OVERVIEW_IMAGE_PATH,
+    display_limit: int = 24,
+) -> Path:
+    session = make_session()
+    display_rows = rows[: max(1, min(int(display_limit or 24), 40))]
+    columns = 2
+    gap = 18
+    card_width = (WIDTH - PADDING * 2 - gap) // columns
+    card_height = 142
+    grid_rows = max(1, (len(display_rows) + columns - 1) // columns)
+    height = 166 + grid_rows * (card_height + gap) + 38
+    image = gradient_background(WIDTH, height)
+    draw = ImageDraw.Draw(image)
+    playing_count = sum(1 for row in rows if row.get("game_id"))
+    online_count = sum(1 for row in rows if int(row.get("state") or 0) > 0)
+
+    draw.text((PADDING, 28), "Steam 好友状态", fill=TEXT, font=FONT_TITLE)
+    draw.text(
+        (PADDING, 84),
+        f"正在游戏 {playing_count} 人 · 在线 {online_count} 人 · 已读取 {len(rows)} 人",
+        fill=MUTED,
+        font=FONT_SUBTITLE,
+    )
+    if len(rows) > len(display_rows):
+        draw.text(
+            (WIDTH - PADDING, 90),
+            f"图片展示前 {len(display_rows)} 人",
+            fill=MUTED,
+            font=FONT_SMALL,
+            anchor="ra",
+        )
+
+    for index, row in enumerate(display_rows):
+        column = index % columns
+        line = index // columns
+        x = PADDING + column * (card_width + gap)
+        y = 132 + line * (card_height + gap)
+        playing = bool(row.get("game_id"))
+        online = int(row.get("state") or 0) > 0
+        border = GREEN if playing else BLUE if online else LINE
+        draw.rounded_rectangle(
+            (x, y, x + card_width, y + card_height),
+            radius=16,
+            fill=PANEL if column == 0 else PANEL_2,
+            outline=border,
+            width=2 if playing else 1,
+        )
+
+        avatar = None
+        try:
+            avatar = image_from_url(session, str(row.get("avatar") or ""))
+        except Exception:
+            avatar = None
+        avatar = avatar or placeholder_image(82, 82, "S")
+        paste_rounded(image, avatar, (x + 16, y + 18), (82, 82), 41)
+
+        text_x = x + 116
+        name_width = card_width - 136
+        if playing:
+            name_width -= 132
+        draw.text(
+            (text_x, y + 17),
+            fit_text(draw, str(row.get("name") or "Steam 玩家"), FONT_CARD_TITLE, name_width),
+            fill=TEXT,
+            font=FONT_CARD_TITLE,
+        )
+
+        if playing:
+            header = fetch_app_header(session, str(row.get("game_id") or ""))
+            if header:
+                paste_rounded(image, header, (x + card_width - 132, y + 14), (116, 54), 9)
+            game_name = str(row.get("game_name") or "未知游戏")
+            draw.text(
+                (text_x, y + 58),
+                fit_text(draw, game_name, FONT_CARD_TEXT, card_width - 136),
+                fill=GREEN,
+                font=FONT_CARD_TEXT,
+            )
+            state_text = "正在游戏"
+        else:
+            state_text = str(row.get("state_text") or "离线")
+            draw.text((text_x, y + 58), state_text, fill=BLUE if online else MUTED, font=FONT_CARD_TEXT)
+
+        draw.text(
+            (text_x, y + 101),
+            fit_text(draw, f"{state_text} · {row.get('steam_id') or ''}", FONT_SMALL, card_width - 136),
+            fill=MUTED,
+            font=FONT_SMALL,
+        )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path, quality=88, optimize=True)
+    return output_path
+
+
+def build_status_overview_update(config: dict[str, Any]) -> tuple[str, Path, list[dict[str, Any]]]:
+    rows = status_overview_rows(config)
+    display_limit = int(config.get("steam_status_overview_limit") or 24)
+    image_path = build_status_overview_image(rows, display_limit=display_limit)
+    playing_count = sum(1 for row in rows if row.get("game_id"))
+    online_count = sum(1 for row in rows if int(row.get("state") or 0) > 0)
+    caption = f"Steam 好友状态：{playing_count} 人正在游戏，{online_count} 人在线"
+    return caption, image_path, rows
 
 
 def build_status_card(event: dict[str, Any], output_path: Path = STATUS_IMAGE_PATH) -> tuple[str, Path]:

@@ -2580,11 +2580,11 @@ def send_steam_image(config: dict[str, Any], group_id: int | str, caption: str, 
 
 
 def send_steam_status_update(config: dict[str, Any], group_id: int | str) -> str:
-    from steam_status import current_status_text
+    from steam_status import build_status_overview_update
 
-    answer = current_status_text(config)
-    send_group_text(config, group_id, answer)
-    return answer
+    caption, image_path, _rows = build_status_overview_update(config)
+    send_steam_image(config, group_id, caption, image_path)
+    return caption
 
 
 def send_steam_rank_update(config: dict[str, Any], group_id: int | str, update_snapshot: bool = True) -> str:
