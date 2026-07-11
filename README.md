@@ -119,6 +119,8 @@ bash install_cloud_cron.sh
 - `@机器人 指令`、`@机器人 帮助`、`@机器人 菜单`：查看完整指令表
 - `商店`：发送一张按官方商店分区排列的每日商店总图
 - `游戏优惠`、`Steam折扣榜`、`Epic喜加一`：发送 Steam 高销量折扣榜和 Epic 免费游戏日报
+- `Steam状态`：查看配置玩家当前 Steam 在线/游戏状态
+- `Steam排行`：发送 Steam 新增游玩时长排行榜
 - `吃什么`、`喝什么`：随机推荐一种食物或饮品，并发送真实实物图片；优先用 Wikimedia，失败后会用 Tavily 图片结果
 - `@机器人 狼狼`：随机发送一张可爱的真实狼图
 - `温德尔 北京天气`、`天气 北京`、`今天武汉洪山区天气怎么样`：查询实时天气和今日/明日预报
@@ -241,6 +243,49 @@ bash run_game_deals_qq.sh
 ```bash
 bash install_game_deals_cron.sh
 ```
+
+### Steam 状态监控
+
+机器人可以监控配置的 Steam 玩家：有人开始玩游戏或切换游戏时，会在群里发一张状态卡片，包含 Steam 昵称、头像和游戏图片；每天还会按累计游戏时长快照差值生成一次新增游玩时长排行榜。
+
+先到 Steam 开发者页面申请 Web API Key：
+
+```text
+https://steamcommunity.com/dev/apikey
+```
+
+然后准备要监控玩家的 SteamID64。最稳的方式是在配置里手动列出玩家：
+
+```json
+"steam_status_enabled": true,
+"steam_api_key": "你的 Steam Web API Key",
+"steam_players": [
+  {
+    "steam_id": "76561198000000000",
+    "name": "群友昵称"
+  }
+],
+"steam_status_check_seconds": 120,
+"steam_rank_hour": 22,
+"steam_rank_minute": 0
+```
+
+如果 `steam_group_ids` 留空，会默认发到 `allowed_group_ids`。如果想从某个公开好友列表自动读取好友，可以把那个账号的 SteamID64 加进 `steam_friend_source_steam_ids`，但对方好友列表或游戏详情是私密时，Steam API 可能读不到。
+
+服务器上一键配置：
+
+```bash
+bash set_steam_monitor.sh
+```
+
+群里可用：
+
+```text
+Steam状态
+Steam排行
+```
+
+第一次启用排行榜时只会建立基准；下一次运行后才会显示新增游玩时长。
 
 服务器上也可以手动发一次每日一狼：
 
@@ -365,6 +410,8 @@ bash install_gemini_bot_service.sh
 - `send_game_deals.py`：通过 OneBot HTTP 发送游戏优惠日报
 - `run_game_deals_qq.sh`：Linux/VPS 手动发送游戏优惠日报
 - `install_game_deals_cron.sh`：Linux/VPS 安装游戏优惠日报定时任务
+- `steam_status.py`：读取 Steam 玩家状态、头像、游戏图片和累计游戏时长，生成状态卡片与每日时长排行榜
+- `set_steam_monitor.sh`：Linux/VPS 一键写入 Steam Web API Key、SteamID64 并重启机器人
 - `random_food.py`：随机推荐食物/饮品并发送真实实物图片，供 QQ 群触发 `吃什么`、`喝什么`
 - `test_random_food.sh`：Linux/VPS 单独测试 `吃什么`、`喝什么` 的真实图片抓取
 - `random_wolf.py`：随机抓取真实狼图

@@ -69,6 +69,25 @@
   "game_deals_command": "游戏优惠",
   "game_deals_steam_limit": 12,
   "game_deals_epic_country": "CN",
+  "steam_status_enabled": false,
+  "steam_api_key": "PASTE_YOUR_STEAM_WEB_API_KEY_HERE",
+  "steam_players": [
+    {
+      "steam_id": "76561198000000000",
+      "name": "Steam玩家"
+    }
+  ],
+  "steam_friend_source_steam_ids": [],
+  "steam_friend_limit": 50,
+  "steam_group_ids": [],
+  "steam_status_command": "Steam状态",
+  "steam_rank_command": "Steam排行",
+  "steam_status_check_seconds": 120,
+  "steam_status_repeat_minutes": 120,
+  "steam_status_announce_initial": false,
+  "steam_rank_enabled": true,
+  "steam_rank_hour": 22,
+  "steam_rank_minute": 0,
   "wolf_command": "狼狼",
   "web_search_command": "联网查",
   "semi_agent_enabled": true,

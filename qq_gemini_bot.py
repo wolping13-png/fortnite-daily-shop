@@ -2558,6 +2558,43 @@ def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> str:
     return caption
 
 
+def send_steam_image(config: dict[str, Any], group_id: int | str, caption: str, image_path: Path, timeout: int = 120) -> None:
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    result = post_onebot(
+        base_url=base_url,
+        action="send_group_msg",
+        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=choose_send_image(image_path))},
+        access_token=access_token,
+        timeout=timeout,
+    )
+    if result.get("_napcat_callback_timeout"):
+        safe_path = make_safe_image(image_path)
+        post_onebot(
+            base_url=base_url,
+            action="send_group_msg",
+            payload={"group_id": group_id, "message": build_message(caption=caption, image_path=safe_path)},
+            access_token=access_token,
+            timeout=timeout,
+        )
+
+
+def send_steam_status_update(config: dict[str, Any], group_id: int | str) -> str:
+    from steam_status import current_status_text
+
+    answer = current_status_text(config)
+    send_group_text(config, group_id, answer)
+    return answer
+
+
+def send_steam_rank_update(config: dict[str, Any], group_id: int | str, update_snapshot: bool = True) -> str:
+    from steam_status import build_playtime_rank_update
+
+    caption, image_path, _rows = build_playtime_rank_update(config, update_snapshot=update_snapshot)
+    send_steam_image(config, group_id, caption, image_path)
+    return caption
+
+
 def send_random_food_update(
     config: dict[str, Any],
     group_id: int | str,
@@ -2866,6 +2903,8 @@ def command_help_text(config: dict[str, Any]) -> str:
     weather_command = str(config.get("weather_command") or "天气")
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
+    steam_status_command = str(config.get("steam_status_command") or "Steam状态")
+    steam_rank_command = str(config.get("steam_rank_command") or "Steam排行")
     wolf_command = str(config.get("wolf_command") or "狼狼")
     x_search_command = str(config.get("x_search_command") or "X搜索")
     x_timeline_command = str(config.get("x_timeline_command") or "X日常")
@@ -2878,6 +2917,8 @@ def command_help_text(config: dict[str, Any]) -> str:
         "直接发：\n"
         f"- {shop_command}：发送 Fortnite 每日商店总图\n"
         f"- {game_deals_command} / Steam折扣榜 / Epic喜加一：发送游戏优惠日报\n"
+        f"- {steam_status_command}：查看配置玩家当前 Steam 在线/游戏状态\n"
+        f"- {steam_rank_command}：发送 Steam 新增游玩时长排行榜\n"
         "- 方舟单抽 / 方舟十连 / 方舟抽卡50 / 方舟来一井：明日方舟模拟寻访并发结果图\n"
         "- 方舟卡池 / 方舟卡池 第2页 / 温德尔 1：查看目录并按编号切换UP池\n"
         "- 方舟卡池 水月 / 方舟卡池 最新：按池名或UP干员搜索切换历史/官方UP池\n"
@@ -2930,6 +2971,34 @@ def is_game_deals_request(text: str, configured_command: str) -> bool:
         or ("epic" in compact and ("喜加一" in compact or "免费" in compact))
         or ("游戏" in compact and ("折扣" in compact or "优惠" in compact))
     )
+
+
+def is_steam_status_request(text: str, configured_command: str) -> bool:
+    compact = re.sub(r"\s+", "", text.strip().lower())
+    commands = {
+        configured_command.strip().lower(),
+        "steam状态",
+        "steam在线",
+        "steam好友",
+        "steam谁在玩",
+        "谁在玩steam",
+    }
+    return compact in {re.sub(r"\s+", "", command) for command in commands if command}
+
+
+def is_steam_rank_request(text: str, configured_command: str) -> bool:
+    compact = re.sub(r"\s+", "", text.strip().lower())
+    commands = {
+        configured_command.strip().lower(),
+        "steam排行",
+        "steam排行榜",
+        "steam时长",
+        "steam时长榜",
+        "steam游玩榜",
+        "steam每日排行",
+        "steam每日排行榜",
+    }
+    return compact in {re.sub(r"\s+", "", command) for command in commands if command}
 
 
 def split_reply(text: str, limit: int = 900) -> list[str]:
@@ -4865,6 +4934,71 @@ def proactive_topic_loop(initial_config: dict[str, Any]) -> None:
         time.sleep(check_seconds)
 
 
+def steam_monitor_enabled(config: dict[str, Any]) -> bool:
+    return config_bool(config.get("steam_status_enabled"), False)
+
+
+def steam_target_groups(config: dict[str, Any]) -> list[str]:
+    configured = config.get("steam_group_ids")
+    if configured is None:
+        configured = config.get("allowed_group_ids")
+    groups = configured if isinstance(configured, list) else [configured]
+    result: list[str] = []
+    for group_id in groups:
+        text = str(group_id or "").strip()
+        if text and text not in result:
+            result.append(text)
+    return result
+
+
+def run_steam_monitor_tick(config: dict[str, Any]) -> None:
+    if not steam_monitor_enabled(config):
+        return
+    groups = steam_target_groups(config)
+    if not groups:
+        return
+
+    from steam_status import (
+        build_playtime_rank_update,
+        build_status_card,
+        collect_status_events,
+        mark_daily_rank_sent,
+        should_send_daily_rank,
+    )
+
+    for event in collect_status_events(config):
+        caption, image_path = build_status_card(event)
+        for group_id in groups:
+            send_steam_image(config, group_id, caption, image_path)
+        print(f"Sent Steam status event: {caption}")
+
+    now = datetime.now(CHINA_TZ)
+    if should_send_daily_rank(config, now):
+        caption, image_path, _rows = build_playtime_rank_update(config, update_snapshot=True)
+        for group_id in groups:
+            send_steam_image(config, group_id, caption, image_path)
+        mark_daily_rank_sent(now)
+        print("Sent Steam daily playtime rank.")
+
+
+def steam_monitor_loop(initial_config: dict[str, Any]) -> None:
+    initial_delay = max(5, int(initial_config.get("steam_status_initial_delay_seconds") or 30))
+    check_seconds = max(30, int(initial_config.get("steam_status_check_seconds") or 120))
+    time.sleep(initial_delay)
+
+    while True:
+        try:
+            try:
+                config = load_config()
+            except Exception:
+                config = initial_config
+            check_seconds = max(30, int(config.get("steam_status_check_seconds") or 120))
+            run_steam_monitor_tick(config)
+        except Exception as exc:
+            print(f"Steam monitor loop failed: {exc}", file=sys.stderr)
+        time.sleep(check_seconds)
+
+
 def private_history_key(user_id: int | str) -> str:
     return f"private:{user_id}"
 
@@ -5043,6 +5177,8 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     reddit_pet_enabled = config_bool(config.get("reddit_pet_enabled"), False)
     web_search_command = str(config.get("web_search_command") or "联网查")
     game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
+    steam_status_command = str(config.get("steam_status_command") or "Steam状态")
+    steam_rank_command = str(config.get("steam_rank_command") or "Steam排行")
     wolf_command = str(config.get("wolf_command") or "狼狼")
     x_search_command = str(config.get("x_search_command") or "X搜索")
     x_timeline_command = str(config.get("x_timeline_command") or "X日常")
@@ -5199,6 +5335,28 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         except Exception as exc:
             print(f"Game deals update failed: {exc}", file=sys.stderr)
             send_group_text(config, group_id, "游戏优惠日报暂时抓取失败，稍后再试一下。")
+        return
+
+    if is_steam_status_request(text, steam_status_command):
+        try:
+            answer = send_steam_status_update(config, group_id)
+            remember_group_exchange(config, group_id, text, answer)
+        except ValueError:
+            send_group_text(config, group_id, "Steam 监控还没配好。需要 steam_api_key 和 steam_players，配完重启我就能看了。")
+        except Exception as exc:
+            print(f"Steam status update failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "Steam 状态暂时查不到，稍后再试一下。")
+        return
+
+    if is_steam_rank_request(text, steam_rank_command):
+        try:
+            answer = send_steam_rank_update(config, group_id, update_snapshot=True)
+            remember_group_exchange(config, group_id, text, answer)
+        except ValueError:
+            send_group_text(config, group_id, "Steam 排行榜还没配好。需要 steam_api_key 和 steam_players，配完重启我就能统计。")
+        except Exception as exc:
+            print(f"Steam rank update failed: {exc}", file=sys.stderr)
+            send_group_text(config, group_id, "Steam 排行榜暂时生成失败，稍后再试一下。")
         return
 
     if reddit_pet_enabled and is_pet_hot_request(text, pet_command):
@@ -5416,6 +5574,10 @@ def main() -> int:
     if proactive_topics_enabled(config):
         threading.Thread(target=proactive_topic_loop, args=(config,), daemon=True).start()
         print("Proactive topic loop enabled.")
+
+    if steam_monitor_enabled(config):
+        threading.Thread(target=steam_monitor_loop, args=(config,), daemon=True).start()
+        print("Steam monitor loop enabled.")
 
     server = ThreadingHTTPServer((host, port), OneBotHandler)
     print(f"Gemini QQ bot listening on http://{host}:{port}/onebot")
