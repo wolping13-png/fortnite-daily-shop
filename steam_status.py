@@ -23,10 +23,13 @@ RANK_IMAGE_PATH = BASE_DIR / "steam_playtime_rank.jpg"
 PLAYER_SUMMARIES_URL = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
 FRIEND_LIST_URL = "https://api.steampowered.com/ISteamUser/GetFriendList/v0001/"
 OWNED_GAMES_URL = "https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
+STORE_APP_DETAILS_URL = "https://store.steampowered.com/api/appdetails"
+STORE_SEARCH_URL = "https://store.steampowered.com/api/storesearch/"
 APP_HEADER_URLS = (
     "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{appid}/header.jpg",
     "https://cdn.akamai.steamstatic.com/steam/apps/{appid}/header.jpg",
 )
+STORE_IMAGE_URL_CACHE: dict[str, str] = {}
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -336,10 +339,98 @@ def image_from_url(session: requests.Session, url: str, timeout: int = 20) -> Im
     return Image.open(BytesIO(data)).convert("RGB")
 
 
-def fetch_app_header(session: requests.Session, appid: str | int) -> Image.Image | None:
+def normalized_store_game_name(value: str) -> str:
+    text = str(value or "").lower()
+    text = re.sub(r"\b(demo|playtest|test server|public test)\b", " ", text)
+    text = re.sub(r"试玩版|测试服|公开测试|体验版", " ", text)
+    return re.sub(r"[^0-9a-z\u4e00-\u9fff]+", "", text)
+
+
+def store_app_image_url(session: requests.Session, appid: str, game_name: str = "") -> str:
+    cache_key = f"{appid}:{normalized_store_game_name(game_name)}"
+    if cache_key in STORE_IMAGE_URL_CACHE:
+        return STORE_IMAGE_URL_CACHE[cache_key]
+
+    def appdetails_image(target_appid: str) -> str:
+        response = session.get(
+            STORE_APP_DETAILS_URL,
+            params={"appids": target_appid, "l": "schinese", "cc": "CN"},
+            timeout=20,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        entry = payload.get(target_appid) if isinstance(payload, dict) else {}
+        data = entry.get("data") if isinstance(entry, dict) and entry.get("success") else {}
+        if not isinstance(data, dict):
+            return ""
+        for key in ("header_image", "capsule_image", "capsule_imagev5"):
+            url = str(data.get(key) or "").strip()
+            if url:
+                return url
+        return ""
+
+    try:
+        url = appdetails_image(appid)
+    except Exception:
+        url = ""
+
+    query_name = re.sub(
+        r"(?i)\b(demo|playtest|test server|public test)\b|试玩版|测试服|公开测试|体验版",
+        " ",
+        str(game_name or ""),
+    ).strip(" -:：")
+    if not url and query_name:
+        try:
+            response = session.get(
+                STORE_SEARCH_URL,
+                params={"term": query_name, "l": "schinese", "cc": "CN"},
+                timeout=20,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            items = payload.get("items") if isinstance(payload, dict) else []
+            target = normalized_store_game_name(query_name)
+            candidates: list[tuple[int, dict[str, Any]]] = []
+            for item in items if isinstance(items, list) else []:
+                if not isinstance(item, dict):
+                    continue
+                candidate = normalized_store_game_name(str(item.get("name") or ""))
+                if not candidate:
+                    continue
+                score = 100 if candidate == target else 80 if target and (target in candidate or candidate in target) else 0
+                if score:
+                    candidates.append((score, item))
+            if candidates:
+                candidates.sort(key=lambda entry: entry[0], reverse=True)
+                item = candidates[0][1]
+                matched_appid = str(item.get("id") or "").strip()
+                if matched_appid:
+                    try:
+                        url = appdetails_image(matched_appid)
+                    except Exception:
+                        url = ""
+                if not url:
+                    url = str(item.get("tiny_image") or "").strip()
+        except Exception:
+            url = ""
+
+    if url:
+        STORE_IMAGE_URL_CACHE[cache_key] = url
+    return url
+
+
+def fetch_app_header(session: requests.Session, appid: str | int, game_name: str = "") -> Image.Image | None:
     appid_text = str(appid or "").strip()
     if not appid_text:
         return None
+    try:
+        dynamic_url = store_app_image_url(session, appid_text, game_name)
+        if dynamic_url:
+            image = image_from_url(session, dynamic_url)
+            if image:
+                return image
+    except Exception:
+        pass
     for template in APP_HEADER_URLS:
         try:
             image = image_from_url(session, template.format(appid=appid_text))
@@ -488,7 +579,7 @@ def build_status_overview_image(
         )
 
         game_name = str(row.get("game_name") or "未知游戏")
-        header = fetch_app_header(session, str(row.get("game_id") or ""))
+        header = fetch_app_header(session, str(row.get("game_id") or ""), game_name)
         header = header or placeholder_image(card_width - 4, cover_height, game_name)
         paste_rounded(
             image,
@@ -577,7 +668,7 @@ def build_status_card(event: dict[str, Any], output_path: Path = STATUS_IMAGE_PA
     cover_y = 132
     cover_width = WIDTH - PADDING * 2
     cover_height = 418
-    header = fetch_app_header(session, appid) or placeholder_image(cover_width, cover_height, game_name)
+    header = fetch_app_header(session, appid, game_name) or placeholder_image(cover_width, cover_height, game_name)
     paste_rounded(image, header, (PADDING, cover_y), (cover_width, cover_height), 18)
     draw.rounded_rectangle(
         (PADDING, cover_y, WIDTH - PADDING, cover_y + cover_height),
@@ -777,7 +868,7 @@ def build_rank_image(rows: list[dict[str, Any]], output_path: Path = RANK_IMAGE_
         primary_appid = str(primary_game.get("appid") or "")
         primary_name = str(primary_game.get("name") or "暂无主游戏")
         primary_minutes = int(primary_game.get("minutes") or 0)
-        game_header = fetch_app_header(session, primary_appid) if primary_appid else None
+        game_header = fetch_app_header(session, primary_appid, primary_name) if primary_appid else None
         if game_header:
             game_header = ImageEnhance.Brightness(game_header).enhance(0.34)
             paste_rounded(image, game_header, (PADDING, y), (WIDTH - PADDING * 2, card_height), 16)
