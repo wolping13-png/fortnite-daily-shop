@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -757,7 +757,7 @@ def rank_rows_from_snapshots(previous: dict[str, Any], current: dict[str, Any]) 
 def build_rank_image(rows: list[dict[str, Any]], output_path: Path = RANK_IMAGE_PATH) -> Path:
     session = make_session()
     display_rows = [row for row in rows if int(row.get("minutes") or 0) > 0][:12]
-    row_h = 104
+    row_h = 160
     height = 190 + max(1, len(display_rows)) * row_h + 56
     image = gradient_background(WIDTH, height)
     draw = ImageDraw.Draw(image)
@@ -771,24 +771,68 @@ def build_rank_image(rows: list[dict[str, Any]], output_path: Path = RANK_IMAGE_
         draw.text((PADDING + 28, y + 32), "今天还没看到新增游玩时长。", fill=TEXT, font=FONT_SECTION)
         draw.text((PADDING + 28, y + 76), "如果是第一次启用，明天开始会更准。", fill=MUTED, font=FONT_CARD_TEXT)
     for index, row in enumerate(display_rows, 1):
-        draw.rounded_rectangle((PADDING, y, WIDTH - PADDING, y + row_h - 14), radius=16, fill=PANEL, outline=LINE, width=1)
+        card_height = row_h - 14
+        games = row.get("games") if isinstance(row.get("games"), list) else []
+        primary_game = games[0] if games and isinstance(games[0], dict) else {}
+        primary_appid = str(primary_game.get("appid") or "")
+        primary_name = str(primary_game.get("name") or "暂无主游戏")
+        primary_minutes = int(primary_game.get("minutes") or 0)
+        game_header = fetch_app_header(session, primary_appid) if primary_appid else None
+        if game_header:
+            game_header = ImageEnhance.Brightness(game_header).enhance(0.34)
+            paste_rounded(image, game_header, (PADDING, y), (WIDTH - PADDING * 2, card_height), 16)
+        else:
+            draw.rounded_rectangle(
+                (PADDING, y, WIDTH - PADDING, y + card_height),
+                radius=16,
+                fill=PANEL,
+            )
+        draw.rounded_rectangle(
+            (PADDING, y, WIDTH - PADDING, y + card_height),
+            radius=16,
+            outline=YELLOW if index <= 3 else LINE,
+            width=2 if index <= 3 else 1,
+        )
         avatar = None
         try:
             avatar = image_from_url(session, str(row.get("avatar") or ""))
         except Exception:
             avatar = None
-        avatar = avatar or placeholder_image(70, 70, "S")
-        paste_rounded(image, avatar, (PADDING + 22, y + 13), (70, 70), 35)
-        draw.text((PADDING + 110, y + 17), f"#{index}", fill=YELLOW if index <= 3 else BLUE, font=FONT_CARD_TITLE)
-        draw.text((PADDING + 165, y + 17), fit_text(draw, str(row.get("name") or ""), FONT_CARD_TITLE, 285), fill=TEXT, font=FONT_CARD_TITLE)
-        draw.text((WIDTH - PADDING - 190, y + 17), format_minutes(int(row.get("minutes") or 0)), fill=GREEN, font=FONT_CARD_TITLE)
-        games = row.get("games") if isinstance(row.get("games"), list) else []
-        game_text = " / ".join(
+        avatar = avatar or placeholder_image(88, 88, "S")
+        paste_rounded(image, avatar, (PADDING + 22, y + 29), (88, 88), 44)
+        draw.ellipse((PADDING + 20, y + 27, PADDING + 112, y + 119), outline=TEXT, width=2)
+        draw.text((PADDING + 132, y + 16), f"#{index}", fill=YELLOW if index <= 3 else BLUE, font=FONT_CARD_TITLE)
+        draw.text(
+            (PADDING + 190, y + 16),
+            fit_text(draw, str(row.get("name") or ""), FONT_CARD_TITLE, 360),
+            fill=TEXT,
+            font=FONT_CARD_TITLE,
+        )
+        total_text = format_minutes(int(row.get("minutes") or 0))
+        total_width = text_size(draw, total_text, FONT_CARD_TITLE)[0]
+        draw.text((WIDTH - PADDING - total_width - 22, y + 16), total_text, fill=GREEN, font=FONT_CARD_TITLE)
+        draw.text(
+            (PADDING + 132, y + 61),
+            fit_text(
+                draw,
+                f"今日主玩 · {primary_name} · {format_minutes(primary_minutes)}",
+                FONT_CARD_TEXT,
+                WIDTH - PADDING * 2 - 158,
+            ),
+            fill=YELLOW,
+            font=FONT_CARD_TEXT,
+        )
+        other_text = " / ".join(
             f"{str(game.get('name') or '')} +{format_minutes(int(game.get('minutes') or 0))}"
-            for game in games[:3]
+            for game in games[1:3]
             if isinstance(game, dict)
         )
-        draw.text((PADDING + 165, y + 58), fit_text(draw, game_text or "暂无新增游戏时长", FONT_CARD_TEXT, 610), fill=MUTED, font=FONT_CARD_TEXT)
+        draw.text(
+            (PADDING + 132, y + 101),
+            fit_text(draw, f"其他 · {other_text}" if other_text else "今天主要就在玩这一款", FONT_SMALL, WIDTH - PADDING * 2 - 158),
+            fill=MUTED,
+            font=FONT_SMALL,
+        )
         y += row_h
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
