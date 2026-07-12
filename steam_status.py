@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import random
 import re
+import threading
 import time
 from datetime import datetime
 from io import BytesIO
@@ -19,6 +20,7 @@ STATE_PATH = BASE_DIR / "bot_memory" / "steam_status.json"
 STATUS_IMAGE_PATH = BASE_DIR / "steam_status.jpg"
 STATUS_OVERVIEW_IMAGE_PATH = BASE_DIR / "steam_status_overview.jpg"
 RANK_IMAGE_PATH = BASE_DIR / "steam_playtime_rank.jpg"
+ACTIVITY_SETTINGS_PATH = BASE_DIR / "bot_memory" / "steam_activity_settings.json"
 
 PLAYER_SUMMARIES_URL = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/"
 FRIEND_LIST_URL = "https://api.steampowered.com/ISteamUser/GetFriendList/v0001/"
@@ -30,6 +32,7 @@ APP_HEADER_URLS = (
     "https://cdn.akamai.steamstatic.com/steam/apps/{appid}/header.jpg",
 )
 STORE_IMAGE_URL_CACHE: dict[str, str] = {}
+ACTIVITY_SETTINGS_LOCK = threading.RLock()
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -172,6 +175,42 @@ def config_bool(value: Any, default: bool = False) -> bool:
         if text in {"0", "false", "no", "n", "off", "disable", "disabled"}:
             return False
     return default
+
+
+def load_activity_settings(path: Path = ACTIVITY_SETTINGS_PATH) -> dict[str, Any]:
+    with ACTIVITY_SETTINGS_LOCK:
+        if not path.exists():
+            return {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+
+def steam_activity_notifications_enabled(
+    config: dict[str, Any],
+    path: Path = ACTIVITY_SETTINGS_PATH,
+) -> bool:
+    settings = load_activity_settings(path)
+    if "enabled" in settings:
+        return config_bool(settings.get("enabled"), True)
+    return config_bool(config.get("steam_activity_notifications_enabled"), True)
+
+
+def set_steam_activity_notifications(
+    enabled: bool,
+    path: Path = ACTIVITY_SETTINGS_PATH,
+) -> None:
+    with ACTIVITY_SETTINGS_LOCK:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "enabled": bool(enabled),
+            "updated_at": int(time.time()),
+        }
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        tmp.replace(path)
 
 
 def configured_player_ids(config: dict[str, Any]) -> list[str]:

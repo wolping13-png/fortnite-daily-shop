@@ -2962,6 +2962,7 @@ def command_help_text(config: dict[str, Any]) -> str:
         "\n"
         "需要艾特我：\n"
         "- @我 指令：显示这份指令表\n"
+        "- @我 开始视奸 / 停止视奸：开关 Steam 好友自动动态（仅小沃）\n"
         "- @我 清空上下文：清掉本群短期聊天记录\n"
         "- @我 互动模式：进入持续互动模式，短句也会接着刚才的场景\n"
         "- @我 聊点别的吧 / 回到日常 / 退出互动模式：回到普通聊天\n"
@@ -5045,6 +5046,15 @@ def steam_monitor_enabled(config: dict[str, Any]) -> bool:
     return config_bool(config.get("steam_status_enabled"), False)
 
 
+def steam_watch_toggle(text: str) -> bool | None:
+    compact = re.sub(r"\s+", "", str(text or "")).strip("：:，,。.!！")
+    if compact == "开始视奸":
+        return True
+    if compact == "停止视奸":
+        return False
+    return None
+
+
 def steam_target_groups(config: dict[str, Any]) -> list[str]:
     configured = config.get("steam_group_ids")
     if not configured:
@@ -5071,13 +5081,18 @@ def run_steam_monitor_tick(config: dict[str, Any]) -> None:
         collect_status_events,
         mark_daily_rank_sent,
         should_send_daily_rank,
+        steam_activity_notifications_enabled,
     )
 
-    for event in collect_status_events(config):
-        caption, image_path = build_status_card(event)
-        for group_id in groups:
-            send_steam_image(config, group_id, caption, image_path)
-        print(f"Sent Steam status event: {caption}")
+    events = collect_status_events(config)
+    if steam_activity_notifications_enabled(config):
+        for event in events:
+            caption, image_path = build_status_card(event)
+            for group_id in groups:
+                send_steam_image(config, group_id, caption, image_path)
+            print(f"Sent Steam status event: {caption}")
+    elif events:
+        print(f"Suppressed {len(events)} Steam status event(s): activity notifications are disabled.")
 
     now = datetime.now(CHINA_TZ)
     if should_send_daily_rank(config, now):
@@ -5302,6 +5317,20 @@ def handle_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     elif memory_command_text.startswith(ask_prefix):
         memory_command_text = memory_command_text[len(ask_prefix) :].strip().lstrip(" ：:，,")
     arknights_text = memory_command_text if addressed_to_bot else text
+
+    watch_enabled = steam_watch_toggle(memory_command_text) if addressed_to_bot else None
+    if watch_enabled is not None:
+        if str(sender_id or "") != CREATOR_USER_ID:
+            send_group_text(config, group_id, "这个开关只听小沃的。")
+            return
+        from steam_status import set_steam_activity_notifications
+
+        set_steam_activity_notifications(watch_enabled)
+        if watch_enabled:
+            send_group_text(config, group_id, "好，我继续帮你盯着。从现在开始，有人打开或切换游戏时我会报一声。")
+        else:
+            send_group_text(config, group_id, "好，我先不盯了。Steam 排行榜还是会照常统计。")
+        return
 
     memory_command = parse_personal_memory_command(memory_command_text)
     if memory_command:

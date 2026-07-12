@@ -72,6 +72,7 @@
   "game_deals_steam_limit": 12,
   "game_deals_epic_country": "CN",
   "steam_status_enabled": false,
+  "steam_activity_notifications_enabled": true,
   "steam_api_key": "PASTE_YOUR_STEAM_WEB_API_KEY_HERE",
   "steam_players": [
     {
