@@ -986,6 +986,27 @@ def send_target_text(config: dict[str, Any], target_id: int | str, text: str, pr
         send_group_text(config, target_id, text)
 
 
+def post_target_message(
+    config: dict[str, Any],
+    target_id: int | str,
+    message: list[dict[str, Any]],
+    *,
+    private: bool = False,
+    timeout: int = 120,
+) -> dict[str, Any]:
+    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    access_token = str(config.get("access_token") or "")
+    action = "send_private_msg" if private else "send_group_msg"
+    id_key = "user_id" if private else "group_id"
+    return post_onebot(
+        base_url=base_url,
+        action=action,
+        payload={id_key: target_id, "message": message},
+        access_token=access_token,
+        timeout=timeout,
+    )
+
+
 def normalize_memory_value(value: str) -> str:
     value = str(value or "").strip()
     value = value.strip(" ：:，,。.!！?？\"'“”‘’")
@@ -1540,34 +1561,39 @@ def should_attach_meme(config: dict[str, Any], group_id: int | str, text: str, c
     return choose_meme_path(config, context) is not None
 
 
+def send_target_text_with_optional_meme(
+    config: dict[str, Any],
+    target_id: int | str,
+    text: str,
+    context: str = "",
+    private: bool = False,
+) -> None:
+    state_key = private_history_key(target_id) if private else target_id
+    context_text = f"{context}\n{text}".strip()
+    meme_path = choose_meme_path(config, context_text) if should_attach_meme(config, state_key, text, context_text) else None
+    if not meme_path:
+        for chunk in split_reply(text):
+            send_target_text(config, target_id, chunk, private=private)
+        return
+
+    try:
+        image_path = choose_send_image(meme_path)
+        message = build_message(caption=text, image_path=image_path)
+        post_target_message(config, target_id, message, private=private, timeout=90)
+        mark_meme_sent(config, state_key, meme_path)
+    except Exception as exc:
+        print(f"Meme rich message send failed: {exc}", file=sys.stderr)
+        for chunk in split_reply(text):
+            send_target_text(config, target_id, chunk, private=private)
+
+
 def send_group_text_with_optional_meme(
     config: dict[str, Any],
     group_id: int | str,
     text: str,
     context: str = "",
 ) -> None:
-    context_text = f"{context}\n{text}".strip()
-    meme_path = choose_meme_path(config, context_text) if should_attach_meme(config, group_id, text, context_text) else None
-    if not meme_path:
-        for chunk in split_reply(text):
-            send_group_text(config, group_id, chunk)
-        return
-
-    try:
-        image_path = choose_send_image(meme_path)
-        message = build_message(caption=text, image_path=image_path)
-        post_onebot(
-            base_url=normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000")),
-            action="send_group_msg",
-            payload={"group_id": group_id, "message": message},
-            access_token=str(config.get("access_token") or ""),
-            timeout=90,
-        )
-        mark_meme_sent(config, group_id, meme_path)
-    except Exception as exc:
-        print(f"Meme rich message send failed: {exc}", file=sys.stderr)
-        for chunk in split_reply(text):
-            send_group_text(config, group_id, chunk)
+    send_target_text_with_optional_meme(config, group_id, text, context=context, private=False)
 
 
 def chat_history_limit(config: dict[str, Any]) -> int:
@@ -2225,35 +2251,29 @@ def ensure_shop_assets() -> None:
         regenerate_shop_assets()
 
 
-def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool = False) -> None:
-    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
-    access_token = str(config.get("access_token") or "")
+def send_shop_image(
+    config: dict[str, Any],
+    target_id: int | str,
+    send_all: bool = False,
+    private: bool = False,
+) -> None:
     caption = str(config.get("shop_caption") or "Fortnite 每日商店")
     ensure_shop_assets()
     image_path = SHOP_IMAGE_PATH if SHOP_IMAGE_PATH.exists() else BASE_DIR / "shop.png"
     message = build_message(caption=f"{caption}\n官方分组总图", image_path=image_path)
-    result = post_onebot(
-        base_url=base_url,
-        action="send_group_msg",
-        payload={"group_id": group_id, "message": message},
-        access_token=access_token,
-        timeout=120,
-    )
+    result = post_target_message(config, target_id, message, private=private, timeout=120)
     if result.get("_napcat_callback_timeout"):
         split_paths = split_image_vertically(image_path, parts=2)
         if split_paths:
             for index, part_path in enumerate(split_paths, 1):
-                retry = post_onebot(
-                    base_url=base_url,
-                    action="send_group_msg",
-                    payload={
-                        "group_id": group_id,
-                        "message": build_message(
-                            caption=f"{caption}\n总图过长，已切成 2 张发送（{index}/2）",
-                            image_path=part_path,
-                        ),
-                    },
-                    access_token=access_token,
+                retry = post_target_message(
+                    config,
+                    target_id,
+                    build_message(
+                        caption=f"{caption}\n总图过长，已切成 2 张发送（{index}/2）",
+                        image_path=part_path,
+                    ),
+                    private=private,
                     timeout=120,
                 )
                 if retry.get("_napcat_callback_timeout"):
@@ -2261,22 +2281,19 @@ def send_shop_image(config: dict[str, Any], group_id: int | str, send_all: bool 
             return
 
         safe_path = make_safe_image(image_path)
-        retry = post_onebot(
-            base_url=base_url,
-            action="send_group_msg",
-            payload={
-                "group_id": group_id,
-                "message": build_message(
-                    caption=f"{caption}\n原图回执超时，已改发压缩版。",
-                    image_path=safe_path,
-                ),
-            },
-            access_token=access_token,
+        retry = post_target_message(
+            config,
+            target_id,
+            build_message(
+                caption=f"{caption}\n原图回执超时，已改发压缩版。",
+                image_path=safe_path,
+            ),
+            private=private,
             timeout=120,
         )
         if retry.get("_napcat_callback_timeout"):
             try:
-                send_group_text(config, group_id, "商店图片发送被 QQ 回执卡住了。已经尝试切成 2 张发送，还是失败的话请稍后再试。")
+                send_target_text(config, target_id, "商店图片发送被 QQ 回执卡住了。已经尝试切成 2 张发送，还是失败的话请稍后再试。", private=private)
             except Exception as exc:
                 print(f"Shop timeout notice failed: {exc}", file=sys.stderr)
 
@@ -2497,11 +2514,14 @@ def handle_valorant_watch_command(
     return message
 
 
-def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str = "") -> str:
+def send_x_posts_update(
+    config: dict[str, Any],
+    target_id: int | str,
+    topic: str = "",
+    private: bool = False,
+) -> str:
     from x_posts import build_x_posts_update, build_x_timeline_update
 
-    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
-    access_token = str(config.get("access_token") or "")
     limit = int(config.get("x_search_limit") or 6)
     fetch_limit = int(config.get("x_search_fetch_limit") or 30)
     recent_hours = int(config.get("x_search_recent_hours") or 72)
@@ -2531,165 +2551,164 @@ def send_x_posts_update(config: dict[str, Any], group_id: int | str, topic: str 
     )
     if not posts:
         message = "暂时没抓到合适的 X 图片帖子。可能是 X API 没额度、搜索条件太窄，或者稍后再试。"
-        send_group_text(config, group_id, message)
+        send_target_text(config, target_id, message, private=private)
         return message
 
-    result = post_onebot(
-        base_url=base_url,
-        action="send_group_msg",
-        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=choose_send_image(image_path))},
-        access_token=access_token,
+    result = post_target_message(
+        config,
+        target_id,
+        build_message(caption=caption, image_path=choose_send_image(image_path)),
+        private=private,
         timeout=120,
     )
     if result.get("_napcat_callback_timeout"):
         safe_path = make_safe_image(image_path)
-        post_onebot(
-            base_url=base_url,
-            action="send_group_msg",
-            payload={
-                "group_id": group_id,
-                "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
-            },
-            access_token=access_token,
+        post_target_message(
+            config,
+            target_id,
+            build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            private=private,
             timeout=120,
         )
     return caption
 
 
-def send_game_deals_update(config: dict[str, Any], group_id: int | str) -> str:
+def send_game_deals_update(config: dict[str, Any], target_id: int | str, private: bool = False) -> str:
     from game_deals import build_game_deals_update
 
-    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
-    access_token = str(config.get("access_token") or "")
     steam_limit = int(config.get("game_deals_steam_limit") or 12)
     epic_country = str(config.get("game_deals_epic_country") or "CN")
     caption, image_path, _data = build_game_deals_update(
         steam_limit=max(4, min(steam_limit, 20)),
         epic_country=epic_country,
     )
-    result = post_onebot(
-        base_url=base_url,
-        action="send_group_msg",
-        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=image_path)},
-        access_token=access_token,
+    result = post_target_message(
+        config,
+        target_id,
+        build_message(caption=caption, image_path=image_path),
+        private=private,
         timeout=120,
     )
     if result.get("_napcat_callback_timeout"):
         safe_path = make_safe_image(image_path)
-        post_onebot(
-            base_url=base_url,
-            action="send_group_msg",
-            payload={
-                "group_id": group_id,
-                "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
-            },
-            access_token=access_token,
+        post_target_message(
+            config,
+            target_id,
+            build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            private=private,
             timeout=120,
         )
     return caption
 
 
-def send_steam_image(config: dict[str, Any], group_id: int | str, caption: str, image_path: Path, timeout: int = 120) -> None:
-    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
-    access_token = str(config.get("access_token") or "")
-    result = post_onebot(
-        base_url=base_url,
-        action="send_group_msg",
-        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=choose_send_image(image_path))},
-        access_token=access_token,
+def send_steam_image(
+    config: dict[str, Any],
+    target_id: int | str,
+    caption: str,
+    image_path: Path,
+    timeout: int = 120,
+    private: bool = False,
+) -> None:
+    result = post_target_message(
+        config,
+        target_id,
+        build_message(caption=caption, image_path=choose_send_image(image_path)),
+        private=private,
         timeout=timeout,
     )
     if result.get("_napcat_callback_timeout"):
         safe_path = make_safe_image(image_path)
-        post_onebot(
-            base_url=base_url,
-            action="send_group_msg",
-            payload={"group_id": group_id, "message": build_message(caption=caption, image_path=safe_path)},
-            access_token=access_token,
+        post_target_message(
+            config,
+            target_id,
+            build_message(caption=caption, image_path=safe_path),
+            private=private,
             timeout=timeout,
         )
 
 
-def send_steam_status_update(config: dict[str, Any], group_id: int | str) -> str:
+def send_steam_status_update(config: dict[str, Any], target_id: int | str, private: bool = False) -> str:
     from steam_status import build_status_overview_update
 
     caption, image_path, _rows = build_status_overview_update(config)
-    send_steam_image(config, group_id, caption, image_path)
+    send_steam_image(config, target_id, caption, image_path, private=private)
     return caption
 
 
-def send_steam_rank_update(config: dict[str, Any], group_id: int | str, update_snapshot: bool = True) -> str:
+def send_steam_rank_update(
+    config: dict[str, Any],
+    target_id: int | str,
+    update_snapshot: bool = True,
+    private: bool = False,
+) -> str:
     from steam_status import build_playtime_rank_update
 
     caption, image_path, _rows = build_playtime_rank_update(config, update_snapshot=update_snapshot)
-    send_steam_image(config, group_id, caption, image_path)
+    send_steam_image(config, target_id, caption, image_path, private=private)
     return caption
 
 
 def send_random_food_update(
     config: dict[str, Any],
-    group_id: int | str,
+    target_id: int | str,
     kind: str,
     preferred_name: str = "",
+    private: bool = False,
 ) -> str:
     from random_food import build_random_food_recommendation
 
-    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
-    access_token = str(config.get("access_token") or "")
     tavily_api_key = str(config.get("tavily_api_key") or "")
     caption, image_path, item = build_random_food_recommendation(
         kind,
         tavily_api_key=tavily_api_key,
         preferred_name=preferred_name,
     )
-    result = post_onebot(
-        base_url=base_url,
-        action="send_group_msg",
-        payload={"group_id": group_id, "message": build_message(caption=caption, image_path=image_path)},
-        access_token=access_token,
+    result = post_target_message(
+        config,
+        target_id,
+        build_message(caption=caption, image_path=image_path),
+        private=private,
         timeout=45,
     )
     if result.get("_napcat_callback_timeout"):
         safe_path = make_safe_image(image_path)
-        post_onebot(
-            base_url=base_url,
-            action="send_group_msg",
-            payload={
-                "group_id": group_id,
-                "message": build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
-            },
-            access_token=access_token,
+        post_target_message(
+            config,
+            target_id,
+            build_message(caption=f"{caption}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            private=private,
             timeout=45,
         )
-    record_random_food_result(group_id, caption, item)
+    history_key = private_history_key(target_id) if private else target_id
+    record_random_food_result(history_key, caption, item)
     return caption
 
 
-def send_random_wolf_update(config: dict[str, Any], group_id: int | str, caption: str = "狼狼来啦") -> str:
+def send_random_wolf_update(
+    config: dict[str, Any],
+    target_id: int | str,
+    caption: str = "狼狼来啦",
+    private: bool = False,
+) -> str:
     from random_wolf import build_random_wolf
 
-    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
-    access_token = str(config.get("access_token") or "")
     tavily_api_key = str(config.get("tavily_api_key") or "")
     generated_caption, image_path, _item = build_random_wolf(tavily_api_key=tavily_api_key)
     text = caption or generated_caption
-    result = post_onebot(
-        base_url=base_url,
-        action="send_group_msg",
-        payload={"group_id": group_id, "message": build_message(caption=text, image_path=image_path)},
-        access_token=access_token,
+    result = post_target_message(
+        config,
+        target_id,
+        build_message(caption=text, image_path=image_path),
+        private=private,
         timeout=120,
     )
     if result.get("_napcat_callback_timeout"):
         safe_path = make_safe_image(image_path)
-        post_onebot(
-            base_url=base_url,
-            action="send_group_msg",
-            payload={
-                "group_id": group_id,
-                "message": build_message(caption=f"{text}\n原图回执超时，已改发压缩版。", image_path=safe_path),
-            },
-            access_token=access_token,
+        post_target_message(
+            config,
+            target_id,
+            build_message(caption=f"{text}\n原图回执超时，已改发压缩版。", image_path=safe_path),
+            private=private,
             timeout=120,
         )
     return text
@@ -2760,34 +2779,40 @@ def parse_random_food_feedback(text: str) -> tuple[bool, str]:
     return False, ""
 
 
-def handle_random_food_feedback(config: dict[str, Any], group_id: int | str, text: str) -> bool:
+def handle_random_food_feedback(
+    config: dict[str, Any],
+    target_id: int | str,
+    text: str,
+    private: bool = False,
+) -> bool:
     is_feedback, explicit_name = parse_random_food_feedback(text)
     if not is_feedback:
         return False
 
-    last = last_random_food_result(group_id)
+    history_key = private_history_key(target_id) if private else target_id
+    last = last_random_food_result(history_key)
     if not last:
-        send_group_text(config, group_id, "嗯……我没记到刚才那张吃喝图，等下次发错你再喊我。")
+        send_target_text(config, target_id, "嗯……我没记到刚才那张吃喝图，等下次发错你再喊我。", private=private)
         return True
 
     kind = str(last.get("kind") or "")
     name = str(last.get("name") or "")
     image_url = str(last.get("image_url") or "")
     if not kind or not name:
-        send_group_text(config, group_id, "我记到刚才那张图有点问题了，但没拿到菜名，下一次我会重新找。")
+        send_target_text(config, target_id, "我记到刚才那张图有点问题了，但没拿到菜名，下一次我会重新找。", private=private)
         return True
 
     from random_food import mark_bad_food_image
 
     reason = explicit_name or text
     mark_bad_food_image(kind, name, image_url, reason=reason)
-    send_group_text(config, group_id, f"嗷，记下了。刚才那张{name}图我拉黑，重新找一张。")
+    send_target_text(config, target_id, f"嗷，记下了。刚才那张{name}图我拉黑，重新找一张。", private=private)
     try:
-        answer = send_random_food_update(config, group_id, kind, preferred_name=name)
-        remember_group_exchange(config, group_id, text, f"标记{name}错图并重发：{answer}")
+        answer = send_random_food_update(config, target_id, kind, preferred_name=name, private=private)
+        remember_group_exchange(config, history_key, text, f"标记{name}错图并重发：{answer}")
     except Exception as exc:
         print(f"Random food feedback resend failed: {exc}", file=sys.stderr)
-        send_group_text(config, group_id, f"我把那张{name}错图记下了，但新图暂时没找出来。")
+        send_target_text(config, target_id, f"我把那张{name}错图记下了，但新图暂时没找出来。", private=private)
     return True
 
 
@@ -3003,6 +3028,13 @@ def is_game_deals_request(text: str, configured_command: str) -> bool:
         or ("epic" in compact and ("喜加一" in compact or "免费" in compact))
         or ("游戏" in compact and ("折扣" in compact or "优惠" in compact))
     )
+
+
+def private_command_help_text(config: dict[str, Any]) -> str:
+    text = command_help_text(config)
+    text = text.replace("温德尔指令表", "温德尔私聊测试指令表", 1)
+    text = text.replace("需要艾特我：", "小沃私聊可直接发：")
+    return text.replace("- @我 ", "- ")
 
 
 def is_steam_status_request(text: str, configured_command: str) -> bool:
@@ -4029,10 +4061,13 @@ def web_search_image_urls(data: dict[str, Any], limit: int = 2) -> list[str]:
     return urls[: max(0, limit)]
 
 
-def send_web_search_reply(config: dict[str, Any], group_id: int | str, answer: str, image_urls: list[str]) -> None:
-    base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
-    access_token = str(config.get("access_token") or "")
-
+def send_web_search_reply(
+    config: dict[str, Any],
+    target_id: int | str,
+    answer: str,
+    image_urls: list[str],
+    private: bool = False,
+) -> None:
     if image_urls:
         message: list[dict[str, Any]] = []
         if answer.strip():
@@ -4041,34 +4076,25 @@ def send_web_search_reply(config: dict[str, Any], group_id: int | str, answer: s
             message.append({"type": "image", "data": {"file": image_url}})
 
         try:
-            post_onebot(
-                base_url=base_url,
-                action="send_group_msg",
-                payload={"group_id": group_id, "message": message},
-                access_token=access_token,
-                timeout=120,
-            )
+            post_target_message(config, target_id, message, private=private, timeout=120)
             return
         except Exception as exc:
             print(f"Web search rich message send failed: {exc}", file=sys.stderr)
 
     for chunk in split_reply(answer):
-        send_group_text(config, group_id, chunk)
+        send_target_text(config, target_id, chunk, private=private)
 
     for index, image_url in enumerate(image_urls, 1):
         try:
-            post_onebot(
-                base_url=base_url,
-                action="send_group_msg",
-                payload={
-                    "group_id": group_id,
-                    "message": build_message(
-                        caption=f"相关图片 {index}",
-                        image_path=BASE_DIR / "unused.jpg",
-                        image_url=image_url,
-                    ),
-                },
-                access_token=access_token,
+            post_target_message(
+                config,
+                target_id,
+                build_message(
+                    caption=f"相关图片 {index}",
+                    image_path=BASE_DIR / "unused.jpg",
+                    image_url=image_url,
+                ),
+                private=private,
                 timeout=120,
             )
         except Exception as exc:
@@ -5137,6 +5163,21 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
     if not text:
         return
 
+    owner_private = str(sender_id) == CREATOR_USER_ID
+    sender_display_name = event_sender_display_name(event)
+    key = private_history_key(sender_id)
+    interaction_key = interaction_session_key(key, sender_id, sender_display_name)
+    shop_command = str(config.get("shop_command") or "商店")
+    shop_all_command = str(config.get("shop_all_command") or "商店全部")
+    weather_command = str(config.get("weather_command") or "天气")
+    pet_command = str(config.get("pet_command") or "宠物热点")
+    web_search_command = str(config.get("web_search_command") or "联网查")
+    game_deals_command = str(config.get("game_deals_command") or "游戏优惠")
+    steam_status_command = str(config.get("steam_status_command") or "Steam状态")
+    steam_rank_command = str(config.get("steam_rank_command") or "Steam排行")
+    wolf_command = str(config.get("wolf_command") or "狼狼")
+    x_search_command = str(config.get("x_search_command") or "X搜索")
+    x_timeline_command = str(config.get("x_timeline_command") or "X日常")
     valorant_bind_command = str(config.get("valorant_bind_command") or "瓦")
     valorant_shop_command = str(config.get("valorant_shop_command") or "无畏商店")
     ask_prefix = str(config.get("ask_prefix") or "温德尔")
@@ -5145,7 +5186,7 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         arknights_text = arknights_text[len(ask_prefix) :].strip().lstrip(" ：:，,")
 
     if is_help_request(text):
-        help_text = (
+        help_text = private_command_help_text(config) if owner_private else (
             "私聊里可以直接发：\n"
             "- 瓦：绑定无畏契约账号\n"
             "- 瓦 清除：解绑\n"
@@ -5157,6 +5198,115 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         for chunk in split_reply(help_text, limit=850):
             send_private_text(config, sender_id, chunk)
         return
+
+    memory_command = parse_personal_memory_command(arknights_text)
+    if memory_command:
+        if memory_command.get("action") == "clear":
+            memory = update_user_memory(
+                key,
+                sender_id,
+                sender_display_name,
+                clear_nickname=True,
+                clear_relationship=True,
+            )
+        else:
+            memory = update_user_memory(
+                key,
+                sender_id,
+                sender_display_name,
+                nickname=memory_command.get("nickname"),
+                relationship=memory_command.get("relationship"),
+            )
+        send_private_text(config, sender_id, memory_update_response(memory_command, memory))
+        return
+
+    if owner_private:
+        watch_enabled = steam_watch_toggle(arknights_text)
+        if watch_enabled is not None:
+            from steam_status import set_steam_activity_notifications
+
+            set_steam_activity_notifications(watch_enabled)
+            if watch_enabled:
+                send_private_text(config, sender_id, "好，我继续帮你盯着。从现在开始，有人打开或切换游戏时我会报一声。")
+            else:
+                send_private_text(config, sender_id, "好，我先不盯了。Steam 排行榜还是会照常统计。")
+            return
+
+        if arknights_text in {shop_command, shop_all_command}:
+            try:
+                send_shop_image(config, sender_id, send_all=arknights_text == shop_all_command, private=True)
+            except Exception as exc:
+                print(f"Private shop image send failed: {exc}", file=sys.stderr)
+                send_private_text(config, sender_id, "商店图片暂时发送失败了，稍后再试一下。")
+            return
+
+        if is_wolf_request(arknights_text, wolf_command):
+            try:
+                send_random_wolf_update(config, sender_id, private=True)
+            except Exception as exc:
+                print(f"Private random wolf update failed: {exc}", file=sys.stderr)
+                send_private_text(config, sender_id, "狼狼图片暂时没找到，稍后再试一下。")
+            return
+
+        if is_x_timeline_request(arknights_text, x_timeline_command) or is_x_posts_request(arknights_text, x_search_command):
+            try:
+                send_x_posts_update(config, sender_id, topic=arknights_text, private=True)
+            except ValueError:
+                send_private_text(config, sender_id, "X API 还没配置完整，或者当前额度不足。")
+            except Exception as exc:
+                print(f"Private X posts update failed: {exc}", file=sys.stderr)
+                send_private_text(config, sender_id, "X 图片帖子暂时抓取失败了。")
+            return
+
+        if handle_random_food_feedback(config, sender_id, arknights_text, private=True):
+            return
+
+        food_kind = random_food_kind(arknights_text)
+        if food_kind:
+            try:
+                send_random_food_update(config, sender_id, food_kind, private=True)
+            except Exception as exc:
+                print(f"Private random food update failed: {exc}", file=sys.stderr)
+                send_private_text(config, sender_id, "随机推荐暂时找不到合适的真实图片。")
+            return
+
+        if is_game_deals_request(arknights_text, game_deals_command):
+            try:
+                send_game_deals_update(config, sender_id, private=True)
+            except Exception as exc:
+                print(f"Private game deals update failed: {exc}", file=sys.stderr)
+                send_private_text(config, sender_id, "游戏优惠日报暂时抓取失败，稍后再试一下。")
+            return
+
+        if is_steam_status_request(arknights_text, steam_status_command):
+            try:
+                send_steam_status_update(config, sender_id, private=True)
+            except Exception as exc:
+                print(f"Private Steam status update failed: {exc}", file=sys.stderr)
+                send_private_text(config, sender_id, "Steam 状态暂时查不到，稍后再试一下。")
+            return
+
+        if is_steam_rank_request(arknights_text, steam_rank_command):
+            try:
+                send_steam_rank_update(config, sender_id, update_snapshot=False, private=True)
+            except Exception as exc:
+                print(f"Private Steam rank update failed: {exc}", file=sys.stderr)
+                send_private_text(config, sender_id, "Steam 排行榜暂时统计失败，稍后再试一下。")
+            return
+
+        if config_bool(config.get("reddit_pet_enabled"), False) and is_pet_hot_request(arknights_text, pet_command):
+            send_private_text(config, sender_id, "Reddit 宠物热点目前已经停用。")
+            return
+
+        if is_weather_question(arknights_text):
+            try:
+                answer = ask_weather(config, arknights_text)
+            except Exception as exc:
+                print(f"Private weather request failed: {exc}", file=sys.stderr)
+                answer = "天气暂时查不到，稍后再试一下。"
+            send_private_text(config, sender_id, answer)
+            remember_group_exchange(config, key, arknights_text, answer)
+            return
 
     if is_arknights_gacha_request(arknights_text) or is_arknights_banner_number_reply(
         arknights_text,
@@ -5207,9 +5357,6 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
             send_private_text(config, sender_id, "瓦监控暂时处理失败了，稍后再试一下。")
         return
 
-    sender_display_name = event_sender_display_name(event)
-    key = private_history_key(sender_id)
-    interaction_key = interaction_session_key(key, sender_id, sender_display_name)
     if is_clear_history_request(text):
         clear_group_history(key)
         set_interaction_mode(interaction_key, False)
@@ -5248,19 +5395,33 @@ def handle_private_event(config: dict[str, Any], event: dict[str, Any]) -> None:
         send_private_text(config, sender_id, intimacy_boundary_text(current_memory, sender_id, sender_display_name))
         return
 
+    image_urls: list[str] = []
+    use_agent_search = owner_private and should_use_semi_agent_search(text, web_search_command, config)
+    if use_agent_search:
+        send_private_text(config, sender_id, semi_agent_ack_text(text))
     try:
-        if interaction_mode_active(interaction_key):
-            history = get_interaction_history(config, key, interaction_key)
-            private_context = append_interaction_context(private_context)
+        if use_agent_search:
+            answer, image_urls = ask_model_with_web_search(
+                config,
+                text,
+                include_images=semi_agent_include_images(config),
+            )
         else:
-            history = get_context_history(config, key, text)
-        answer = ask_model(config, text, history=history, private_memory_context=private_context)
+            if interaction_mode_active(interaction_key):
+                history = get_interaction_history(config, key, interaction_key)
+                private_context = append_interaction_context(private_context)
+            else:
+                history = get_context_history(config, key, text)
+            answer = ask_model(config, text, history=history, private_memory_context=private_context)
     except Exception as exc:
         print(f"Private chat model request failed: {model_request_error_detail(exc)}", file=sys.stderr)
         send_private_text(config, sender_id, model_failure_reply(exc))
         return
 
-    send_private_text(config, sender_id, answer)
+    if image_urls:
+        send_web_search_reply(config, sender_id, answer, image_urls, private=True)
+    else:
+        send_target_text_with_optional_meme(config, sender_id, answer, context=text, private=True)
     remember_group_exchange_with_memory(config, key, text, answer, current_memory)
     update_user_profile_after_chat(key, sender_id, sender_display_name, text, answer)
 
