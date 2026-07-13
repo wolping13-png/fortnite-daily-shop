@@ -33,11 +33,13 @@ class ModelRequestFallbackTests(unittest.TestCase):
         response.json.return_value = {"error": {"message": "Provider rate limit exceeded"}}
         return requests.HTTPError("429 Client Error", response=response)
 
-    def test_429_retries_without_old_history(self) -> None:
+    def test_429_retries_with_only_the_latest_exchange(self) -> None:
         error = self.rate_limit_error()
         request = Mock(side_effect=[error, {"choices": [{"message": {"content": "好了"}}]}])
         messages = [
             {"role": "system", "content": "persona"},
+            {"role": "user", "content": "very old question"},
+            {"role": "assistant", "content": "very old answer"},
             {"role": "user", "content": "old question"},
             {"role": "assistant", "content": "old answer"},
             {"role": "user", "content": "new question"},
@@ -57,9 +59,12 @@ class ModelRequestFallbackTests(unittest.TestCase):
             fallback_messages,
             [
                 {"role": "system", "content": "persona"},
+                {"role": "user", "content": "old question"},
+                {"role": "assistant", "content": "old answer"},
                 {"role": "user", "content": "new question"},
             ],
         )
+        self.assertEqual(messages[1]["content"], "very old question")
 
     def test_embedded_provider_429_is_recognized(self) -> None:
         error = RuntimeError("OpenRouter provider error 429: Provider rate limit exceeded")

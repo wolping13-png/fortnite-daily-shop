@@ -416,7 +416,7 @@ nano gemini_bot_config.json
 OpenRouter 默认开启 `openrouter_plain_chat`，普通聊天会按 OpenRouter 原生 messages 形式发送：人设卡作为 system prompt，个人记忆作为单独背景消息，短期上下文作为历史 user/assistant 消息，最后是当前用户消息。不额外注入时间或短回复规则，尽量不改变人设卡里的说话方式。
 OpenRouter 请求遇到临时限流、上游不可用、连接超时或正文内的 provider error 时会自动重试；返回空文字时会保留人设和当前问题、去掉旧上下文再请求一次。可用 `openrouter_request_timeout_seconds` 和 `openrouter_retry_count` 调整超时与重试次数。
 
-遇到 429 限流时会按 `openrouter_rate_limit_retry_count` 单独重试（默认 2 次）；仍然失败且请求带有旧历史时，会自动移除旧上下文再试，避免一条新消息因为历史过重而直接失败。
+遇到 429 限流时会按 `openrouter_rate_limit_retry_count` 单独重试（默认 2 次）；仍然失败且请求带有旧历史时，会临时只携带最近一轮对话再试。服务器保存的完整短期上下文不会被清空，后续聊天仍可继续使用。
 当前温德尔人设卡保存在 `wendell_persona.txt`。配置里使用 `system_prompt_file: "wendell_persona.txt"` 时，机器人会把这个文件内容作为 OpenRouter 的 system prompt。
 
 为避免聊久后旧上下文过长导致模型请求失败，机器人会在发送给模型前自动压缩历史消息：`model_history_message_char_limit` 控制单条历史字数，`model_history_total_char_limit` 控制历史总字数。若 OpenRouter/DeepSeek 因上下文失败，`model_history_fallback_enabled` 会让机器人保留人设和当前问题、丢掉旧历史自动重试一次，不需要手动清空上下文。

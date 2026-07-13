@@ -1696,6 +1696,37 @@ def model_messages_without_history(messages: list[dict[str, str]]) -> list[dict[
     return system_messages + ([last_user] if last_user else [])
 
 
+def model_messages_with_recent_history(
+    messages: list[dict[str, str]],
+    max_history_messages: int = 2,
+    total_history_chars: int = 1800,
+) -> list[dict[str, str]]:
+    system_messages = [message for message in messages if message.get("role") == "system"]
+    last_user_index = -1
+    for index, message in enumerate(messages):
+        if message.get("role") == "user":
+            last_user_index = index
+    if last_user_index < 0:
+        return system_messages
+
+    recent = [
+        message
+        for message in messages[:last_user_index]
+        if message.get("role") in {"user", "assistant"}
+    ][-max(0, max_history_messages) :]
+    compact_recent: list[dict[str, str]] = []
+    remaining = max(0, total_history_chars)
+    for message in reversed(recent):
+        content = str(message.get("content") or "").strip()
+        if not content or remaining <= 0:
+            continue
+        content = content[-remaining:]
+        compact_recent.append({"role": str(message["role"]), "content": content})
+        remaining -= len(content)
+    compact_recent.reverse()
+    return system_messages + compact_recent + [messages[last_user_index]]
+
+
 def model_request_status_code(exc: Exception) -> int | None:
     if isinstance(exc, requests.HTTPError):
         response = getattr(exc, "response", None)
@@ -1757,8 +1788,14 @@ def request_completion_with_history_fallback(
     except Exception as exc:
         if not model_messages_have_history(messages) or not should_retry_model_request_without_history(config, exc):
             raise
-        fallback_messages = model_messages_without_history(messages)
-        print(f"{label} request failed with chat history; retrying without history: {exc}", file=sys.stderr)
+        status_code = model_request_status_code(exc)
+        if status_code == 429:
+            fallback_messages = model_messages_with_recent_history(messages)
+            fallback_label = "with only the most recent exchange"
+        else:
+            fallback_messages = model_messages_without_history(messages)
+            fallback_label = "without history"
+        print(f"{label} request failed with chat history; retrying {fallback_label}: {exc}", file=sys.stderr)
         try:
             return request_func(fallback_messages, max_tokens)
         except Exception as retry_exc:
