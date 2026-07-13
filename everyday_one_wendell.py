@@ -15,7 +15,7 @@ from urllib.parse import quote
 import requests
 
 from send_qq_shop import normalize_base_url, post_onebot
-from x_posts import clean_text, normalize_bearer_token
+from x_posts import clean_text, normalize_bearer_token, x_user_get
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -113,10 +113,45 @@ def x_get(url: str, bearer_token: str, params: dict[str, str] | None = None) -> 
     return data
 
 
+def x_get_with_available_auth(
+    url: str,
+    bearer_token: str,
+    params: dict[str, str] | None = None,
+    *,
+    config: dict[str, Any] | None = None,
+    config_path: Path | None = None,
+) -> dict[str, Any]:
+    errors: list[str] = []
+    oauth_configured = bool(
+        config
+        and (
+            str(config.get("x_user_access_token") or "").strip()
+            or (
+                str(config.get("x_client_id") or "").strip()
+                and str(config.get("x_user_refresh_token") or "").strip()
+            )
+        )
+    )
+    if oauth_configured and config is not None:
+        try:
+            return x_user_get(config, config_path, url, params or {})
+        except Exception as exc:
+            errors.append(f"OAuth user token: {exc}")
+            print(f"X OAuth request failed; trying Bearer Token: {exc}", file=sys.stderr)
+
+    try:
+        return x_get(url, bearer_token, params)
+    except Exception as exc:
+        errors.append(f"Bearer Token: {exc}")
+        raise RuntimeError("; ".join(errors)) from exc
+
+
 def resolve_author(
     bearer_token: str,
     username: str,
     state: dict[str, Any],
+    config: dict[str, Any] | None = None,
+    config_path: Path | None = None,
 ) -> dict[str, str]:
     cached = state.get("author") if isinstance(state.get("author"), dict) else {}
     if str(cached.get("username") or "").lower() == username.lower() and cached.get("id"):
@@ -126,10 +161,12 @@ def resolve_author(
     lookup_errors: list[str] = []
     user: dict[str, Any] = {}
     try:
-        data = x_get(
+        data = x_get_with_available_auth(
             X_USER_BY_USERNAME_URL.format(username=quote(username.lstrip("@"))),
             bearer_token,
             fields,
+            config=config,
+            config_path=config_path,
         )
         user = data.get("data") if isinstance(data.get("data"), dict) else {}
     except Exception as exc:
@@ -137,10 +174,12 @@ def resolve_author(
 
     if not user.get("id"):
         try:
-            data = x_get(
+            data = x_get_with_available_auth(
                 X_USERS_BY_USERNAMES_URL,
                 bearer_token,
                 {"usernames": username, **fields},
+                config=config,
+                config_path=config_path,
             )
             users = data.get("data") if isinstance(data.get("data"), list) else []
             user = users[0] if users and isinstance(users[0], dict) else {}
@@ -149,7 +188,7 @@ def resolve_author(
 
     if not user.get("id"):
         try:
-            data = x_get(
+            data = x_get_with_available_auth(
                 X_SEARCH_RECENT_URL,
                 bearer_token,
                 {
@@ -159,6 +198,8 @@ def resolve_author(
                     "expansions": "author_id",
                     "user.fields": "name,username,profile_image_url",
                 },
+                config=config,
+                config_path=config_path,
             )
             included = data.get("includes") if isinstance(data.get("includes"), dict) else {}
             users = included.get("users") if isinstance(included.get("users"), list) else []
@@ -191,6 +232,8 @@ def fetch_author_posts(
     author_id: str,
     since_id: str = "",
     fetch_limit: int = 5,
+    config: dict[str, Any] | None = None,
+    config_path: Path | None = None,
 ) -> dict[str, Any]:
     params = {
         "max_results": str(max(5, min(int(fetch_limit or 5), 100))),
@@ -204,7 +247,13 @@ def fetch_author_posts(
     }
     if since_id:
         params["since_id"] = since_id
-    return x_get(X_USER_POSTS_URL.format(user_id=author_id), bearer_token, params)
+    return x_get_with_available_auth(
+        X_USER_POSTS_URL.format(user_id=author_id),
+        bearer_token,
+        params,
+        config=config,
+        config_path=config_path,
+    )
 
 
 def best_video_variant(media: dict[str, Any]) -> dict[str, Any]:
@@ -550,12 +599,20 @@ def main() -> int:
 
     fetch_error = ""
     try:
-        author = resolve_author(bearer_token, username, state)
+        author = resolve_author(
+            bearer_token,
+            username,
+            state,
+            config=config,
+            config_path=config_path,
+        )
         data = fetch_author_posts(
             bearer_token,
             author_id=author["id"],
             since_id=str(state.get("latest_source_id") or ""),
             fetch_limit=int(config.get("everyone_wendell_fetch_limit") or 5),
+            config=config,
+            config_path=config_path,
         )
         new_items = normalize_candidates(
             data,

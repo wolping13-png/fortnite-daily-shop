@@ -9,6 +9,7 @@ from everyday_one_wendell import (
     normalize_candidates,
     resolve_author,
     x_get,
+    x_get_with_available_auth,
 )
 
 
@@ -106,6 +107,26 @@ class EveryOneWendellTests(unittest.TestCase):
         self.assertEqual(author["id"], "42")
         self.assertEqual(request.call_count, 2)
         self.assertEqual(state["author"]["username"], "wendellindashop")
+
+    @patch("everyday_one_wendell.x_get")
+    @patch("everyday_one_wendell.x_user_get")
+    def test_oauth_token_is_preferred_when_x_timeline_is_configured(
+        self,
+        user_get: Mock,
+        bearer_get: Mock,
+    ) -> None:
+        user_get.return_value = {"data": {"id": "42"}}
+        config = {"x_user_access_token": "oauth-token"}
+
+        result = x_get_with_available_auth(
+            "https://api.x.com/test",
+            "bearer-token",
+            config=config,
+        )
+
+        self.assertEqual(result["data"]["id"], "42")
+        user_get.assert_called_once()
+        bearer_get.assert_not_called()
 
 
 if __name__ == "__main__":
