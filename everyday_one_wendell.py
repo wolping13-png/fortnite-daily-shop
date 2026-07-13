@@ -122,9 +122,9 @@ def fetch_author_posts(
 ) -> dict[str, Any]:
     params = {
         "max_results": str(max(5, min(int(fetch_limit or 5), 100))),
-        "tweet.fields": "created_at,author_id,attachments,referenced_tweets,possibly_sensitive,public_metrics",
+        "tweet.fields": "created_at,author_id,attachments,referenced_tweets,possibly_sensitive",
         "expansions": (
-            "author_id,attachments.media_keys,referenced_tweets.id,"
+            "attachments.media_keys,referenced_tweets.id,"
             "referenced_tweets.id.author_id,referenced_tweets.id.attachments.media_keys"
         ),
         "media.fields": "media_key,type,url,preview_image_url,variants,width,height,alt_text",
@@ -188,7 +188,11 @@ def normalize_media(media: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def normalize_candidates(data: dict[str, Any], source_username: str) -> list[dict[str, Any]]:
+def normalize_candidates(
+    data: dict[str, Any],
+    source_username: str,
+    source_name: str = "",
+) -> list[dict[str, Any]]:
     includes = data.get("includes") if isinstance(data.get("includes"), dict) else {}
     users = {
         str(item.get("id")): item
@@ -224,6 +228,7 @@ def normalize_candidates(data: dict[str, Any], source_username: str) -> list[dic
 
         user = users.get(str(display.get("author_id") or "")) or {}
         username = str(user.get("username") or source_username).strip()
+        fallback_name = source_name if username.lower() == source_username.lower() else username
         media_items: list[dict[str, Any]] = []
         attachments = display.get("attachments") if isinstance(display.get("attachments"), dict) else {}
         for key in attachments.get("media_keys", []) or []:
@@ -242,7 +247,7 @@ def normalize_candidates(data: dict[str, Any], source_username: str) -> list[dic
                 "text": clean_text(str(display.get("text") or "")),
                 "created_at": str(display.get("created_at") or source.get("created_at") or ""),
                 "username": username,
-                "name": str(user.get("name") or username),
+                "name": str(user.get("name") or fallback_name),
                 "profile_image_url": str(user.get("profile_image_url") or ""),
                 "url": f"https://x.com/{username}/status/{post_id}",
                 "is_retweet": is_retweet,
@@ -471,7 +476,11 @@ def main() -> int:
             since_id=str(state.get("latest_source_id") or ""),
             fetch_limit=int(config.get("everyone_wendell_fetch_limit") or 5),
         )
-        new_items = normalize_candidates(data, source_username=author.get("username") or username)
+        new_items = normalize_candidates(
+            data,
+            source_username=author.get("username") or username,
+            source_name=author.get("name") or username,
+        )
         if data.get("data"):
             source_ids = [str(item.get("id") or "") for item in data.get("data", []) if isinstance(item, dict)]
             numeric_ids = [item for item in source_ids if item.isdigit()]
