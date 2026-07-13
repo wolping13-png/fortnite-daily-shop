@@ -4,13 +4,17 @@ import argparse
 import base64
 import hashlib
 import json
+import re
 import shutil
 import sys
 import time
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urljoin, urlparse
+from xml.etree import ElementTree
 
 import requests
 
@@ -338,6 +342,149 @@ def normalize_media(media: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+class RssDescriptionParser(HTMLParser):
+    def __init__(self, base_url: str) -> None:
+        super().__init__(convert_charrefs=True)
+        self.base_url = base_url
+        self.text_parts: list[str] = []
+        self.media: list[dict[str, Any]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = {str(key).lower(): str(value or "") for key, value in attrs}
+        if tag.lower() == "br":
+            self.text_parts.append("\n")
+        elif tag.lower() == "img" and values.get("src"):
+            self.media.append(
+                {
+                    "type": "photo",
+                    "url": urljoin(self.base_url, values["src"]),
+                    "preview_url": urljoin(self.base_url, values["src"]),
+                }
+            )
+        elif tag.lower() == "source" and values.get("src"):
+            self.media.append(
+                {
+                    "type": "video",
+                    "url": urljoin(self.base_url, values["src"]),
+                    "preview_url": "",
+                }
+            )
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in {"p", "div"}:
+            self.text_parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        self.text_parts.append(str(data or ""))
+
+    def parsed_text(self) -> str:
+        lines = [re.sub(r"\s+", " ", line).strip() for line in "".join(self.text_parts).splitlines()]
+        return "\n".join(line for line in lines if line).strip()
+
+    def parsed_media(self) -> list[dict[str, Any]]:
+        seen: set[str] = set()
+        result: list[dict[str, Any]] = []
+        for item in self.media:
+            url = str(item.get("url") or "")
+            if url and url not in seen:
+                seen.add(url)
+                result.append(item)
+        return result
+
+
+def rss_datetime(value: str) -> str:
+    try:
+        parsed = parsedate_to_datetime(str(value or ""))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    except Exception:
+        return str(value or "")
+
+
+def x_url_from_rss_link(link: str, fallback_username: str, post_id: str) -> tuple[str, str]:
+    parsed = urlparse(str(link or ""))
+    parts = [part for part in parsed.path.split("/") if part]
+    username = fallback_username
+    if len(parts) >= 3 and parts[1] == "status":
+        username = parts[0]
+        post_id = parts[2]
+    return username, f"https://x.com/{username}/status/{post_id}"
+
+
+def fetch_public_rss_posts(
+    username: str,
+    config: dict[str, Any],
+    limit: int = 20,
+) -> list[dict[str, Any]]:
+    configured = feature_config(config, "rss_urls", ["https://nitter.net"])
+    if isinstance(configured, str):
+        rss_bases = [configured]
+    else:
+        rss_bases = [str(item) for item in configured if str(item).strip()] if isinstance(configured, list) else []
+    if not rss_bases:
+        rss_bases = ["https://nitter.net"]
+
+    errors: list[str] = []
+    for base in rss_bases:
+        base = base.rstrip("/")
+        rss_url = f"{base}/{quote(username)}/rss"
+        try:
+            response = requests.get(
+                rss_url,
+                headers={"User-Agent": "Mozilla/5.0 EveryDayOneWendell/1.0"},
+                timeout=35,
+            )
+            response.raise_for_status()
+            root = ElementTree.fromstring(response.content)
+        except Exception as exc:
+            errors.append(f"{rss_url}: {exc}")
+            continue
+
+        result: list[dict[str, Any]] = []
+        for item in root.findall(".//item")[: max(1, min(int(limit or 20), 50))]:
+            post_id = str(item.findtext("guid") or "").strip()
+            link = str(item.findtext("link") or "").strip()
+            if not post_id:
+                parsed_parts = [part for part in urlparse(link).path.split("/") if part]
+                if len(parsed_parts) >= 3 and parsed_parts[1] == "status":
+                    post_id = parsed_parts[2]
+            if not post_id:
+                continue
+
+            creator = str(
+                item.findtext("{http://purl.org/dc/elements/1.1/}creator") or f"@{username}"
+            ).strip().lstrip("@")
+            title = str(item.findtext("title") or "").strip()
+            is_retweet = title.lower().startswith(f"rt by @{username.lower()}:")
+            description = str(item.findtext("description") or "")
+            parser = RssDescriptionParser(base + "/")
+            parser.feed(description)
+            text = parser.parsed_text()
+            display_username, x_url = x_url_from_rss_link(link, creator or username, post_id)
+            result.append(
+                {
+                    "id": post_id,
+                    "source_id": post_id,
+                    "text": text or re.sub(rf"^RT by @{re.escape(username)}:\s*", "", title, flags=re.I),
+                    "created_at": rss_datetime(str(item.findtext("pubDate") or "")),
+                    "username": display_username,
+                    "name": display_username,
+                    "profile_image_url": "",
+                    "url": x_url,
+                    "is_retweet": is_retweet,
+                    "retweeted_by": username if is_retweet else "",
+                    "media": parser.parsed_media(),
+                }
+            )
+        if result:
+            print(f"Loaded {len(result)} recent posts from public RSS fallback.")
+            return result
+        errors.append(f"{rss_url}: no posts returned")
+
+    raise RuntimeError("Public RSS fallback failed: " + "; ".join(errors))
+
+
 def normalize_candidates(
     data: dict[str, Any],
     source_username: str,
@@ -660,8 +807,18 @@ def main() -> int:
         candidates = merge_candidates(state, new_items)
     except Exception as exc:
         fetch_error = str(exc)
-        print(f"X refresh failed, trying cached posts: {exc}", file=sys.stderr)
-        candidates = merge_candidates(state, [])
+        print(f"X refresh failed, trying public RSS fallback: {exc}", file=sys.stderr)
+        try:
+            rss_items = fetch_public_rss_posts(
+                username,
+                config,
+                limit=int(feature_config(config, "rss_fetch_limit", 20) or 20),
+            )
+            candidates = merge_candidates(state, rss_items)
+        except Exception as rss_exc:
+            fetch_error = f"{fetch_error}; {rss_exc}"
+            print(f"RSS refresh failed, trying cached posts: {rss_exc}", file=sys.stderr)
+            candidates = merge_candidates(state, [])
 
     deliveries = state.get("deliveries") if isinstance(state.get("deliveries"), dict) else {}
     deliveries = {

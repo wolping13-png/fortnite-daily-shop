@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 from everyday_one_wendell import (
     best_video_variant,
     choose_candidate,
+    fetch_public_rss_posts,
     normalize_candidates,
     resolve_author,
     x_get,
@@ -142,6 +143,28 @@ class EveryDayOneWendellTests(unittest.TestCase):
         self.assertEqual(author["id"], "1837315425178136576")
         self.assertEqual(author["name"], "Days without Wendell in the shop")
         request.assert_not_called()
+
+    @patch("everyday_one_wendell.requests.get")
+    def test_public_rss_includes_original_retweet_and_video(self, request_get: Mock) -> None:
+        response = Mock()
+        response.content = b"""<?xml version='1.0' encoding='UTF-8'?>
+        <rss xmlns:dc='http://purl.org/dc/elements/1.1/'><channel><item>
+          <title>RT by @wendellindashop: Original text</title>
+          <dc:creator>@artist</dc:creator>
+          <pubDate>Mon, 13 Jul 2026 00:43:27 GMT</pubDate>
+          <guid>2076467506898755746</guid>
+          <link>https://nitter.net/artist/status/2076467506898755746#m</link>
+          <description><![CDATA[<p>Original text</p><video><source src='https://nitter.net/pic/video.mp4' type='video/mp4'></video>]]></description>
+        </item></channel></rss>"""
+        response.raise_for_status.return_value = None
+        request_get.return_value = response
+
+        posts = fetch_public_rss_posts("wendellindashop", {}, limit=5)
+
+        self.assertEqual(posts[0]["username"], "artist")
+        self.assertTrue(posts[0]["is_retweet"])
+        self.assertEqual(posts[0]["media"][0]["type"], "video")
+        self.assertEqual(posts[0]["url"], "https://x.com/artist/status/2076467506898755746")
 
 
 if __name__ == "__main__":
