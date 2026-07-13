@@ -6,6 +6,7 @@ import hashlib
 import json
 import shutil
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -72,19 +73,37 @@ def configured_group_ids(config: dict[str, Any]) -> list[int | str]:
 
 
 def x_get(url: str, bearer_token: str, params: dict[str, str] | None = None) -> dict[str, Any]:
-    response = requests.get(
-        url,
-        headers={
-            "Authorization": f"Bearer {normalize_bearer_token(bearer_token)}",
-            "User-Agent": "EveryOneWendell/1.0",
-        },
-        params=params or {},
-        timeout=35,
-    )
+    response: requests.Response | None = None
+    retry_delays = (0, 2, 5, 10)
+    for attempt, delay in enumerate(retry_delays, 1):
+        if delay:
+            print(f"X API is temporarily unavailable; retrying in {delay} seconds ({attempt}/{len(retry_delays)}).")
+            time.sleep(delay)
+        try:
+            response = requests.get(
+                url,
+                headers={
+                    "Authorization": f"Bearer {normalize_bearer_token(bearer_token)}",
+                    "User-Agent": "EveryOneWendell/1.0",
+                },
+                params=params or {},
+                timeout=35,
+            )
+        except requests.RequestException:
+            if attempt < len(retry_delays):
+                continue
+            raise
+        if response.status_code not in {500, 502, 503, 504} or attempt == len(retry_delays):
+            break
+
+    if response is None:
+        raise RuntimeError("X API request did not return a response.")
     if response.status_code in {401, 403}:
         raise RuntimeError(f"X API token has no access: {response.text[:500]}")
     if response.status_code == 429:
         raise RuntimeError("X API rate limit or credits are exhausted.")
+    if response.status_code in {500, 502, 503, 504}:
+        raise RuntimeError(f"X API remained unavailable after retries ({response.status_code}).")
     response.raise_for_status()
     data = response.json()
     if not isinstance(data, dict):

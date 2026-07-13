@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import Mock, patch
 
-from everyday_one_wendell import best_video_variant, choose_candidate, normalize_candidates
+from everyday_one_wendell import best_video_variant, choose_candidate, normalize_candidates, x_get
 
 
 class EveryOneWendellTests(unittest.TestCase):
@@ -70,6 +71,21 @@ class EveryOneWendellTests(unittest.TestCase):
         selected = choose_candidate(candidates, deliveries, [111, 222])
 
         self.assertEqual(selected["id"], "200")
+
+    @patch("everyday_one_wendell.time.sleep")
+    @patch("everyday_one_wendell.requests.get")
+    def test_x_get_retries_temporary_503(self, request_get: Mock, sleep: Mock) -> None:
+        unavailable = Mock(status_code=503, text="unavailable")
+        success = Mock(status_code=200)
+        success.json.return_value = {"data": {"id": "1"}}
+        success.raise_for_status.return_value = None
+        request_get.side_effect = [unavailable, success]
+
+        result = x_get("https://api.x.com/test", "token")
+
+        self.assertEqual(result["data"]["id"], "1")
+        self.assertEqual(request_get.call_count, 2)
+        sleep.assert_called_once_with(2)
 
 
 if __name__ == "__main__":
