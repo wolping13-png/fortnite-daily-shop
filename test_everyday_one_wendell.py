@@ -179,6 +179,17 @@ class EveryDayOneWendellTests(unittest.TestCase):
         self.assertEqual(batches[0][0]["type"], "text")
         self.assertEqual(batches[1][0]["type"], "video")
 
+    def test_looping_rss_video_is_detected_as_animated_gif(self) -> None:
+        from everyday_one_wendell import RssDescriptionParser
+
+        parser = RssDescriptionParser("https://nitter.net/")
+        parser.feed(
+            "<video autoplay muted loop><source src='/pic/tweet_video/example.mp4' "
+            "type='video/mp4'></video>"
+        )
+
+        self.assertEqual(parser.parsed_media()[0]["type"], "animated_gif")
+
 
 if __name__ == "__main__":
     unittest.main()

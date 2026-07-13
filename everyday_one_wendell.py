@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -348,11 +349,17 @@ class RssDescriptionParser(HTMLParser):
         self.base_url = base_url
         self.text_parts: list[str] = []
         self.media: list[dict[str, Any]] = []
+        self.current_video_type = "video"
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = {str(key).lower(): str(value or "") for key, value in attrs}
+        attribute_names = {str(key).lower() for key, _value in attrs}
         if tag.lower() == "br":
             self.text_parts.append("\n")
+        elif tag.lower() == "video":
+            self.current_video_type = (
+                "animated_gif" if {"autoplay", "muted", "loop"}.issubset(attribute_names) else "video"
+            )
         elif tag.lower() == "img" and values.get("src"):
             self.media.append(
                 {
@@ -364,7 +371,7 @@ class RssDescriptionParser(HTMLParser):
         elif tag.lower() == "source" and values.get("src"):
             self.media.append(
                 {
-                    "type": "video",
+                    "type": self.current_video_type,
                     "url": urljoin(self.base_url, values["src"]),
                     "preview_url": "",
                 }
@@ -373,6 +380,8 @@ class RssDescriptionParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag.lower() in {"p", "div"}:
             self.text_parts.append("\n")
+        elif tag.lower() == "video":
+            self.current_video_type = "video"
 
     def handle_data(self, data: str) -> None:
         self.text_parts.append(str(data or ""))
@@ -653,6 +662,72 @@ def image_segment(path: Path) -> dict[str, Any]:
     return {"type": "image", "data": {"file": f"base64://{encoded}"}}
 
 
+def ffmpeg_executable() -> str:
+    system_ffmpeg = shutil.which("ffmpeg")
+    if system_ffmpeg:
+        return system_ffmpeg
+    try:
+        import imageio_ffmpeg
+
+        return str(imageio_ffmpeg.get_ffmpeg_exe())
+    except Exception as exc:
+        raise RuntimeError("ffmpeg is unavailable; install imageio-ffmpeg or the ffmpeg package.") from exc
+
+
+def convert_mp4_to_gif(path: Path, config: dict[str, Any]) -> Path:
+    target = path.with_suffix(".gif")
+    if target.exists() and target.stat().st_size > 0:
+        return target
+
+    executable = ffmpeg_executable()
+    max_bytes = int(float(feature_config(config, "gif_max_mb", 15) or 15) * 1024 * 1024)
+    profiles = [
+        (
+            int(feature_config(config, "gif_fps", 12) or 12),
+            int(feature_config(config, "gif_max_width", 640) or 640),
+            128,
+        ),
+        (8, 480, 96),
+    ]
+    last_error = ""
+    for fps, width, colors in profiles:
+        target.unlink(missing_ok=True)
+        video_filter = (
+            f"fps={fps},scale=min(iw\\,{width}):-2:flags=lanczos,"
+            f"split[s0][s1];[s0]palettegen=max_colors={colors}[p];"
+            "[s1][p]paletteuse=dither=sierra2_4a"
+        )
+        result = subprocess.run(
+            [
+                executable,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                str(path),
+                "-filter_complex",
+                video_filter,
+                "-loop",
+                "0",
+                str(target),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=180,
+            check=False,
+        )
+        if result.returncode != 0 or not target.exists():
+            last_error = (result.stderr or result.stdout or f"ffmpeg exited with {result.returncode}")[-1000:]
+            continue
+        if target.stat().st_size <= max_bytes:
+            return target
+        last_error = f"converted GIF is larger than {max_bytes} bytes"
+
+    target.unlink(missing_ok=True)
+    raise RuntimeError(f"Could not convert MP4 to a QQ-safe GIF: {last_error}")
+
+
 def video_segment(
     path: Path,
     original_url: str,
@@ -688,7 +763,15 @@ def build_message(
         try:
             path = download_media(item, str(post.get("id") or "post"), index, max_bytes=max_bytes)
             downloaded.append(path)
-            if item.get("type") in {"video", "animated_gif"}:
+            if item.get("type") == "animated_gif":
+                try:
+                    gif_path = convert_mp4_to_gif(path, config)
+                    downloaded.append(gif_path)
+                    message.append(image_segment(gif_path))
+                except Exception as exc:
+                    print(f"GIF conversion failed; sending MP4 fallback: {exc}", file=sys.stderr)
+                    message.append(video_segment(path, str(item.get("url") or ""), config))
+            elif item.get("type") == "video":
                 message.append(video_segment(path, str(item.get("url") or ""), config))
             else:
                 message.append(image_segment(path))
