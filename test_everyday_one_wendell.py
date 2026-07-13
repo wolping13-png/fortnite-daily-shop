@@ -3,7 +3,13 @@ from __future__ import annotations
 import unittest
 from unittest.mock import Mock, patch
 
-from everyday_one_wendell import best_video_variant, choose_candidate, normalize_candidates, x_get
+from everyday_one_wendell import (
+    best_video_variant,
+    choose_candidate,
+    normalize_candidates,
+    resolve_author,
+    x_get,
+)
 
 
 class EveryOneWendellTests(unittest.TestCase):
@@ -86,6 +92,20 @@ class EveryOneWendellTests(unittest.TestCase):
         self.assertEqual(result["data"]["id"], "1")
         self.assertEqual(request_get.call_count, 2)
         sleep.assert_called_once_with(2)
+
+    @patch("everyday_one_wendell.x_get")
+    def test_author_lookup_falls_back_to_batch_endpoint(self, request: Mock) -> None:
+        request.side_effect = [
+            RuntimeError("503"),
+            {"data": [{"id": "42", "username": "wendellindashop", "name": "Wendell"}]},
+        ]
+        state: dict = {}
+
+        author = resolve_author("token", "wendellindashop", state)
+
+        self.assertEqual(author["id"], "42")
+        self.assertEqual(request.call_count, 2)
+        self.assertEqual(state["author"]["username"], "wendellindashop")
 
 
 if __name__ == "__main__":

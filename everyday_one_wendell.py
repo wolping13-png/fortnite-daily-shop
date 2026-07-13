@@ -24,6 +24,8 @@ CACHE_DIR = BASE_DIR / ".cache" / "everyone_wendell"
 STATE_PATH = CACHE_DIR / "state.json"
 MEDIA_DIR = CACHE_DIR / "media"
 X_USER_BY_USERNAME_URL = "https://api.x.com/2/users/by/username/{username}"
+X_USERS_BY_USERNAMES_URL = "https://api.x.com/2/users/by"
+X_SEARCH_RECENT_URL = "https://api.x.com/2/tweets/search/recent"
 X_USER_POSTS_URL = "https://api.x.com/2/users/{user_id}/tweets"
 DEFAULT_USERNAME = "wendellindashop"
 
@@ -120,14 +122,65 @@ def resolve_author(
     if str(cached.get("username") or "").lower() == username.lower() and cached.get("id"):
         return {key: str(cached.get(key) or "") for key in ("id", "username", "name", "profile_image_url")}
 
-    data = x_get(
-        X_USER_BY_USERNAME_URL.format(username=quote(username.lstrip("@"))),
-        bearer_token,
-        {"user.fields": "name,username,profile_image_url"},
-    )
-    user = data.get("data") if isinstance(data.get("data"), dict) else {}
+    fields = {"user.fields": "name,username,profile_image_url"}
+    lookup_errors: list[str] = []
+    user: dict[str, Any] = {}
+    try:
+        data = x_get(
+            X_USER_BY_USERNAME_URL.format(username=quote(username.lstrip("@"))),
+            bearer_token,
+            fields,
+        )
+        user = data.get("data") if isinstance(data.get("data"), dict) else {}
+    except Exception as exc:
+        lookup_errors.append(f"single lookup: {exc}")
+
     if not user.get("id"):
-        raise RuntimeError(f"Could not find X author @{username}.")
+        try:
+            data = x_get(
+                X_USERS_BY_USERNAMES_URL,
+                bearer_token,
+                {"usernames": username, **fields},
+            )
+            users = data.get("data") if isinstance(data.get("data"), list) else []
+            user = users[0] if users and isinstance(users[0], dict) else {}
+        except Exception as exc:
+            lookup_errors.append(f"batch lookup: {exc}")
+
+    if not user.get("id"):
+        try:
+            data = x_get(
+                X_SEARCH_RECENT_URL,
+                bearer_token,
+                {
+                    "query": f"from:{username}",
+                    "max_results": "10",
+                    "tweet.fields": "author_id",
+                    "expansions": "author_id",
+                    "user.fields": "name,username,profile_image_url",
+                },
+            )
+            included = data.get("includes") if isinstance(data.get("includes"), dict) else {}
+            users = included.get("users") if isinstance(included.get("users"), list) else []
+            matching = [
+                item
+                for item in users
+                if isinstance(item, dict)
+                and str(item.get("username") or "").lower() == username.lower()
+            ]
+            if matching:
+                user = matching[0]
+            else:
+                posts = data.get("data") if isinstance(data.get("data"), list) else []
+                author_id = str(posts[0].get("author_id") or "") if posts and isinstance(posts[0], dict) else ""
+                if author_id:
+                    user = {"id": author_id, "username": username, "name": username}
+        except Exception as exc:
+            lookup_errors.append(f"recent search fallback: {exc}")
+
+    if not user.get("id"):
+        detail = "; ".join(lookup_errors) or "no user data returned"
+        raise RuntimeError(f"Could not find X author @{username}: {detail}")
     author = {key: str(user.get(key) or "") for key in ("id", "username", "name", "profile_image_url")}
     state["author"] = author
     return author
