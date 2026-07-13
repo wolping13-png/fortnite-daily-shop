@@ -24,11 +24,13 @@ chmod +x \
   install_cloud_cron.sh \
   install_game_deals_cron.sh \
   install_everyday_one_wolf_cron.sh \
+  install_everyday_one_wendell_cron.sh \
   install_bedtime_reminder_cron.sh
 
 bash install_cloud_cron.sh
 bash install_game_deals_cron.sh
 bash install_everyday_one_wolf_cron.sh
+bash install_everyday_one_wendell_cron.sh
 bash install_bedtime_reminder_cron.sh
 
 echo
