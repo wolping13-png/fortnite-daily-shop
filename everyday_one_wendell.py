@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
@@ -18,9 +19,20 @@ from urllib.parse import quote, urljoin, urlparse
 from xml.etree import ElementTree
 
 import requests
+from PIL import Image, ImageDraw
 
 from send_qq_shop import normalize_base_url, post_onebot
-from x_posts import clean_text, normalize_bearer_token, x_user_get
+from x_posts import (
+    clean_text,
+    download_image,
+    fit_text,
+    load_font,
+    normalize_bearer_token,
+    paste_circle,
+    text_size,
+    wrap_text,
+    x_user_get,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -37,6 +49,17 @@ X_USER_POSTS_URL = "https://api.x.com/2/users/{user_id}/tweets"
 DEFAULT_USERNAME = "wendellindashop"
 DEFAULT_USER_ID = "1837315425178136576"
 DEFAULT_DISPLAY_NAME = "Days without Wendell in the shop"
+CARD_WIDTH = 900
+CARD_BG = (0, 0, 0)
+CARD_BORDER = (47, 51, 54)
+CARD_TEXT = (231, 233, 234)
+CARD_MUTED = (113, 118, 123)
+CARD_LINK = (29, 155, 240)
+CARD_FONT_TITLE = load_font(27, bold=True)
+CARD_FONT_NAME = load_font(25, bold=True)
+CARD_FONT_HANDLE = load_font(20)
+CARD_FONT_BODY = load_font(27)
+CARD_FONT_META = load_font(18)
 
 
 def china_now() -> datetime:
@@ -450,6 +473,15 @@ def fetch_public_rss_posts(
             errors.append(f"{rss_url}: {exc}")
             continue
 
+        channel = root.find("./channel")
+        channel_avatar = ""
+        channel_name = DEFAULT_DISPLAY_NAME if username.lower() == DEFAULT_USERNAME else username
+        if channel is not None:
+            channel_avatar = str(channel.findtext("image/url") or "").strip()
+            channel_title = str(channel.findtext("title") or "").strip()
+            if " / @" in channel_title:
+                channel_name = channel_title.split(" / @", 1)[0].strip() or channel_name
+
         result: list[dict[str, Any]] = []
         for item in root.findall(".//item")[: max(1, min(int(limit or 20), 50))]:
             post_id = str(item.findtext("guid") or "").strip()
@@ -478,8 +510,8 @@ def fetch_public_rss_posts(
                     "text": text or re.sub(rf"^RT by @{re.escape(username)}:\s*", "", title, flags=re.I),
                     "created_at": rss_datetime(str(item.findtext("pubDate") or "")),
                     "username": display_username,
-                    "name": display_username,
-                    "profile_image_url": "",
+                    "name": channel_name if display_username.lower() == username.lower() else display_username,
+                    "profile_image_url": channel_avatar if display_username.lower() == username.lower() else "",
                     "url": x_url,
                     "is_retweet": is_retweet,
                     "retweeted_by": username if is_retweet else "",
@@ -618,6 +650,118 @@ def post_datetime_text(value: str) -> str:
         return parsed.strftime("%Y-%m-%d %H:%M")
     except Exception:
         return str(value or "")[:16].replace("T", " ")
+
+
+def card_safe_label(value: str) -> str:
+    return "".join(
+        char
+        for char in str(value or "")
+        if unicodedata.category(char) not in {"So", "Cs"}
+        and char not in {"\ufe0e", "\ufe0f", "\u200d"}
+    ).strip()
+
+
+def enrich_post_profile(post: dict[str, Any]) -> None:
+    if str(post.get("profile_image_url") or "").strip() and str(post.get("name") or "").strip():
+        return
+    username = str(post.get("username") or "").strip().lstrip("@")
+    if not username:
+        return
+    try:
+        response = requests.get(
+            f"https://api.fxtwitter.com/{quote(username)}",
+            headers={"User-Agent": "Mozilla/5.0 EveryDayOneWendell/1.0"},
+            timeout=20,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        user = payload.get("user") if isinstance(payload, dict) and isinstance(payload.get("user"), dict) else {}
+        post["name"] = str(user.get("name") or post.get("name") or username)
+        post["profile_image_url"] = str(user.get("avatar_url") or post.get("profile_image_url") or "")
+    except Exception as exc:
+        print(f"Could not enrich @{username} profile for the post card: {exc}", file=sys.stderr)
+
+
+def render_post_card(post: dict[str, Any]) -> Path:
+    enrich_post_profile(post)
+    probe = Image.new("RGB", (CARD_WIDTH, 300), CARD_BG)
+    probe_draw = ImageDraw.Draw(probe)
+    body_width = CARD_WIDTH - 64
+    body_lines = wrap_text(probe_draw, str(post.get("text") or ""), CARD_FONT_BODY, body_width, 12)
+    body_height = max(38, len(body_lines) * 39)
+    retweet_height = 38 if post.get("is_retweet") else 0
+    header_height = 66
+    author_height = 86
+    footer_height = 62
+    card_height = header_height + retweet_height + author_height + body_height + footer_height + 32
+
+    image = Image.new("RGB", (CARD_WIDTH, card_height), CARD_BG)
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, CARD_WIDTH - 1, card_height - 1), outline=CARD_BORDER, width=1)
+
+    draw.text((32, 20), "EveryDayOneWendell", fill=CARD_TEXT, font=CARD_FONT_TITLE)
+    x_mark = "X"
+    x_width, _ = text_size(draw, x_mark, CARD_FONT_TITLE)
+    draw.text((CARD_WIDTH - 32 - x_width, 20), x_mark, fill=CARD_TEXT, font=CARD_FONT_TITLE)
+    draw.line((0, header_height, CARD_WIDTH, header_height), fill=CARD_BORDER, width=1)
+
+    y = header_height + 16
+    if post.get("is_retweet"):
+        draw.text(
+            (44, y),
+            f"@{post.get('retweeted_by') or DEFAULT_USERNAME} 转发",
+            fill=CARD_MUTED,
+            font=CARD_FONT_META,
+        )
+        y += retweet_height
+
+    avatar_size = 62
+    avatar_x = 32
+    avatar_y = y
+    avatar = download_image(str(post.get("profile_image_url") or ""))
+    if avatar is not None:
+        paste_circle(image, avatar, avatar_x, avatar_y, avatar_size)
+    else:
+        draw.ellipse(
+            (avatar_x, avatar_y, avatar_x + avatar_size, avatar_y + avatar_size),
+            fill=(32, 35, 39),
+        )
+        initial = (str(post.get("name") or post.get("username") or "X").strip()[:1] or "X").upper()
+        iw, ih = text_size(draw, initial, CARD_FONT_NAME)
+        draw.text(
+            (avatar_x + (avatar_size - iw) // 2, avatar_y + (avatar_size - ih) // 2 - 2),
+            initial,
+            fill=CARD_TEXT,
+            font=CARD_FONT_NAME,
+        )
+
+    author_x = avatar_x + avatar_size + 14
+    available_width = CARD_WIDTH - author_x - 32
+    name = fit_text(
+        draw,
+        card_safe_label(str(post.get("name") or post.get("username") or "")),
+        CARD_FONT_NAME,
+        available_width,
+    )
+    draw.text((author_x, y + 2), name, fill=CARD_TEXT, font=CARD_FONT_NAME)
+    handle = fit_text(draw, f"@{post.get('username') or ''}", CARD_FONT_HANDLE, available_width)
+    draw.text((author_x, y + 39), handle, fill=CARD_MUTED, font=CARD_FONT_HANDLE)
+    y += author_height
+
+    for index, line in enumerate(body_lines or [""]):
+        draw.text((32, y + index * 39), line, fill=CARD_TEXT, font=CARD_FONT_BODY)
+    y += body_height + 20
+
+    created_at = post_datetime_text(str(post.get("created_at") or ""))
+    draw.text((32, y), created_at, fill=CARD_MUTED, font=CARD_FONT_META)
+    footer_text = "查看 X 原帖"
+    footer_width, _ = text_size(draw, footer_text, CARD_FONT_META)
+    draw.text((CARD_WIDTH - 32 - footer_width, y), footer_text, fill=CARD_LINK, font=CARD_FONT_META)
+
+    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    target = MEDIA_DIR / f"{post.get('id') or 'post'}_card.jpg"
+    image.save(target, quality=90, optimize=True)
+    return target
 
 
 def build_caption(post: dict[str, Any]) -> str:
@@ -763,8 +907,18 @@ def build_message(
     post: dict[str, Any],
     config: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], list[Path]]:
-    message: list[dict[str, Any]] = [{"type": "text", "data": {"text": caption}}]
     downloaded: list[Path] = []
+    message: list[dict[str, Any]] = [{"type": "text", "data": {"text": caption}}]
+    if bool(feature_config(config, "post_card_enabled", True)):
+        try:
+            card_path = render_post_card(post)
+            downloaded.append(card_path)
+            message = [
+                image_segment(card_path),
+                {"type": "text", "data": {"text": f"\n{post.get('url')}"}},
+            ]
+        except Exception as exc:
+            print(f"Post card rendering failed; using text fallback: {exc}", file=sys.stderr)
     max_bytes = int(float(feature_config(config, "media_max_mb", 100) or 100) * 1024 * 1024)
     for index, item in enumerate(post.get("media", []) or [], 1):
         if not isinstance(item, dict):
