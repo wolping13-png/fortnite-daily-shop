@@ -42,7 +42,7 @@ DETAILED_REPLY_MAX_TOKENS = 1400
 DEEPSEEK_EMPTY_RETRY_TOKENS = 1800
 MODEL_HISTORY_MESSAGE_CHAR_LIMIT = 900
 MODEL_HISTORY_TOTAL_CHAR_LIMIT = 5200
-MODEL_HISTORY_FALLBACK_STATUS_CODES = {400, 413, 422, 500, 502, 503, 504}
+MODEL_HISTORY_FALLBACK_STATUS_CODES = {400, 413, 422, 429, 500, 502, 503, 504}
 OPENROUTER_TRANSIENT_STATUS_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 USER_MEMORY_LOCK = threading.RLock()
 PROACTIVE_STATE_LOCK = threading.RLock()
@@ -1697,11 +1697,13 @@ def model_messages_without_history(messages: list[dict[str, str]]) -> list[dict[
 
 
 def model_request_status_code(exc: Exception) -> int | None:
-    if not isinstance(exc, requests.HTTPError):
-        return None
-    response = getattr(exc, "response", None)
-    status_code = getattr(response, "status_code", None)
-    return status_code if isinstance(status_code, int) else None
+    if isinstance(exc, requests.HTTPError):
+        response = getattr(exc, "response", None)
+        status_code = getattr(response, "status_code", None)
+        if isinstance(status_code, int):
+            return status_code
+    match = re.search(r"(?:http|provider error)\s+(\d{3})", str(exc), re.I)
+    return int(match.group(1)) if match else None
 
 
 def model_request_error_detail(exc: Exception) -> str:
@@ -3613,6 +3615,10 @@ def openrouter_retry_count(config: dict[str, Any]) -> int:
     return clamp_int(config.get("openrouter_retry_count"), 0, 3, 1)
 
 
+def openrouter_rate_limit_retry_count(config: dict[str, Any]) -> int:
+    return clamp_int(config.get("openrouter_rate_limit_retry_count"), 0, 4, 2)
+
+
 def openrouter_embedded_error(data: dict[str, Any]) -> dict[str, Any]:
     error = data.get("error")
     if isinstance(error, dict):
@@ -3636,9 +3642,9 @@ def openrouter_retry_delay(response: requests.Response | None, attempt: int) -> 
     if response is not None:
         retry_after = str(response.headers.get("Retry-After") or "").strip()
     try:
-        return max(0.5, min(float(retry_after), 8.0))
+        return max(0.5, min(float(retry_after), 30.0))
     except (TypeError, ValueError):
-        return min(1.5 * (attempt + 1), 5.0)
+        return min(2.0 ** (attempt + 1), 10.0)
 
 
 def parse_json_object_from_text(text: str) -> dict[str, Any]:
@@ -4429,8 +4435,10 @@ def ask_openrouter(
 
     def request_completion(request_messages: list[dict[str, str]], max_tokens: int) -> dict[str, Any]:
         retry_count = openrouter_retry_count(config)
+        rate_limit_retry_count = openrouter_rate_limit_retry_count(config)
+        max_retry_count = max(retry_count, rate_limit_retry_count)
         timeout = openrouter_request_timeout(config)
-        for attempt in range(retry_count + 1):
+        for attempt in range(max_retry_count + 1):
             response: requests.Response | None = None
             try:
                 response = requests.post(
@@ -4455,7 +4463,8 @@ def ask_openrouter(
                     raise RuntimeError("OpenRouter returned an invalid response body.")
 
                 if response.status_code >= 400:
-                    if response.status_code in OPENROUTER_TRANSIENT_STATUS_CODES and attempt < retry_count:
+                    allowed_retries = rate_limit_retry_count if response.status_code == 429 else retry_count
+                    if response.status_code in OPENROUTER_TRANSIENT_STATUS_CODES and attempt < allowed_retries:
                         delay = openrouter_retry_delay(response, attempt)
                         print(
                             f"OpenRouter HTTP {response.status_code}; retrying in {delay:.1f}s.",
@@ -4469,7 +4478,8 @@ def ask_openrouter(
                 embedded_code = openrouter_error_code(embedded_error)
                 if embedded_error:
                     detail = str(embedded_error.get("message") or embedded_error)[:500]
-                    if embedded_code in OPENROUTER_TRANSIENT_STATUS_CODES and attempt < retry_count:
+                    allowed_retries = rate_limit_retry_count if embedded_code == 429 else retry_count
+                    if embedded_code in OPENROUTER_TRANSIENT_STATUS_CODES and attempt < allowed_retries:
                         delay = openrouter_retry_delay(response, attempt)
                         print(
                             f"OpenRouter provider error {embedded_code}: {detail}; retrying in {delay:.1f}s.",

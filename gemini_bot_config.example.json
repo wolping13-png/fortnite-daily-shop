@@ -20,6 +20,7 @@
   "openrouter_plain_memory": true,
   "openrouter_request_timeout_seconds": 90,
   "openrouter_retry_count": 1,
+  "openrouter_rate_limit_retry_count": 2,
   "system_prompt_file": "wendell_persona.txt",
   "tavily_api_key": "PASTE_YOUR_TAVILY_API_KEY_HERE",
   "x_bearer_token": "PASTE_YOUR_X_BEARER_TOKEN_HERE",
