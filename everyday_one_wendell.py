@@ -406,23 +406,28 @@ def build_message(
     return message, downloaded
 
 
-def send_post_to_group(
+def send_post_to_target(
     config: dict[str, Any],
-    group_id: int | str,
+    target_id: int | str,
     caption: str,
     message: list[dict[str, Any]],
+    *,
+    private: bool = False,
 ) -> None:
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
+    action = "send_private_msg" if private else "send_group_msg"
+    id_key = "user_id" if private else "group_id"
     result = post_onebot(
         base_url=base_url,
-        action="send_group_msg",
-        payload={"group_id": group_id, "message": message},
+        action=action,
+        payload={id_key: target_id, "message": message},
         access_token=str(config.get("access_token") or ""),
         timeout=180,
     )
     if result.get("_napcat_callback_timeout"):
-        print(f"NapCat callback timed out for group {group_id}; native result reported success.")
-    print(f"Sent EveryOneWendell to group {group_id}.")
+        print(f"NapCat callback timed out for target {target_id}; native result reported success.")
+    target_kind = "user" if private else "group"
+    print(f"Sent EveryOneWendell to {target_kind} {target_id}.")
 
 
 def clean_old_media(days: int = 14) -> None:
@@ -442,6 +447,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", default=str(DEFAULT_CONFIG_PATH))
     parser.add_argument("--username", default="")
     parser.add_argument("--group-id", action="append")
+    parser.add_argument("--private-user-id", default="", help="Send one preview privately without changing group delivery state.")
     parser.add_argument("--force", action="store_true", help="Send even if today's scheduled post already succeeded.")
     parser.add_argument("--dry-run", action="store_true", help="Fetch and prepare the post without sending it.")
     return parser.parse_args()
@@ -453,12 +459,15 @@ def main() -> int:
     config = load_json(config_path)
     state_path = Path(str(config.get("everyone_wendell_state_path") or STATE_PATH))
     state = load_json(state_path)
-    group_ids = normalized_group_ids(args.group_id) if args.group_id else configured_group_ids(config)
-    if not group_ids:
+    private_user_id = str(args.private_user_id or "").strip()
+    group_ids = [] if private_user_id else (
+        normalized_group_ids(args.group_id) if args.group_id else configured_group_ids(config)
+    )
+    if not private_user_id and not group_ids:
         raise ValueError("No QQ groups configured in everyone_wendell_group_ids or allowed_group_ids.")
 
     today = china_now().date().isoformat()
-    if not args.force and not args.dry_run and state.get("last_success_date") == today:
+    if not private_user_id and not args.force and not args.dry_run and state.get("last_success_date") == today:
         print(f"EveryOneWendell already sent successfully on {today}.")
         return 0
 
@@ -498,7 +507,7 @@ def main() -> int:
         for key, value in deliveries.items()
         if isinstance(value, list)
     }
-    post = choose_candidate(candidates, deliveries, group_ids)
+    post = candidates[0] if private_user_id and candidates else choose_candidate(candidates, deliveries, group_ids)
     if not post:
         raise RuntimeError(fetch_error or "No recent X posts are available.")
 
@@ -511,9 +520,16 @@ def main() -> int:
     caption = build_caption(post)
     message, downloaded = build_message(caption, post, config)
     print(caption)
-    print(f"media={len(downloaded)} groups={','.join(map(str, group_ids))}")
+    target_description = f"private={private_user_id}" if private_user_id else f"groups={','.join(map(str, group_ids))}"
+    print(f"media={len(downloaded)} {target_description}")
     if args.dry_run:
         save_json(state_path, state)
+        return 0
+
+    if private_user_id:
+        send_post_to_target(config, private_user_id, caption, message, private=True)
+        save_json(state_path, state)
+        clean_old_media(days=int(config.get("everyone_wendell_media_keep_days") or 14))
         return 0
 
     failures: list[str] = []
@@ -522,7 +538,7 @@ def main() -> int:
         if group_key in delivered_groups:
             continue
         try:
-            send_post_to_group(config, group_id, caption, message)
+            send_post_to_target(config, group_id, caption, message)
             delivered_groups.add(group_key)
             deliveries[post_id] = sorted(delivered_groups)
             state["deliveries"] = deliveries

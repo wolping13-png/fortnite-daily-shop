@@ -331,6 +331,12 @@ bash run_everyday_one_wendell.sh --dry-run
 bash run_everyday_one_wendell.sh --force
 ```
 
+只私发一条最新推文用于预览，不改变每日群发送记录：
+
+```bash
+bash run_everyday_one_wendell.sh --private-user-id 2353888741
+```
+
 安装北京时间每天 14:00 的自动任务：
 
 ```bash
