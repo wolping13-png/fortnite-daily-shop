@@ -310,9 +310,9 @@ bash run_everyday_one_wolf.sh
 bash install_everyday_one_wolf_cron.sh
 ```
 
-### EveryOneWendell 每日推文
+### EveryDayOneWendell 每日推文
 
-`EveryOneWendell` 默认读取 X 作者 `@wendellindashop` 的最近帖子，每天选一条发送到
+`EveryDayOneWendell` 默认读取 X 作者 `@wendellindashop` 的最近帖子，每天选一条发送到
 `allowed_group_ids` 中配置的全部 QQ 群。作者转发的内容会还原为原作者的原帖；图片会直接发送，
 动态 GIF 会使用 X 提供的 MP4 版本发送，视频也会先下载到服务器再交给 NapCat。
 
@@ -343,7 +343,8 @@ bash run_everyday_one_wendell.sh --private-user-id 2353888741
 bash install_everyday_one_wendell_cron.sh
 ```
 
-如果 `everyone_wendell_group_ids` 留空，会自动使用 `allowed_group_ids`。默认视频共享目录与当前
+如果 `everyday_one_wendell_group_ids` 留空，会自动使用 `allowed_group_ids`。旧版
+`everyone_wendell_*` 配置字段仍然兼容。默认视频共享目录与当前
 NapCat Docker 挂载一致：宿主机 `/opt/napcat/data/wendell_media` 对应容器内
 `/app/.config/QQ/wendell_media`。
 
@@ -467,7 +468,7 @@ bash install_gemini_bot_service.sh
 - `send_wolf.py`：通过 OneBot HTTP 发送每日一狼
 - `run_everyday_one_wolf.sh`：Linux/VPS 手动发送每日一狼
 - `install_everyday_one_wolf_cron.sh`：Linux/VPS 安装每日一狼定时任务
-- `install_everyday_one_wendell_cron.sh`：Linux/VPS 安装每天 14:00 的 EveryOneWendell 推文任务
+- `install_everyday_one_wendell_cron.sh`：Linux/VPS 安装每天 14:00 的 EveryDayOneWendell 推文任务
 - `run_everyday_one_wendell.sh`：抓取并发送一条 `@wendellindashop` 的最近推文
 - `bedtime_reminder.py`：生成睡觉提醒、第二天信息、节日文案和游戏优惠临期提醒
 - `run_bedtime_reminder.sh`：Linux/VPS 手动发送睡觉提醒

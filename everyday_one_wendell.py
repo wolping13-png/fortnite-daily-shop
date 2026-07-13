@@ -20,8 +20,10 @@ from x_posts import clean_text, normalize_bearer_token, x_user_get
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = BASE_DIR / "gemini_bot_config.json"
-CACHE_DIR = BASE_DIR / ".cache" / "everyone_wendell"
+CACHE_DIR = BASE_DIR / ".cache" / "everyday_one_wendell"
+LEGACY_CACHE_DIR = BASE_DIR / ".cache" / "everyone_wendell"
 STATE_PATH = CACHE_DIR / "state.json"
+LEGACY_STATE_PATH = LEGACY_CACHE_DIR / "state.json"
 MEDIA_DIR = CACHE_DIR / "media"
 X_USER_BY_USERNAME_URL = "https://api.x.com/2/users/by/username/{username}"
 X_USERS_BY_USERNAMES_URL = "https://api.x.com/2/users/by"
@@ -68,10 +70,21 @@ def normalized_group_ids(value: Any) -> list[int | str]:
 
 def configured_group_ids(config: dict[str, Any]) -> list[int | str]:
     return normalized_group_ids(
-        config.get("everyone_wendell_group_ids")
+        config.get("everyday_one_wendell_group_ids")
+        or config.get("everyone_wendell_group_ids")
         or config.get("allowed_group_ids")
         or config.get("group_ids")
     )
+
+
+def feature_config(config: dict[str, Any], name: str, default: Any) -> Any:
+    current_key = f"everyday_one_wendell_{name}"
+    legacy_key = f"everyone_wendell_{name}"
+    if current_key in config:
+        return config[current_key]
+    if legacy_key in config:
+        return config[legacy_key]
+    return default
 
 
 def x_get(url: str, bearer_token: str, params: dict[str, str] | None = None) -> dict[str, Any]:
@@ -86,7 +99,7 @@ def x_get(url: str, bearer_token: str, params: dict[str, str] | None = None) -> 
                 url,
                 headers={
                     "Authorization": f"Bearer {normalize_bearer_token(bearer_token)}",
-                    "User-Agent": "EveryOneWendell/1.0",
+                    "User-Agent": "EveryDayOneWendell/1.0",
                 },
                 params=params or {},
                 timeout=35,
@@ -427,7 +440,7 @@ def post_datetime_text(value: str) -> str:
 
 
 def build_caption(post: dict[str, Any]) -> str:
-    title = "EveryOneWendell"
+    title = "EveryDayOneWendell"
     author = f"{post.get('name') or post.get('username')} (@{post.get('username')})"
     if post.get("is_retweet"):
         author += f"\n由 @{post.get('retweeted_by')} 转发的原帖"
@@ -491,7 +504,7 @@ def video_segment(
             shutil.copy2(path, shared_path)
         return {"type": "video", "data": {"file": f"file://{container_dir}/{shared_path.name}"}}
     except (OSError, RuntimeError):
-        max_base64_bytes = int(float(config.get("everyone_wendell_video_base64_max_mb") or 20) * 1024 * 1024)
+        max_base64_bytes = int(float(feature_config(config, "video_base64_max_mb", 20) or 20) * 1024 * 1024)
         if path.stat().st_size <= max_base64_bytes:
             encoded = base64.b64encode(path.read_bytes()).decode("ascii")
             return {"type": "video", "data": {"file": f"base64://{encoded}"}}
@@ -505,7 +518,7 @@ def build_message(
 ) -> tuple[list[dict[str, Any]], list[Path]]:
     message: list[dict[str, Any]] = [{"type": "text", "data": {"text": caption}}]
     downloaded: list[Path] = []
-    max_bytes = int(float(config.get("everyone_wendell_media_max_mb") or 100) * 1024 * 1024)
+    max_bytes = int(float(feature_config(config, "media_max_mb", 100) or 100) * 1024 * 1024)
     for index, item in enumerate(post.get("media", []) or [], 1):
         if not isinstance(item, dict):
             continue
@@ -548,7 +561,7 @@ def send_post_to_target(
     if result.get("_napcat_callback_timeout"):
         print(f"NapCat callback timed out for target {target_id}; native result reported success.")
     target_kind = "user" if private else "group"
-    print(f"Sent EveryOneWendell to {target_kind} {target_id}.")
+    print(f"Sent EveryDayOneWendell to {target_kind} {target_id}.")
 
 
 def clean_old_media(days: int = 14) -> None:
@@ -578,21 +591,25 @@ def main() -> int:
     args = parse_args()
     config_path = Path(args.config)
     config = load_json(config_path)
-    state_path = Path(str(config.get("everyone_wendell_state_path") or STATE_PATH))
-    state = load_json(state_path)
+    state_path = Path(str(feature_config(config, "state_path", STATE_PATH) or STATE_PATH))
+    if not state_path.exists() and state_path == STATE_PATH and LEGACY_STATE_PATH.exists():
+        state = load_json(LEGACY_STATE_PATH)
+        save_json(state_path, state)
+    else:
+        state = load_json(state_path)
     private_user_id = str(args.private_user_id or "").strip()
     group_ids = [] if private_user_id else (
         normalized_group_ids(args.group_id) if args.group_id else configured_group_ids(config)
     )
     if not private_user_id and not group_ids:
-        raise ValueError("No QQ groups configured in everyone_wendell_group_ids or allowed_group_ids.")
+        raise ValueError("No QQ groups configured in everyday_one_wendell_group_ids or allowed_group_ids.")
 
     today = china_now().date().isoformat()
     if not private_user_id and not args.force and not args.dry_run and state.get("last_success_date") == today:
-        print(f"EveryOneWendell already sent successfully on {today}.")
+        print(f"EveryDayOneWendell already sent successfully on {today}.")
         return 0
 
-    username = str(args.username or config.get("everyone_wendell_username") or DEFAULT_USERNAME).strip().lstrip("@")
+    username = str(args.username or feature_config(config, "username", DEFAULT_USERNAME) or DEFAULT_USERNAME).strip().lstrip("@")
     bearer_token = str(config.get("x_bearer_token") or "")
     if not normalize_bearer_token(bearer_token):
         raise ValueError("x_bearer_token is not configured.")
@@ -610,7 +627,7 @@ def main() -> int:
             bearer_token,
             author_id=author["id"],
             since_id=str(state.get("latest_source_id") or ""),
-            fetch_limit=int(config.get("everyone_wendell_fetch_limit") or 5),
+            fetch_limit=int(feature_config(config, "fetch_limit", 5) or 5),
             config=config,
             config_path=config_path,
         )
@@ -658,7 +675,7 @@ def main() -> int:
     if private_user_id:
         send_post_to_target(config, private_user_id, caption, message, private=True)
         save_json(state_path, state)
-        clean_old_media(days=int(config.get("everyone_wendell_media_keep_days") or 14))
+        clean_old_media(days=int(feature_config(config, "media_keep_days", 14) or 14))
         return 0
 
     failures: list[str] = []
@@ -682,7 +699,7 @@ def main() -> int:
         state["last_sent_at"] = china_now().isoformat()
     state["deliveries"] = dict(list(deliveries.items())[-100:])
     save_json(state_path, state)
-    clean_old_media(days=int(config.get("everyone_wendell_media_keep_days") or 14))
+    clean_old_media(days=int(feature_config(config, "media_keep_days", 14) or 14))
 
     if failures:
         raise RuntimeError("; ".join(failures))

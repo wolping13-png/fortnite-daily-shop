@@ -13,7 +13,7 @@ from everyday_one_wendell import (
 )
 
 
-class EveryOneWendellTests(unittest.TestCase):
+class EveryDayOneWendellTests(unittest.TestCase):
     def test_retweet_uses_original_post_and_best_video(self) -> None:
         payload = {
             "data": [
