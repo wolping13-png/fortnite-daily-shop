@@ -958,7 +958,18 @@ def build_message(
         try:
             card_path = render_post_card(post)
             downloaded.append(card_path)
-            message = [image_segment(card_path)]
+            intro_text = str(
+                feature_config(
+                    config,
+                    "intro_text",
+                    "EveryDayOneWendell｜今日份温德尔",
+                )
+                or ""
+            ).strip()
+            message = []
+            if intro_text:
+                message.append({"type": "text", "data": {"text": intro_text + "\n"}})
+            message.append(image_segment(card_path))
             link_segment = {"type": "text", "data": {"text": f"\n原帖：{post.get('url')}"}}
         except Exception as exc:
             print(f"Post card rendering failed; using text fallback: {exc}", file=sys.stderr)

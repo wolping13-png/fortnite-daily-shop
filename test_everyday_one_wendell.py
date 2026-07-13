@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
 from everyday_one_wendell import (
     best_video_variant,
+    build_message,
     choose_candidate,
     choose_private_candidate,
     fetch_public_rss_posts,
@@ -190,6 +193,24 @@ class EveryDayOneWendellTests(unittest.TestCase):
         self.assertEqual(len(batches), 2)
         self.assertEqual(batches[0][0]["type"], "text")
         self.assertEqual(batches[1][0]["type"], "video")
+
+    def test_post_card_message_starts_with_daily_column_text(self) -> None:
+        with TemporaryDirectory() as directory:
+            card_path = Path(directory) / "card.jpg"
+            card_path.write_bytes(b"post-card")
+            post = {
+                "id": "123",
+                "url": "https://x.com/wendellindashop/status/123",
+                "media": [],
+            }
+            with patch("everyday_one_wendell.render_post_card", return_value=card_path):
+                message, _ = build_message("fallback", post, {})
+
+        self.assertEqual([segment["type"] for segment in message], ["text", "image", "text"])
+        self.assertEqual(
+            message[0]["data"]["text"],
+            "EveryDayOneWendell｜今日份温德尔\n",
+        )
 
     def test_looping_rss_video_is_detected_as_animated_gif(self) -> None:
         from everyday_one_wendell import RssDescriptionParser

@@ -364,7 +364,9 @@ bash install_everyday_one_wendell_cron.sh
 如果 `everyday_one_wendell_group_ids` 留空，会自动使用 `allowed_group_ids`。旧版
 `everyone_wendell_*` 配置字段仍然兼容。默认视频共享目录与当前
 NapCat Docker 挂载一致：宿主机 `/opt/napcat/data/wendell_media` 对应容器内
-`/app/.config/QQ/wendell_media`。
+`/app/.config/QQ/wendell_media`。栏目消息默认以
+`EveryDayOneWendell｜今日份温德尔` 开头，可以通过
+`everyday_one_wendell_intro_text` 修改；设置为空字符串可隐藏这段文字。
 
 服务器上也可以手动发一次睡觉提醒：
 
