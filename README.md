@@ -361,6 +361,16 @@ bash run_everyday_one_wendell.sh --private-user-id 2353888741 --retweet-only
 bash install_everyday_one_wendell_cron.sh
 ```
 
+也可以一次性指定接收群并安装定时任务，例如：
+
+```bash
+bash setup_everyday_one_wendell.sh 798212273 293709380
+```
+
+脚本会把群号写入 `everyday_one_wendell_group_ids`，两个群都成功收到后才把该帖子
+标记为已发送。已经完整发送过的帖子不会再次选择；暂时没有未发送帖子时会跳过，
+不会用旧帖凑数。
+
 如果 `everyday_one_wendell_group_ids` 留空，会自动使用 `allowed_group_ids`。旧版
 `everyone_wendell_*` 配置字段仍然兼容。默认视频共享目录与当前
 NapCat Docker 挂载一致：宿主机 `/opt/napcat/data/wendell_media` 对应容器内
@@ -489,6 +499,7 @@ bash install_gemini_bot_service.sh
 - `run_everyday_one_wolf.sh`：Linux/VPS 手动发送每日一狼
 - `install_everyday_one_wolf_cron.sh`：Linux/VPS 安装每日一狼定时任务
 - `install_everyday_one_wendell_cron.sh`：Linux/VPS 安装每天 14:00 的 EveryDayOneWendell 推文任务
+- `setup_everyday_one_wendell.sh`：配置栏目接收群并安装 EveryDayOneWendell 定时任务
 - `run_everyday_one_wendell.sh`：抓取并发送一条 `@wendellindashop` 的最近推文
 - `bedtime_reminder.py`：生成睡觉提醒、第二天信息、节日文案和游戏优惠临期提醒
 - `run_bedtime_reminder.sh`：Linux/VPS 手动发送睡觉提醒

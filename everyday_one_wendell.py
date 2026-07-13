@@ -623,12 +623,24 @@ def choose_candidate(
     wanted = {str(group_id) for group_id in group_ids}
     for item in candidates:
         delivered = set(deliveries.get(str(item.get("id") or ""), []))
-        if delivered and delivered != wanted:
+        if delivered and not wanted.issubset(delivered):
             return item
     for item in candidates:
         if not deliveries.get(str(item.get("id") or "")):
             return item
-    return candidates[0] if candidates else None
+    return None
+
+
+def delivery_complete(
+    deliveries: dict[str, list[str]],
+    post_id: str,
+    group_ids: list[int | str],
+) -> bool:
+    if not post_id:
+        return False
+    wanted = {str(group_id) for group_id in group_ids}
+    delivered = {str(group_id) for group_id in deliveries.get(post_id, [])}
+    return bool(wanted) and wanted.issubset(delivered)
 
 
 def choose_private_candidate(
@@ -1088,9 +1100,25 @@ def main() -> int:
     if not private_user_id and not group_ids:
         raise ValueError("No QQ groups configured in everyday_one_wendell_group_ids or allowed_group_ids.")
 
+    deliveries = state.get("deliveries") if isinstance(state.get("deliveries"), dict) else {}
+    deliveries = {
+        str(key): [str(group_id) for group_id in value]
+        for key, value in deliveries.items()
+        if isinstance(value, list)
+    }
     today = china_now().date().isoformat()
-    if not private_user_id and not args.force and not args.dry_run and state.get("last_success_date") == today:
-        print(f"EveryDayOneWendell already sent successfully on {today}.")
+    if (
+        not private_user_id
+        and not args.force
+        and not args.dry_run
+        and state.get("last_success_date") == today
+        and delivery_complete(
+            deliveries,
+            str(state.get("last_sent_post_id") or ""),
+            group_ids,
+        )
+    ):
+        print(f"EveryDayOneWendell already sent successfully to every configured group on {today}.")
         return 0
 
     username = str(args.username or feature_config(config, "username", DEFAULT_USERNAME) or DEFAULT_USERNAME).strip().lstrip("@")
@@ -1155,12 +1183,6 @@ def main() -> int:
             if not candidates:
                 candidates = merge_candidates(state, [])
 
-    deliveries = state.get("deliveries") if isinstance(state.get("deliveries"), dict) else {}
-    deliveries = {
-        str(key): [str(group_id) for group_id in value]
-        for key, value in deliveries.items()
-        if isinstance(value, list)
-    }
     post = (
         choose_private_candidate(candidates, retweet_only=args.retweet_only)
         if private_user_id
@@ -1169,13 +1191,15 @@ def main() -> int:
     if not post:
         if private_user_id and args.retweet_only:
             raise RuntimeError("No recent retweeted X post is available.")
+        if not private_user_id and candidates:
+            print("No unsent EveryDayOneWendell posts are available; skipping instead of repeating an old post.")
+            save_json(state_path, state)
+            return 0
         raise RuntimeError(fetch_error or "No recent X posts are available.")
 
     post_id = str(post.get("id") or "")
     expected_groups = {str(group_id) for group_id in group_ids}
     delivered_groups = set(deliveries.get(post_id, []))
-    if delivered_groups >= expected_groups:
-        delivered_groups = set()
 
     caption = build_caption(post)
     message, downloaded = build_message(caption, post, config)

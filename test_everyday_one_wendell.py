@@ -10,6 +10,7 @@ from everyday_one_wendell import (
     build_message,
     choose_candidate,
     choose_private_candidate,
+    delivery_complete,
     fetch_public_rss_posts,
     normalize_candidates,
     resolve_author,
@@ -84,6 +85,29 @@ class EveryDayOneWendellTests(unittest.TestCase):
         selected = choose_candidate(candidates, deliveries, [111, 222])
 
         self.assertEqual(selected["id"], "200")
+
+    def test_fully_delivered_posts_are_never_selected_again(self) -> None:
+        candidates = [{"id": "300"}, {"id": "200"}]
+        deliveries = {"300": ["111", "222"], "200": ["111", "222"]}
+
+        selected = choose_candidate(candidates, deliveries, [111, 222])
+
+        self.assertIsNone(selected)
+
+    def test_extra_historical_group_does_not_make_a_post_partial(self) -> None:
+        candidates = [{"id": "300"}]
+        deliveries = {"300": ["111", "222", "333"]}
+
+        selected = choose_candidate(candidates, deliveries, [111, 222])
+
+        self.assertIsNone(selected)
+
+    def test_delivery_is_complete_only_after_both_groups_receive_post(self) -> None:
+        deliveries = {"300": ["111"]}
+
+        self.assertFalse(delivery_complete(deliveries, "300", [111, 222]))
+        deliveries["300"].append("222")
+        self.assertTrue(delivery_complete(deliveries, "300", [111, 222]))
 
     def test_private_retweet_preview_selects_latest_retweet(self) -> None:
         candidates = [
