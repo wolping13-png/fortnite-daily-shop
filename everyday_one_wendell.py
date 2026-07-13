@@ -774,40 +774,10 @@ def main() -> int:
 
     username = str(args.username or feature_config(config, "username", DEFAULT_USERNAME) or DEFAULT_USERNAME).strip().lstrip("@")
     bearer_token = str(config.get("x_bearer_token") or "")
-    if not normalize_bearer_token(bearer_token):
-        raise ValueError("x_bearer_token is not configured.")
-
     fetch_error = ""
-    try:
-        author = resolve_author(
-            bearer_token,
-            username,
-            state,
-            config=config,
-            config_path=config_path,
-        )
-        data = fetch_author_posts(
-            bearer_token,
-            author_id=author["id"],
-            since_id=str(state.get("latest_source_id") or ""),
-            fetch_limit=int(feature_config(config, "fetch_limit", 5) or 5),
-            config=config,
-            config_path=config_path,
-        )
-        new_items = normalize_candidates(
-            data,
-            source_username=author.get("username") or username,
-            source_name=author.get("name") or username,
-        )
-        if data.get("data"):
-            source_ids = [str(item.get("id") or "") for item in data.get("data", []) if isinstance(item, dict)]
-            numeric_ids = [item for item in source_ids if item.isdigit()]
-            if numeric_ids:
-                state["latest_source_id"] = max(numeric_ids, key=int)
-        candidates = merge_candidates(state, new_items)
-    except Exception as exc:
-        fetch_error = str(exc)
-        print(f"X refresh failed, trying public RSS fallback: {exc}", file=sys.stderr)
+    candidates: list[dict[str, Any]] = []
+    prefer_rss = bool(feature_config(config, "prefer_rss", True))
+    if prefer_rss:
         try:
             rss_items = fetch_public_rss_posts(
                 username,
@@ -816,9 +786,53 @@ def main() -> int:
             )
             candidates = merge_candidates(state, rss_items)
         except Exception as rss_exc:
-            fetch_error = f"{fetch_error}; {rss_exc}"
-            print(f"RSS refresh failed, trying cached posts: {rss_exc}", file=sys.stderr)
-            candidates = merge_candidates(state, [])
+            fetch_error = str(rss_exc)
+            print(f"RSS refresh failed, trying official X API: {rss_exc}", file=sys.stderr)
+
+    if not candidates:
+        try:
+            author = resolve_author(
+                bearer_token,
+                username,
+                state,
+                config=config,
+                config_path=config_path,
+            )
+            data = fetch_author_posts(
+                bearer_token,
+                author_id=author["id"],
+                since_id=str(state.get("latest_source_id") or ""),
+                fetch_limit=int(feature_config(config, "fetch_limit", 5) or 5),
+                config=config,
+                config_path=config_path,
+            )
+            new_items = normalize_candidates(
+                data,
+                source_username=author.get("username") or username,
+                source_name=author.get("name") or username,
+            )
+            if data.get("data"):
+                source_ids = [str(item.get("id") or "") for item in data.get("data", []) if isinstance(item, dict)]
+                numeric_ids = [item for item in source_ids if item.isdigit()]
+                if numeric_ids:
+                    state["latest_source_id"] = max(numeric_ids, key=int)
+            candidates = merge_candidates(state, new_items)
+        except Exception as exc:
+            fetch_error = f"{fetch_error}; {exc}".strip("; ")
+            print(f"Official X refresh failed: {exc}", file=sys.stderr)
+            if not prefer_rss:
+                try:
+                    rss_items = fetch_public_rss_posts(
+                        username,
+                        config,
+                        limit=int(feature_config(config, "rss_fetch_limit", 20) or 20),
+                    )
+                    candidates = merge_candidates(state, rss_items)
+                except Exception as rss_exc:
+                    fetch_error = f"{fetch_error}; {rss_exc}"
+                    print(f"RSS fallback also failed: {rss_exc}", file=sys.stderr)
+            if not candidates:
+                candidates = merge_candidates(state, [])
 
     deliveries = state.get("deliveries") if isinstance(state.get("deliveries"), dict) else {}
     deliveries = {
