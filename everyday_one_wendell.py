@@ -29,6 +29,7 @@ from x_posts import (
     load_font,
     normalize_bearer_token,
     paste_circle,
+    paste_rounded_contain,
     text_size,
     wrap_text,
     x_user_get,
@@ -373,6 +374,7 @@ class RssDescriptionParser(HTMLParser):
         self.text_parts: list[str] = []
         self.media: list[dict[str, Any]] = []
         self.current_video_type = "video"
+        self.current_video_poster = ""
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = {str(key).lower(): str(value or "") for key, value in attrs}
@@ -383,6 +385,7 @@ class RssDescriptionParser(HTMLParser):
             self.current_video_type = (
                 "animated_gif" if {"autoplay", "muted", "loop"}.issubset(attribute_names) else "video"
             )
+            self.current_video_poster = urljoin(self.base_url, values.get("poster", "")) if values.get("poster") else ""
         elif tag.lower() == "img" and values.get("src"):
             self.media.append(
                 {
@@ -396,7 +399,7 @@ class RssDescriptionParser(HTMLParser):
                 {
                     "type": self.current_video_type,
                     "url": urljoin(self.base_url, values["src"]),
-                    "preview_url": "",
+                    "preview_url": self.current_video_poster,
                 }
             )
 
@@ -405,6 +408,7 @@ class RssDescriptionParser(HTMLParser):
             self.text_parts.append("\n")
         elif tag.lower() == "video":
             self.current_video_type = "video"
+            self.current_video_poster = ""
 
     def handle_data(self, data: str) -> None:
         self.text_parts.append(str(data or ""))
@@ -687,13 +691,35 @@ def render_post_card(post: dict[str, Any]) -> Path:
     probe = Image.new("RGB", (CARD_WIDTH, 300), CARD_BG)
     probe_draw = ImageDraw.Draw(probe)
     body_width = CARD_WIDTH - 64
-    body_lines = wrap_text(probe_draw, str(post.get("text") or ""), CARD_FONT_BODY, body_width, 12)
+    body_lines = wrap_text(probe_draw, str(post.get("text") or ""), CARD_FONT_BODY, body_width, 80)
     body_height = max(38, len(body_lines) * 39)
+    media_item = next(
+        (item for item in post.get("media", []) or [] if isinstance(item, dict)),
+        {},
+    )
+    preview_url = str(
+        media_item.get("preview_url")
+        or (media_item.get("url") if media_item.get("type") == "photo" else "")
+        or ""
+    )
+    media_preview = download_image(preview_url) if preview_url else None
+    media_height = 0
+    if media_preview is not None:
+        ratio = media_preview.height / max(1, media_preview.width)
+        if ratio >= 1.5:
+            media_height = 720
+        elif ratio >= 1.05:
+            media_height = 610
+        elif ratio >= 0.72:
+            media_height = 520
+        else:
+            media_height = 450
     retweet_height = 38 if post.get("is_retweet") else 0
     header_height = 66
     author_height = 86
     footer_height = 62
-    card_height = header_height + retweet_height + author_height + body_height + footer_height + 32
+    media_block_height = media_height + 24 if media_height else 0
+    card_height = header_height + retweet_height + author_height + body_height + media_block_height + footer_height + 32
 
     image = Image.new("RGB", (CARD_WIDTH, card_height), CARD_BG)
     draw = ImageDraw.Draw(image)
@@ -751,6 +777,24 @@ def render_post_card(post: dict[str, Any]) -> Path:
     for index, line in enumerate(body_lines or [""]):
         draw.text((32, y + index * 39), line, fill=CARD_TEXT, font=CARD_FONT_BODY)
     y += body_height + 20
+
+    if media_preview is not None and media_height:
+        media_box = (32, y, CARD_WIDTH - 32, y + media_height)
+        paste_rounded_contain(image, media_preview, media_box, radius=8)
+        draw.rounded_rectangle(media_box, radius=8, outline=CARD_BORDER, width=1)
+        media_type = str(media_item.get("type") or "")
+        if media_type in {"animated_gif", "video"}:
+            badge = "GIF" if media_type == "animated_gif" else "VIDEO"
+            badge_width, badge_height = text_size(draw, badge, CARD_FONT_META)
+            badge_box = (
+                media_box[0] + 16,
+                media_box[1] + 16,
+                media_box[0] + 36 + badge_width,
+                media_box[1] + 32 + badge_height,
+            )
+            draw.rounded_rectangle(badge_box, radius=6, fill=(15, 20, 25), outline=(90, 98, 105), width=1)
+            draw.text((badge_box[0] + 10, badge_box[1] + 6), badge, fill=CARD_TEXT, font=CARD_FONT_META)
+        y += media_height + 24
 
     created_at = post_datetime_text(str(post.get("created_at") or ""))
     draw.text((32, y), created_at, fill=CARD_MUTED, font=CARD_FONT_META)
@@ -909,14 +953,13 @@ def build_message(
 ) -> tuple[list[dict[str, Any]], list[Path]]:
     downloaded: list[Path] = []
     message: list[dict[str, Any]] = [{"type": "text", "data": {"text": caption}}]
+    link_segment: dict[str, Any] | None = None
     if bool(feature_config(config, "post_card_enabled", True)):
         try:
             card_path = render_post_card(post)
             downloaded.append(card_path)
-            message = [
-                image_segment(card_path),
-                {"type": "text", "data": {"text": f"\n{post.get('url')}"}},
-            ]
+            message = [image_segment(card_path)]
+            link_segment = {"type": "text", "data": {"text": f"\n原帖：{post.get('url')}"}}
         except Exception as exc:
             print(f"Post card rendering failed; using text fallback: {exc}", file=sys.stderr)
     max_bytes = int(float(feature_config(config, "media_max_mb", 100) or 100) * 1024 * 1024)
@@ -946,6 +989,8 @@ def build_message(
             preview_url = str(item.get("preview_url") or "").strip()
             if preview_url:
                 message.append({"type": "image", "data": {"file": preview_url}})
+    if link_segment is not None:
+        message.append(link_segment)
     return message, downloaded
 
 

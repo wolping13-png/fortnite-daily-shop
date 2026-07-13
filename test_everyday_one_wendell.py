@@ -196,11 +196,12 @@ class EveryDayOneWendellTests(unittest.TestCase):
 
         parser = RssDescriptionParser("https://nitter.net/")
         parser.feed(
-            "<video autoplay muted loop><source src='/pic/tweet_video/example.mp4' "
+            "<video poster='/poster.jpg' autoplay muted loop><source src='/pic/tweet_video/example.mp4' "
             "type='video/mp4'></video>"
         )
 
         self.assertEqual(parser.parsed_media()[0]["type"], "animated_gif")
+        self.assertEqual(parser.parsed_media()[0]["preview_url"], "https://nitter.net/poster.jpg")
 
 
 if __name__ == "__main__":
