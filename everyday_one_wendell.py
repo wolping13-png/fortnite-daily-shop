@@ -595,6 +595,15 @@ def choose_candidate(
     return candidates[0] if candidates else None
 
 
+def choose_private_candidate(
+    candidates: list[dict[str, Any]],
+    retweet_only: bool = False,
+) -> dict[str, Any] | None:
+    if retweet_only:
+        return next((item for item in candidates if bool(item.get("is_retweet"))), None)
+    return candidates[0] if candidates else None
+
+
 def post_datetime_text(value: str) -> str:
     try:
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
@@ -846,6 +855,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--username", default="")
     parser.add_argument("--group-id", action="append")
     parser.add_argument("--private-user-id", default="", help="Send one preview privately without changing group delivery state.")
+    parser.add_argument("--retweet-only", action="store_true", help="For a private preview, select the newest retweeted post.")
     parser.add_argument("--force", action="store_true", help="Send even if today's scheduled post already succeeded.")
     parser.add_argument("--dry-run", action="store_true", help="Fetch and prepare the post without sending it.")
     return parser.parse_args()
@@ -941,8 +951,14 @@ def main() -> int:
         for key, value in deliveries.items()
         if isinstance(value, list)
     }
-    post = candidates[0] if private_user_id and candidates else choose_candidate(candidates, deliveries, group_ids)
+    post = (
+        choose_private_candidate(candidates, retweet_only=args.retweet_only)
+        if private_user_id
+        else choose_candidate(candidates, deliveries, group_ids)
+    )
     if not post:
+        if private_user_id and args.retweet_only:
+            raise RuntimeError("No recent retweeted X post is available.")
         raise RuntimeError(fetch_error or "No recent X posts are available.")
 
     post_id = str(post.get("id") or "")

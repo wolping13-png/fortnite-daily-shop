@@ -346,6 +346,12 @@ bash run_everyday_one_wendell.sh --force
 bash run_everyday_one_wendell.sh --private-user-id 2353888741
 ```
 
+只私发作者最近转发的一条原帖：
+
+```bash
+bash run_everyday_one_wendell.sh --private-user-id 2353888741 --retweet-only
+```
+
 安装北京时间每天 14:00 的自动任务：
 
 ```bash

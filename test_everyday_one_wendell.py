@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 from everyday_one_wendell import (
     best_video_variant,
     choose_candidate,
+    choose_private_candidate,
     fetch_public_rss_posts,
     normalize_candidates,
     resolve_author,
@@ -78,6 +79,17 @@ class EveryDayOneWendellTests(unittest.TestCase):
         deliveries = {"200": ["111"]}
 
         selected = choose_candidate(candidates, deliveries, [111, 222])
+
+        self.assertEqual(selected["id"], "200")
+
+    def test_private_retweet_preview_selects_latest_retweet(self) -> None:
+        candidates = [
+            {"id": "300", "is_retweet": False},
+            {"id": "200", "is_retweet": True},
+            {"id": "100", "is_retweet": True},
+        ]
+
+        selected = choose_private_candidate(candidates, retweet_only=True)
 
         self.assertEqual(selected["id"], "200")
 
