@@ -703,6 +703,19 @@ def build_message(
     return message, downloaded
 
 
+def split_video_message_batches(message: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    video_segments = [segment for segment in message if str(segment.get("type") or "") == "video"]
+    if not video_segments:
+        return [message]
+
+    regular_segments = [segment for segment in message if str(segment.get("type") or "") != "video"]
+    batches: list[list[dict[str, Any]]] = []
+    if regular_segments:
+        batches.append(regular_segments)
+    batches.extend([[segment] for segment in video_segments])
+    return batches
+
+
 def send_post_to_target(
     config: dict[str, Any],
     target_id: int | str,
@@ -714,17 +727,22 @@ def send_post_to_target(
     base_url = normalize_base_url(str(config.get("onebot_http_url") or "http://127.0.0.1:3000"))
     action = "send_private_msg" if private else "send_group_msg"
     id_key = "user_id" if private else "group_id"
-    result = post_onebot(
-        base_url=base_url,
-        action=action,
-        payload={id_key: target_id, "message": message},
-        access_token=str(config.get("access_token") or ""),
-        timeout=180,
-    )
-    if result.get("_napcat_callback_timeout"):
-        print(f"NapCat callback timed out for target {target_id}; native result reported success.")
+    batches = split_video_message_batches(message)
+    for index, batch in enumerate(batches, 1):
+        result = post_onebot(
+            base_url=base_url,
+            action=action,
+            payload={id_key: target_id, "message": batch},
+            access_token=str(config.get("access_token") or ""),
+            timeout=180,
+        )
+        if result.get("_napcat_callback_timeout"):
+            print(
+                f"NapCat callback timed out for target {target_id} "
+                f"batch {index}/{len(batches)}; native result reported success."
+            )
     target_kind = "user" if private else "group"
-    print(f"Sent EveryDayOneWendell to {target_kind} {target_id}.")
+    print(f"Sent EveryDayOneWendell to {target_kind} {target_id} in {len(batches)} message(s).")
 
 
 def clean_old_media(days: int = 14) -> None:

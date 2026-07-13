@@ -9,6 +9,7 @@ from everyday_one_wendell import (
     fetch_public_rss_posts,
     normalize_candidates,
     resolve_author,
+    split_video_message_batches,
     x_get,
     x_get_with_available_auth,
 )
@@ -165,6 +166,18 @@ class EveryDayOneWendellTests(unittest.TestCase):
         self.assertTrue(posts[0]["is_retweet"])
         self.assertEqual(posts[0]["media"][0]["type"], "video")
         self.assertEqual(posts[0]["url"], "https://x.com/artist/status/2076467506898755746")
+
+    def test_video_is_sent_after_text_in_a_separate_message(self) -> None:
+        message = [
+            {"type": "text", "data": {"text": "post text"}},
+            {"type": "video", "data": {"file": "file:///video.mp4"}},
+        ]
+
+        batches = split_video_message_batches(message)
+
+        self.assertEqual(len(batches), 2)
+        self.assertEqual(batches[0][0]["type"], "text")
+        self.assertEqual(batches[1][0]["type"], "video")
 
 
 if __name__ == "__main__":
