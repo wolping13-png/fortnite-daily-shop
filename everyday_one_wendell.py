@@ -30,6 +30,8 @@ X_USERS_BY_USERNAMES_URL = "https://api.x.com/2/users/by"
 X_SEARCH_RECENT_URL = "https://api.x.com/2/tweets/search/recent"
 X_USER_POSTS_URL = "https://api.x.com/2/users/{user_id}/tweets"
 DEFAULT_USERNAME = "wendellindashop"
+DEFAULT_USER_ID = "1837315425178136576"
+DEFAULT_DISPLAY_NAME = "Days without Wendell in the shop"
 
 
 def china_now() -> datetime:
@@ -169,6 +171,20 @@ def resolve_author(
     cached = state.get("author") if isinstance(state.get("author"), dict) else {}
     if str(cached.get("username") or "").lower() == username.lower() and cached.get("id"):
         return {key: str(cached.get(key) or "") for key in ("id", "username", "name", "profile_image_url")}
+
+    configured_user_id = ""
+    if config is not None:
+        default_user_id = DEFAULT_USER_ID if username.lower() == DEFAULT_USERNAME else ""
+        configured_user_id = str(feature_config(config, "user_id", default_user_id) or "").strip()
+    if configured_user_id:
+        author = {
+            "id": configured_user_id,
+            "username": username,
+            "name": DEFAULT_DISPLAY_NAME if username.lower() == DEFAULT_USERNAME else username,
+            "profile_image_url": "",
+        }
+        state["author"] = author
+        return author
 
     fields = {"user.fields": "name,username,profile_image_url"}
     lookup_errors: list[str] = []

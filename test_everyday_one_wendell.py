@@ -128,6 +128,21 @@ class EveryDayOneWendellTests(unittest.TestCase):
         user_get.assert_called_once()
         bearer_get.assert_not_called()
 
+    @patch("everyday_one_wendell.x_get_with_available_auth")
+    def test_default_author_id_skips_username_lookup(self, request: Mock) -> None:
+        state: dict = {}
+
+        author = resolve_author(
+            "bearer-token",
+            "wendellindashop",
+            state,
+            config={"x_user_access_token": "oauth-token"},
+        )
+
+        self.assertEqual(author["id"], "1837315425178136576")
+        self.assertEqual(author["name"], "Days without Wendell in the shop")
+        request.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
